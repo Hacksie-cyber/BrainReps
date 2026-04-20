@@ -189,6 +189,30 @@ export default function QuizSession() {
     }
   };
 
+  useEffect(() => {
+    // Prevent copy, right click, and common inspection shortcuts
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Disable Ctrl+C, Ctrl+V, Ctrl+U, Ctrl+Shift+I, Ctrl+P
+      if (
+        (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'u' || e.key === 'p')) ||
+        (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+        (e.metaKey && (e.key === 'c' || e.key === 'v' || e.key === 'u' || e.key === 'p'))
+      ) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    window.addEventListener('contextmenu', handleContextMenu);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
   if (!quiz) return <div className="text-center py-20 text-slate-500 italic font-medium">Assessment module not found or restricted</div>;
 
@@ -297,7 +321,7 @@ export default function QuizSession() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="mx-auto max-w-3xl space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 select-none">
       <header className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
            <div>
