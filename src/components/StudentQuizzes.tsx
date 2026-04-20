@@ -128,9 +128,14 @@ export default function StudentQuizzes() {
                                 {limitReached ? 'Finalized' : 'Attempted'}
                              </div>
                              {latestSubmission && (
-                               <span className="text-[10px] font-black text-indigo-600">
-                                 Score: {latestSubmission.score} / {latestSubmission.totalPoints}
-                               </span>
+                               <div className="flex flex-col items-end">
+                                 <span className="text-[10px] font-black text-indigo-600">
+                                   Score: {latestSubmission.score} / {latestSubmission.totalPoints}
+                                 </span>
+                                 <span className="text-[9px] font-bold text-slate-400">
+                                   Achievement: {Math.round((latestSubmission.score / latestSubmission.totalPoints) * 100)}%
+                                 </span>
+                               </div>
                              )}
                            </div>
                         )}

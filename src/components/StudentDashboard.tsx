@@ -53,8 +53,17 @@ export default function StudentDashboard() {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   
-  // Count unique modules completed
-  const uniqueCompletedIds = new Set(submissions.map(s => s.quizId));
+  // Count unique modules mastered (Score >= 75%)
+  const modulesBestScores: Record<string, number> = {};
+  submissions.forEach(s => {
+    const percent = (s.score / s.totalPoints);
+    if (!modulesBestScores[s.quizId] || percent > modulesBestScores[s.quizId]) {
+      modulesBestScores[s.quizId] = percent;
+    }
+  });
+
+  const masteredIds = Object.keys(modulesBestScores).filter(id => modulesBestScores[id] >= 0.75);
+  
   const thisWeekUniqueIds = new Set(
     submissions
       .filter(s => new Date(s.submittedAt) >= sevenDaysAgo)
@@ -62,7 +71,7 @@ export default function StudentDashboard() {
   );
 
   const stats = {
-    completed: uniqueCompletedIds.size,
+    completed: masteredIds.length,
     thisWeek: thisWeekUniqueIds.size,
     avgScore: submissions.length > 0
       ? Math.round((submissions.reduce((acc, curr) => acc + (curr.score / curr.totalPoints), 0) / submissions.length) * 100)
@@ -151,7 +160,10 @@ export default function StudentDashboard() {
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
                       {submission && (
-                         <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] rounded border border-emerald-100 font-bold uppercase tracking-tight">Attempted</span>
+                         <div className="flex flex-col items-end gap-1">
+                            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] rounded border border-emerald-100 font-bold uppercase tracking-tight">Attempted</span>
+                            <span className="text-[10px] font-black text-indigo-600">Achievement: {Math.round((submission.score / submission.totalPoints) * 100)}%</span>
+                         </div>
                       )}
                       <span className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">
                         {profile?.role === 'teacher' || quiz.retakeLimit === 0 ? 'Unlimited' : `Attempts: ${submissions.filter(s => s.quizId === quiz.id).length} / ${quiz.retakeLimit || 1}`}
