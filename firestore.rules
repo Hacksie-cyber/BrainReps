@@ -20,7 +20,7 @@ service cloud.firestore {
     }
 
     function isNotBanned() {
-      return !isSignedIn() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && !getUserData().get('isBanned', false));
+      return !isSignedIn() || !exists(/databases/$(database)/documents/users/$(request.auth.uid)) || !getUserData().get('isBanned', false);
     }
 
     function isTeacher() {
@@ -36,7 +36,10 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if isSignedIn() && (isOwner(uid) || isNotBanned());
+      // Allow users to read their own profile no matter what to detect ban status.
+      // For shared student/teacher lookups, we use the isNotBanned check.
+      allow read: if isSignedIn() && (request.auth.uid == uid || isTeacher() || isNotBanned());
+      
       allow write: if (isOwner(uid) && isNotBanned() && (
         // Allow creating profile if it doesn't exist
         (!exists(/databases/$(database)/documents/users/$(uid)) && (
