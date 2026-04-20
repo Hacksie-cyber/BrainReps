@@ -114,16 +114,16 @@ export default function TeacherQuizResults() {
       a.studentName.localeCompare(b.studentName)
     );
 
-    const headers = ['Student Name', 'Score', 'Total Points', 'Percentage (%)', 'Completion Date'];
+    const headers = ['Full Name', 'Score', 'Total Score'];
     const rows = sortedForExport.map(s => [
       `"${s.studentName}"`,
       s.score,
-      s.totalPoints,
-      Math.round((s.score / s.totalPoints) * 100),
-      new Date(s.submittedAt).toLocaleDateString()
+      s.totalPoints
     ]);
 
     const csvContent = [
+      `"Assessment: ${quiz.title}"`,
+      '',
       headers.join(','),
       ...rows.map(r => r.join(','))
     ].join('\n');

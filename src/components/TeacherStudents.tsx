@@ -86,15 +86,15 @@ export default function TeacherStudents() {
       a.name.localeCompare(b.name)
     );
 
-    const headers = ['Student Name', 'Total Submissions', 'Average Score (%)', 'Last Active'];
+    const headers = ['Full Name', 'Avg Score (%)'];
     const rows = sortedForExport.map(s => [
       `"${s.name}"`,
-      s.submissions.length,
-      s.avgScore,
-      new Date(s.lastActive).toLocaleDateString()
+      `"${s.avgScore}%"`
     ]);
 
     const csvContent = [
+      '"Student Roster Summary"',
+      '',
       headers.join(','),
       ...rows.map(r => r.join(','))
     ].join('\n');
