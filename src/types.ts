@@ -28,6 +28,7 @@ export interface Quiz {
   createdAt: string;
   questions: Question[];
   retakeLimit: number;
+  timeLimit?: number; // In minutes
   isHidden?: boolean;
 }
 

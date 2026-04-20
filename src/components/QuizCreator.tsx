@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz, Question, QuestionType } from '../types';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Save, Plus, Trash2, ArrowLeft, GripVertical, CheckCircle2, Settings } from 'lucide-react';
+import { Save, Plus, Trash2, ArrowLeft, GripVertical, CheckCircle2, Settings, Clock } from 'lucide-react';
 import DeleteModal from './DeleteModal';
 
 export default function QuizCreator() {
@@ -15,6 +15,7 @@ export default function QuizCreator() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [retakeLimit, setRetakeLimit] = useState(1);
+  const [timeLimit, setTimeLimit] = useState(0);
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,6 +36,7 @@ export default function QuizCreator() {
           setTitle(data.title);
           setDescription(data.description);
           setQuestions(data.questions);
+          setTimeLimit(data.timeLimit || 0);
           // If 0, treat as unlimited
           if (data.retakeLimit === 0) {
             setIsUnlimited(true);
@@ -99,6 +101,7 @@ export default function QuizCreator() {
         teacherName: profile.name,
         questions,
         retakeLimit: isUnlimited ? 0 : retakeLimit,
+        timeLimit,
         updatedAt: new Date().toISOString()
       };
       
@@ -212,7 +215,7 @@ export default function QuizCreator() {
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Retake Configuration</label>
                </div>
                
-               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                   <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <input
                       type="number"
@@ -237,6 +240,28 @@ export default function QuizCreator() {
                       <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       <span className="ms-3 text-xs font-bold text-slate-600 uppercase tracking-tight">Unlimited Retakes</span>
                     </label>
+                  </div>
+               </div>
+
+               <div className="pt-4 space-y-4">
+                 <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-indigo-500" />
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Strategic Time Limit</label>
+                 </div>
+                 
+                 <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 max-w-[280px]">
+                    <input
+                      type="number"
+                      min="0"
+                      max="480"
+                      value={timeLimit}
+                      onChange={(e) => setTimeLimit(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-16 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-indigo-500"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-tight">Minutes Duration</span>
+                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Set to 0 for unlimited time</span>
+                    </div>
                   </div>
                </div>
                <p className="text-[10px] font-medium text-slate-400 italic">

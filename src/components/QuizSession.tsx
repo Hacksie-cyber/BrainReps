@@ -5,7 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function QuizSession() {
@@ -20,6 +20,7 @@ export default function QuizSession() {
   const [finished, setFinished] = useState(false);
   const [lastScore, setLastScore] = useState<{ score: number, total: number, rank: number, totalParticipants: number } | null>(null);
   const [attemptCount, setAttemptCount] = useState(0);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id || !profile) return;
@@ -36,6 +37,9 @@ export default function QuizSession() {
           }
 
           setQuiz(quizData);
+          if (quizData.timeLimit && quizData.timeLimit > 0) {
+            setTimeLeft(quizData.timeLimit * 60);
+          }
 
           // Check previous submissions
           const { query, collection, where, getDocs } = await import('firebase/firestore');
@@ -55,6 +59,21 @@ export default function QuizSession() {
     };
     fetchData();
   }, [id, profile]);
+
+  useEffect(() => {
+    if (timeLeft === null || finished) return;
+
+    if (timeLeft === 0) {
+      handleSubmit();
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, finished]);
 
   const handleResponse = (questionId: string, answer: string) => {
     setResponses({ ...responses, [questionId]: answer });
@@ -271,13 +290,30 @@ export default function QuizSession() {
   const currentQuestion = quiz.questions[currentIndex];
   const progress = ((currentIndex + 1) / quiz.questions.length) * 100;
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="mx-auto max-w-3xl space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
            <div>
               <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{quiz.title}</h1>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">Section Component {currentIndex + 1} of {quiz.questions.length}</p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Section Component {currentIndex + 1} of {quiz.questions.length}</p>
+                {timeLeft !== null && (
+                   <div className={cn(
+                     "flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-black uppercase tracking-tighter transition-colors",
+                     timeLeft < 60 ? "bg-red-50 text-red-600 border-red-100 animate-pulse" : "bg-indigo-50 text-indigo-700 border-indigo-100"
+                   )}>
+                      <Clock className="w-3 h-3" />
+                      {formatTime(timeLeft)} Remaining
+                   </div>
+                )}
+              </div>
            </div>
            <div className="text-right">
               <span className="text-xs font-bold text-indigo-600">{Math.round(progress)}% Complete</span>
