@@ -296,19 +296,19 @@ export default function QuizSession() {
 
       <section className="min-h-[400px]">
         <AnimatePresence mode="wait">
-          <motion.div
-            key={currentQuestion.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            className="rounded-xl bg-white p-10 shadow-xl shadow-slate-200/50 border border-slate-200 space-y-8"
-          >
-            <div className="space-y-4">
-              <span className="inline-block rounded-lg bg-slate-50 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-400 border border-slate-100">
-                {currentQuestion.type.replace('-', ' ')} Assessment Block
-              </span>
-              <h2 className="text-2xl font-bold leading-snug text-slate-900 tracking-tight">{currentQuestion.question}</h2>
-            </div>
+        <motion.div
+          key={currentQuestion.id}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          className="rounded-xl bg-white p-6 md:p-10 shadow-xl shadow-slate-200/50 border border-slate-200 space-y-8"
+        >
+          <div className="space-y-4">
+            <span className="inline-block rounded-lg bg-slate-50 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-400 border border-slate-100">
+              {currentQuestion.type.replace('-', ' ')} Assessment Block
+            </span>
+            <h2 className="text-xl md:text-2xl font-bold leading-snug text-slate-900 tracking-tight">{currentQuestion.question}</h2>
+          </div>
 
             <div className="space-y-3">
               {currentQuestion.type === 'multiple-choice' && currentQuestion.options && (
@@ -343,13 +343,13 @@ export default function QuizSession() {
                       key={val}
                       onClick={() => handleResponse(currentQuestion.id, val)}
                       className={cn(
-                        "flex flex-col items-center justify-center gap-4 rounded-xl border-2 py-12 transition-all group",
+                        "flex flex-col items-center justify-center gap-4 rounded-xl border-2 py-8 md:py-12 transition-all group",
                         responses[currentQuestion.id] === val
                           ? "border-indigo-600 bg-indigo-50/50 text-indigo-700 ring-4 ring-indigo-600/5"
                           : "border-slate-50 bg-slate-50/30 text-slate-400 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-600"
                       )}
                     >
-                      <span className="text-xl font-black uppercase tracking-[0.2em]">{val}</span>
+                      <span className="text-base md:text-xl font-black uppercase tracking-[0.2em]">{val}</span>
                     </button>
                   ))}
                 </div>
@@ -376,27 +376,27 @@ export default function QuizSession() {
         <button
           disabled={currentIndex === 0}
           onClick={() => setCurrentIndex(currentIndex - 1)}
-          className="flex items-center gap-2 rounded-lg border border-slate-200 px-6 py-3 font-bold text-xs text-slate-400 transition-all hover:text-slate-800 hover:bg-slate-50 disabled:opacity-0"
+          className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 md:px-6 py-3 font-bold text-xs text-slate-400 transition-all hover:text-slate-800 hover:bg-slate-50 disabled:opacity-0"
         >
-          <ArrowLeft className="h-4 w-4" /> Previous Case
+          <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Previous Case</span>
         </button>
 
         {currentIndex === quiz.questions.length - 1 ? (
           <button
             onClick={handleSubmit}
             disabled={submitting || !responses[currentQuestion.id]}
-            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-8 py-3 font-bold text-xs text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 md:px-8 py-3 font-bold text-xs text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
           >
-            {submitting ? 'Transmitting...' : 'Finalize Submission'}
+            {submitting ? 'Transmitting...' : 'Finalize'}
             <Send className="h-3.5 w-3.5" />
           </button>
         ) : (
           <button
             disabled={!responses[currentQuestion.id]}
             onClick={() => setCurrentIndex(currentIndex + 1)}
-            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-8 py-3 font-bold text-xs text-white shadow-lg shadow-indigo-600/20 transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 md:px-8 py-3 font-bold text-xs text-white shadow-lg shadow-indigo-600/20 transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
           >
-            Advance Question
+            Advance
             <ArrowRight className="h-3.5 w-3.5" />
           </button>
         )}

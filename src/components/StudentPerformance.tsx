@@ -138,9 +138,10 @@ export default function StudentPerformance() {
 
       <section className="space-y-6">
         <h2 className="text-lg font-bold text-slate-800 tracking-tight">Recent Activity Log</h2>
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-           <div className="overflow-x-auto">
-              <table className="w-full text-left">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-left">
+           {/* Desktop view */}
+           <div className="hidden md:block overflow-x-auto">
+              <table className="w-full">
                 <thead>
                   <tr className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400">
                     <th className="px-8 py-4">Assessment Module</th>
@@ -182,6 +183,31 @@ export default function StudentPerformance() {
                   ))}
                 </tbody>
               </table>
+           </div>
+
+           {/* Mobile view */}
+           <div className="md:hidden divide-y divide-slate-50">
+              {submissions.map((sub) => (
+                <button
+                  key={sub.id}
+                  onClick={() => setSelectedSubmission(sub)}
+                  className="w-full p-4 flex flex-col gap-2 hover:bg-slate-50/50 transition-colors"
+                >
+                  <div className="flex justify-between items-start gap-4">
+                    <p className="font-bold text-slate-700 tracking-tight text-left leading-snug">{sub.quizTitle}</p>
+                    <span className={cn(
+                      "text-sm font-black shrink-0",
+                      (sub.score/sub.totalPoints) >= 0.7 ? "text-indigo-600" : "text-amber-500"
+                    )}>
+                      {sub.score} / {sub.totalPoints}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(sub.submittedAt).toLocaleDateString()}
+                  </div>
+                </button>
+              ))}
            </div>
         </div>
       </section>

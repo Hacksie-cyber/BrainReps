@@ -198,38 +198,57 @@ export default function StudentDashboard() {
             Academic Transcripts
           </h2>
           <div className="rounded-xl bg-white border border-slate-200 overflow-hidden shadow-sm">
-             <table className="w-full text-left">
-                <thead className="bg-slate-50/50 border-b border-slate-100">
-                   <tr className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                      <th className="px-6 py-3">Assessment</th>
-                      <th className="px-6 py-3 text-center">Submission Date</th>
-                      <th className="px-6 py-3 text-right">Result</th>
-                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                   {submissions.slice(0, 5).map((sub) => (
-                      <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors">
-                         <td className="px-6 py-4">
-                            <p className="text-sm font-bold text-slate-700 tracking-tight">{sub.quizTitle}</p>
-                         </td>
-                         <td className="px-6 py-4 text-center">
-                            <p className="text-[11px] font-bold text-slate-400 uppercase">{new Date(sub.submittedAt).toLocaleDateString()}</p>
-                         </td>
-                         <td className="px-6 py-4 text-right">
-                            <div className="flex flex-col items-end">
-                               <p className="text-sm font-bold text-slate-900">{sub.score} / {sub.totalPoints}</p>
-                               <div className="mt-1.5 h-1 w-20 bg-slate-100 rounded-full overflow-hidden">
-                                  <div 
-                                    className={cn("h-full transition-all duration-1000", (sub.score / sub.totalPoints) >= 0.7 ? "bg-indigo-600" : "bg-indigo-200")} 
-                                    style={{ width: `${(sub.score / sub.totalPoints) * 100}%` }}
-                                  />
-                               </div>
-                            </div>
-                         </td>
-                      </tr>
-                   ))}
-                </tbody>
-             </table>
+             {/* Desktop Table View */}
+             <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50/50 border-b border-slate-100">
+                    <tr className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        <th className="px-6 py-3">Assessment</th>
+                        <th className="px-6 py-3 text-center">Submission Date</th>
+                        <th className="px-6 py-3 text-right">Result</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {submissions.slice(0, 5).map((sub) => (
+                        <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-6 py-4">
+                              <p className="text-sm font-bold text-slate-700 tracking-tight">{sub.quizTitle}</p>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                              <p className="text-[11px] font-bold text-slate-400 uppercase">{new Date(sub.submittedAt).toLocaleDateString()}</p>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                              <div className="flex flex-col items-end">
+                                <p className="text-sm font-bold text-slate-900">{sub.score} / {sub.totalPoints}</p>
+                                <div className="mt-1.5 h-1 w-20 bg-slate-100 rounded-full overflow-hidden">
+                                    <div 
+                                      className={cn("h-full transition-all duration-1000", (sub.score / sub.totalPoints) >= 0.7 ? "bg-indigo-600" : "bg-indigo-200")} 
+                                      style={{ width: `${(sub.score / sub.totalPoints) * 100}%` }}
+                                    />
+                                </div>
+                              </div>
+                          </td>
+                        </tr>
+                    ))}
+                  </tbody>
+                </table>
+             </div>
+
+             {/* Mobile Card View */}
+             <div className="md:hidden divide-y divide-slate-50">
+                {submissions.slice(0, 5).map((sub) => (
+                  <div key={sub.id} className="p-4 space-y-3">
+                    <p className="text-sm font-bold text-slate-700 tracking-tight line-clamp-1">{sub.quizTitle}</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(sub.submittedAt).toLocaleDateString()}</p>
+                      <div className="flex items-baseline gap-1.5">
+                        <p className="text-sm font-black text-slate-900">{sub.score}</p>
+                        <p className="text-[10px] font-bold text-slate-400">/ {sub.totalPoints}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+             </div>
           </div>
         </section>
       )}
