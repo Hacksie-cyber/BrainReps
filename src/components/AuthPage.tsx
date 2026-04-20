@@ -6,12 +6,22 @@ import { UserRole } from '../types';
 import { motion } from 'motion/react';
 import { GraduationCap, BookOpen, ArrowRight, Brain } from 'lucide-react';
 import { cn } from '../lib/utils';
+import BannedScreen from './BannedScreen';
+
+import { Navigate } from 'react-router-dom';
 
 export default function AuthPage() {
-  const { signInAs, profile } = useAuth();
+  const { signInAs, profile, loading: authLoading } = useAuth();
   const [role, setRole] = useState<UserRole | null>(null);
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+
+  if (authLoading) return null;
+
+  if (profile) {
+    if (profile.isBanned) return <BannedScreen />;
+    return <Navigate to={profile.role === 'teacher' ? '/teacher' : '/student'} />;
+  }
 
   const handleGoogleSignIn = async () => {
     try {
