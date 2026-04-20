@@ -5,7 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission, Question } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
 
@@ -106,6 +106,39 @@ export default function TeacherQuizResults() {
     return quiz?.questions.find(q => q.id === qId);
   };
 
+  const exportToCSV = () => {
+    if (!submissions.length || !quiz) return;
+
+    // Sort alphabetically by full name for the export
+    const sortedForExport = [...submissions].sort((a, b) => 
+      a.studentName.localeCompare(b.studentName)
+    );
+
+    const headers = ['Student Name', 'Score', 'Total Points', 'Percentage (%)', 'Completion Date'];
+    const rows = sortedForExport.map(s => [
+      `"${s.studentName}"`,
+      s.score,
+      s.totalPoints,
+      Math.round((s.score / s.totalPoints) * 100),
+      new Date(s.submittedAt).toLocaleDateString()
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${quiz.title.replace(/\s+/g, '_')}_results.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const filteredSubmissions = submissions.filter(s => 
     s.studentName.toLowerCase().includes(participantSearch.toLowerCase())
   );
@@ -170,7 +203,11 @@ export default function TeacherQuizResults() {
                  className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full sm:w-64"
                />
              </div>
-             <button className="px-4 py-2 bg-slate-50 text-slate-500 border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-100 transition-all flex items-center gap-2">
+             <button 
+               onClick={exportToCSV}
+               className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/10 active:scale-95"
+             >
+               <Download className="w-3.5 h-3.5" />
                Export CSV
              </button>
            </div>

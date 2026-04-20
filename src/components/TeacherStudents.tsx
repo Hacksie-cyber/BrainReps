@@ -4,7 +4,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { motion } from 'motion/react';
-import { GraduationCap, Mail, Calendar, Target, Search, User } from 'lucide-react';
+import { GraduationCap, Mail, Calendar, Target, Search, User, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface StudentMetric {
@@ -78,13 +78,54 @@ export default function TeacherStudents() {
     s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const exportToCSV = () => {
+    if (!students.length) return;
+
+    // Sort alphabetically by full name for the export
+    const sortedForExport = [...students].sort((a, b) => 
+      a.name.localeCompare(b.name)
+    );
+
+    const headers = ['Student Name', 'Total Submissions', 'Average Score (%)', 'Last Active'];
+    const rows = sortedForExport.map(s => [
+      `"${s.name}"`,
+      s.submissions.length,
+      s.avgScore,
+      new Date(s.lastActive).toLocaleDateString()
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `student_roster_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Student Roster</h1>
-        <p className="text-sm text-slate-500 font-medium tracking-tight">Participant performance monitoring and engagement tracking.</p>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Student Roster</h1>
+          <p className="text-sm text-slate-500 font-medium tracking-tight">Participant performance monitoring and engagement tracking.</p>
+        </div>
+        <button 
+          onClick={exportToCSV}
+          className="flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-slate-800 shadow-lg shadow-slate-900/10 active:scale-95"
+        >
+          <Download className="h-4 w-4" />
+          Export CSV
+        </button>
       </header>
 
       <section className="space-y-6">
