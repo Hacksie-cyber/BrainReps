@@ -101,6 +101,7 @@ export default function StudentQuizzes() {
               // Filter out quizzes based on completion/pending status first
               filteredQuizzes.map((quiz, i) => {
                 const userSubmissions = submissions.filter(s => s.quizId === quiz.id);
+                const latestSubmission = [...userSubmissions].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
                 const isCompleted = userSubmissions.length > 0;
                 const isUnlimitedQuiz = quiz.retakeLimit === 0;
                 const limitReached = profile?.role === 'student' && !isUnlimitedQuiz && userSubmissions.length >= (quiz.retakeLimit || 1);
@@ -121,9 +122,16 @@ export default function StudentQuizzes() {
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
                         {isCompleted && (
-                           <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded border border-emerald-100 font-black uppercase tracking-tighter shadow-sm">
-                              <CheckCircle2 className="h-3 w-3" />
-                              {limitReached ? 'Finalized' : 'Attempted'}
+                           <div className="flex flex-col items-end gap-1">
+                             <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[9px] rounded border border-emerald-100 font-black uppercase tracking-tighter shadow-sm">
+                                <CheckCircle2 className="h-3 w-3" />
+                                {limitReached ? 'Finalized' : 'Attempted'}
+                             </div>
+                             {latestSubmission && (
+                               <span className="text-[10px] font-black text-indigo-600">
+                                 Score: {latestSubmission.score} / {latestSubmission.totalPoints}
+                               </span>
+                             )}
                            </div>
                         )}
                         <span className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">
