@@ -52,8 +52,10 @@ export default function StudentPerformance() {
 
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
 
+  const uniqueCompletedCount = new Set(submissions.map(s => s.quizId)).size;
+
   const stats = {
-    completed: submissions.length,
+    completed: uniqueCompletedCount,
     avgScore: submissions.length > 0
       ? Math.round((submissions.reduce((acc, curr) => acc + (curr.score / curr.totalPoints), 0) / submissions.length) * 100)
       : 0,

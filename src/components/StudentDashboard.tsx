@@ -52,11 +52,18 @@ export default function StudentDashboard() {
 
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const thisWeekCompleted = submissions.filter(s => new Date(s.submittedAt) >= sevenDaysAgo).length;
+  
+  // Count unique modules completed
+  const uniqueCompletedIds = new Set(submissions.map(s => s.quizId));
+  const thisWeekUniqueIds = new Set(
+    submissions
+      .filter(s => new Date(s.submittedAt) >= sevenDaysAgo)
+      .map(s => s.quizId)
+  );
 
   const stats = {
-    completed: submissions.length,
-    thisWeek: thisWeekCompleted,
+    completed: uniqueCompletedIds.size,
+    thisWeek: thisWeekUniqueIds.size,
     avgScore: submissions.length > 0
       ? Math.round((submissions.reduce((acc, curr) => acc + (curr.score / curr.totalPoints), 0) / submissions.length) * 100)
       : 0,
