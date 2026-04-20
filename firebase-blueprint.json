@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and role.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["teacher", "student"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "role", "name", "email"]
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "description": "A questionnaire created by a teacher.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "teacherName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "type": { "type": "string", "enum": ["multiple-choice", "true-false", "short-answer"] },
+              "question": { "type": "string" },
+              "options": { "type": "array", "items": { "type": "string" } },
+              "correctAnswer": { "type": "string" },
+              "points": { "type": "number" }
+            },
+            "required": ["id", "type", "question", "correctAnswer", "points"]
+          }
+        }
+      },
+      "required": ["id", "title", "teacherId", "questions"]
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "A student's attempt at a quiz.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "quizId": { "type": "string" },
+        "quizTitle": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "responses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "questionId": { "type": "string" },
+              "answer": { "type": "string" }
+            }
+          }
+        },
+        "score": { "type": "number" },
+        "totalPoints": { "type": "number" },
+        "submittedAt": { "type": "string", "format": "date-time" },
+        "graded": { "type": "boolean" }
+      },
+      "required": ["id", "quizId", "studentId", "responses", "score", "totalPoints", "submittedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "Global user profiles" },
+    "/quizzes/{quizId}": { "schema": "Quiz", "description": "Available quizzes" },
+    "/submissions/{submissionId}": { "schema": "Submission", "description": "Student quiz results" }
+  }
+}

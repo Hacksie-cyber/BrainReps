@@ -1,0 +1,79 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isTeacher() {
+      return isSignedIn() && getUserData().role == 'teacher';
+    }
+
+    function isStudent() {
+      return isSignedIn() && getUserData().role == 'student';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(uid) && (
+        // Allow creating profile if it doesn't exist, but check teacher restriction
+        (!exists(/databases/$(database)/documents/users/$(uid)) && (
+          request.resource.data.role != 'teacher' || 
+          request.auth.token.email == 'bamuyahacksie@gmail.com'
+        )) || 
+        // Allow updates only if role remains the same
+        (exists(/databases/$(database)/documents/users/$(uid)) && 
+         request.resource.data.role == resource.data.role)
+      );
+    }
+
+    match /quizzes/{quizId} {
+      allow read: if isSignedIn();
+      allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
+    }
+
+    function isValidSubmission(data) {
+      return data.studentId is string &&
+             data.quizId is string &&
+             data.score is number &&
+             data.totalPoints is number &&
+             data.submittedAt is string &&
+             data.graded is bool &&
+             data.teacherId is string;
+    }
+
+    match /submissions/{submissionId} {
+      allow read: if isSignedIn();
+      
+      allow create: if isSignedIn() && 
+        isValidSubmission(request.resource.data) &&
+        request.resource.data.studentId == request.auth.uid &&
+        request.resource.data.teacherId == get(/databases/$(database)/documents/quizzes/$(request.resource.data.quizId)).data.teacherId;
+      
+      allow update: if false;
+      allow delete: if isSignedIn() && (
+        resource.data.studentId == request.auth.uid || 
+        resource.data.teacherId == request.auth.uid
+      );
+    }
+  }
+}
