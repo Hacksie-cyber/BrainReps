@@ -5,7 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAlert } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function QuizSession() {
@@ -21,6 +21,7 @@ export default function QuizSession() {
   const [lastScore, setLastScore] = useState<{ score: number, total: number, rank: number, totalParticipants: number } | null>(null);
   const [attemptCount, setAttemptCount] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [isBlurred, setIsBlurred] = useState(false);
 
   useEffect(() => {
     if (!id || !profile) return;
@@ -190,16 +191,30 @@ export default function QuizSession() {
   };
 
   useEffect(() => {
+    // Security deterrences: Blur if focus is lost or visibility changes
+    const handleVisibilityChange = () => {
+      if (document.hidden) setIsBlurred(true);
+    };
+    const handleBlur = () => setIsBlurred(true);
+    const handleFocus = () => setIsBlurred(false);
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
+
     // Prevent copy, right click, and common inspection shortcuts
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Disable Ctrl+C, Ctrl+V, Ctrl+U, Ctrl+Shift+I, Ctrl+P
+      // Disable PrintScreen (deterrent), Ctrl+C, Ctrl+V, Ctrl+U, Ctrl+Shift+I, Ctrl+P
       if (
+        e.key === 'PrintScreen' ||
         (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'u' || e.key === 'p')) ||
         (e.ctrlKey && e.shiftKey && e.key === 'I') ||
         (e.metaKey && (e.key === 'c' || e.key === 'v' || e.key === 'u' || e.key === 'p'))
       ) {
         e.preventDefault();
+        // Force blur on PrintScreen attempt if possible
+        if (e.key === 'PrintScreen') setIsBlurred(true);
         return false;
       }
     };
@@ -208,6 +223,9 @@ export default function QuizSession() {
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
       window.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('keydown', handleKeyDown);
     };
@@ -321,7 +339,31 @@ export default function QuizSession() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 select-none">
+    <div className={cn(
+      "mx-auto max-w-3xl space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 select-none",
+      isBlurred && "blur-xl transition-all duration-300"
+    )}>
+      {isBlurred && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/60 backdrop-blur-3xl text-center p-6 animate-in fade-in duration-300">
+           <div className="max-w-md space-y-6">
+              <div className="mx-auto w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center">
+                 <ShieldAlert className="w-8 h-8 text-amber-500" />
+              </div>
+              <div className="space-y-2">
+                 <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Security Protocol Active</h2>
+                 <p className="text-slate-500 text-sm font-medium leading-relaxed">
+                    Access to assessment content is restricted while the window is out of focus. This measure ensures curriculum integrity and prevents unauthorized content capture.
+                 </p>
+              </div>
+              <button 
+                onClick={() => setIsBlurred(false)}
+                className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 active:scale-95"
+              >
+                Restore Session
+              </button>
+           </div>
+        </div>
+      )}
       <header className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
            <div>
