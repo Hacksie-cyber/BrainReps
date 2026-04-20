@@ -4,7 +4,8 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { motion } from 'motion/react';
-import { GraduationCap, Mail, Calendar, Target, Search, User, Download } from 'lucide-react';
+import { GraduationCap, Mail, Calendar, Target, Search, User, Download, ShieldAlert, UserMinus, UserCheck } from 'lucide-react';
+import { updateDoc, doc } from 'firebase/firestore';
 import { cn } from '../lib/utils';
 
 interface StudentMetric {
@@ -14,6 +15,7 @@ interface StudentMetric {
   submissions: QuizSubmission[];
   avgScore: number;
   lastActive: string;
+  isBanned?: boolean;
 }
 
 export default function TeacherStudents() {
@@ -44,7 +46,7 @@ export default function TeacherStudents() {
             studentMap.set(s.studentId, {
               uid: s.studentId,
               name: s.studentName,
-              email: '', // We don't have email in submission usually, but we could fetch it if needed
+              email: '', 
               submissions: [],
               avgScore: 0,
               lastActive: s.submittedAt
@@ -57,13 +59,33 @@ export default function TeacherStudents() {
           }
         });
 
-        // Calculate averages
-        const studentList = Array.from(studentMap.values()).map(s => ({
-          ...s,
-          avgScore: Math.round((s.submissions.reduce((acc, curr) => acc + (curr.score / curr.totalPoints), 0) / s.submissions.length) * 100)
-        }));
+        // Fetch student profile details (email and ban status)
+        const studentUids = Array.from(studentMap.keys());
+        const detailedStudents: StudentMetric[] = [];
 
-        setStudents(studentList);
+        if (studentUids.length > 0) {
+          // Firebase 'in' query has a limit of 10-30 usually, let's chunk if needed but for now simple
+          // Actually, we can just fetch the user docs for these UIDs
+          const usersSnap = await getDocs(query(
+            collection(db, 'users'),
+            where('uid', 'in', studentUids.slice(0, 30)) // Limit to 30 for safety/performance
+          ));
+
+          usersSnap.docs.forEach(d => {
+            const userData = d.data();
+            const metric = studentMap.get(d.id);
+            if (metric) {
+              detailedStudents.push({
+                ...metric,
+                email: userData.email || '',
+                isBanned: userData.isBanned || false,
+                avgScore: Math.round((metric.submissions.reduce((acc, curr) => acc + (curr.score / curr.totalPoints), 0) / metric.submissions.length) * 100)
+              });
+            }
+          });
+        }
+
+        setStudents(detailedStudents);
       } catch (error) {
         console.error(error);
       } finally {
@@ -108,6 +130,19 @@ export default function TeacherStudents() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const toggleBan = async (student: StudentMetric) => {
+    try {
+      const newStatus = !student.isBanned;
+      await updateDoc(doc(db, 'users', student.uid), {
+        isBanned: newStatus
+      });
+      setStudents(students.map(s => s.uid === student.uid ? { ...s, isBanned: newStatus } : s));
+    } catch (error) {
+      console.error("Governance action failed:", error);
+      alert("Failed to update student access rights.");
+    }
   };
 
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
@@ -156,30 +191,58 @@ export default function TeacherStudents() {
                 className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between group hover:border-indigo-200 hover:shadow-md transition-all"
               >
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                  <div className={cn(
+                    "w-12 h-12 rounded-full flex items-center justify-center transition-colors",
+                    student.isBanned ? "bg-red-50 text-red-400" : "bg-slate-50 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600"
+                  )}>
                     <User className="h-6 w-6" />
                   </div>
                   <div className="space-y-1">
-                    <h3 className="font-bold text-slate-800 tracking-tight">{student.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-800 tracking-tight">{student.name}</h3>
+                      {student.isBanned && (
+                        <span className="px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-[8px] font-black uppercase tracking-tighter flex items-center gap-0.5">
+                          <ShieldAlert className="w-2.5 h-2.5" /> Restricted
+                        </span>
+                      )}
+                    </div>
                     <div className="flex flex-col gap-1">
                       <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
-                        <Calendar className="h-3 w-3" /> Last Active: {new Date(student.lastActive).toLocaleDateString()}
+                        <Mail className="h-3 w-3" /> {student.email}
                       </p>
                       <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
-                        <Target className="h-3 w-3" /> Modules Engagement: {student.submissions.length}
+                        <Calendar className="h-3 w-3" /> Last Active: {new Date(student.lastActive).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <p className={cn(
-                    "text-2xl font-black",
-                    student.avgScore >= 70 ? "text-indigo-600" : "text-amber-500"
-                  )}>
-                    {student.avgScore}%
-                  </p>
-                  <p className="text-[9px] font-black uppercase text-slate-300 tracking-tighter">Avg achievement</p>
+                <div className="flex flex-col items-end gap-4">
+                  <div className="text-right">
+                    <p className={cn(
+                      "text-2xl font-black",
+                      student.isBanned ? "text-slate-300" : (student.avgScore >= 70 ? "text-indigo-600" : "text-amber-500")
+                    )}>
+                      {student.avgScore}%
+                    </p>
+                    <p className="text-[9px] font-black uppercase text-slate-300 tracking-tighter">Avg achievement</p>
+                  </div>
+                  
+                  <button
+                    onClick={() => toggleBan(student)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border flex items-center gap-2",
+                      student.isBanned 
+                        ? "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100" 
+                        : "bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
+                    )}
+                  >
+                    {student.isBanned ? (
+                      <><UserCheck className="w-3.5 h-3.5" /> Unban Student</>
+                    ) : (
+                      <><UserMinus className="w-3.5 h-3.5" /> Ban Account</>
+                    )}
+                  </button>
                 </div>
               </motion.div>
             ))

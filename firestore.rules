@@ -19,12 +19,16 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    function isNotBanned() {
+      return !isSignedIn() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && !getUserData().get('isBanned', false));
+    }
+
     function isTeacher() {
-      return isSignedIn() && getUserData().role == 'teacher';
+      return isSignedIn() && isNotBanned() && getUserData().role == 'teacher';
     }
 
     function isStudent() {
-      return isSignedIn() && getUserData().role == 'student';
+      return isSignedIn() && isNotBanned() && getUserData().role == 'student';
     }
 
     function isValidId(id) {
@@ -32,21 +36,27 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(uid) && (
-        // Allow creating profile if it doesn't exist, but check teacher restriction
+      allow read: if isSignedIn() && isNotBanned();
+      allow write: if (isOwner(uid) && isNotBanned() && (
+        // Allow creating profile if it doesn't exist
         (!exists(/databases/$(database)/documents/users/$(uid)) && (
           request.resource.data.role != 'teacher' || 
           request.auth.token.email == 'bamuyahacksie@gmail.com'
         )) || 
-        // Allow updates only if role remains the same
+        // Allow updates only if role and isBanned remain the same for owner
         (exists(/databases/$(database)/documents/users/$(uid)) && 
-         request.resource.data.role == resource.data.role)
+         request.resource.data.role == resource.data.role &&
+         request.resource.data.get('isBanned', false) == resource.data.get('isBanned', false))
+      )) || (
+        // Allow teachers to ban/unban students
+        isTeacher() && 
+        resource.data.role == 'student' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isBanned'])
       );
     }
 
     match /quizzes/{quizId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && isNotBanned();
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
       allow update, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
     }
@@ -62,9 +72,9 @@ service cloud.firestore {
     }
 
     match /submissions/{submissionId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && isNotBanned();
       
-      allow create: if isSignedIn() && 
+      allow create: if isSignedIn() && isNotBanned() && 
         isValidSubmission(request.resource.data) &&
         request.resource.data.studentId == request.auth.uid &&
         request.resource.data.teacherId == get(/databases/$(database)/documents/quizzes/$(request.resource.data.quizId)).data.teacherId;

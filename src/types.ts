@@ -6,6 +6,7 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   createdAt: string;
+  isBanned?: boolean;
 }
 
 export type QuestionType = 'multiple-choice' | 'true-false' | 'short-answer';
