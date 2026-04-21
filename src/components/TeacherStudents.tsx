@@ -29,62 +29,53 @@ export default function TeacherStudents() {
 
     const fetchStudents = async () => {
       try {
-        // Query submissions for this teacher's quizzes
+        // 1. Fetch the institutional student roster (all students)
+        const rostersSnap = await getDocs(query(
+          collection(db, 'users'),
+          where('role', '==', 'student')
+        ));
+        
+        const allStudents = rostersSnap.docs.map(d => ({
+          uid: d.id,
+          name: d.data().name || 'Anonymous Learner',
+          email: d.data().email || '',
+          isBanned: d.data().isBanned || false,
+          submissions: [],
+          avgScore: 0,
+          lastActive: d.data().createdAt || new Date().toISOString()
+        } as StudentMetric));
+
+        // 2. Fetch all submissions for this teacher's modules to calculate performance metrics
         const subSnap = await getDocs(query(
           collection(db, 'submissions'),
           where('teacherId', '==', profile.uid)
         ));
-        const subs = subSnap.docs
-          .map(d => ({ id: d.id, ...d.data() } as QuizSubmission))
-          .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+        
+        const subs = subSnap.docs.map(d => ({ id: d.id, ...d.data() } as QuizSubmission));
 
-        // Group by student
-        const studentMap = new Map<string, StudentMetric>();
-
+        // Group metrics by student
+        const studentMap = new Map<string, QuizSubmission[]>();
         subs.forEach(s => {
-          if (!studentMap.has(s.studentId)) {
-            studentMap.set(s.studentId, {
-              uid: s.studentId,
-              name: s.studentName,
-              email: '', 
-              submissions: [],
-              avgScore: 0,
-              lastActive: s.submittedAt
-            });
-          }
-          const metric = studentMap.get(s.studentId)!;
-          metric.submissions.push(s);
-          if (new Date(s.submittedAt) > new Date(metric.lastActive)) {
-            metric.lastActive = s.submittedAt;
-          }
+          if (!studentMap.has(s.studentId)) studentMap.set(s.studentId, []);
+          studentMap.get(s.studentId)!.push(s);
         });
 
-        // Fetch student profile details (email and ban status)
-        const studentUids = Array.from(studentMap.keys());
-        const detailedStudents: StudentMetric[] = [];
+        const detailedStudents = allStudents.map(student => {
+          const studentSubs = studentMap.get(student.uid) || [];
+          const sortedSubs = [...studentSubs].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+          
+          return {
+            ...student,
+            submissions: studentSubs,
+            avgScore: studentSubs.length > 0
+              ? Math.round((studentSubs.reduce((acc, curr) => acc + (curr.score / curr.totalPoints), 0) / studentSubs.length) * 100)
+              : 0,
+            lastActive: sortedSubs.length > 0 ? sortedSubs[0].submittedAt : student.lastActive
+          };
+        });
 
-        if (studentUids.length > 0) {
-          // Firebase 'in' query has a limit of 10-30 usually, let's chunk if needed but for now simple
-          // Actually, we can just fetch the user docs for these UIDs
-          const usersSnap = await getDocs(query(
-            collection(db, 'users'),
-            where('uid', 'in', studentUids.slice(0, 30)) // Limit to 30 for safety/performance
-          ));
-
-          usersSnap.docs.forEach(d => {
-            const userData = d.data();
-            const metric = studentMap.get(d.id);
-            if (metric) {
-              detailedStudents.push({
-                ...metric,
-                email: userData.email || '',
-                isBanned: userData.isBanned || false,
-                avgScore: Math.round((metric.submissions.reduce((acc, curr) => acc + (curr.score / curr.totalPoints), 0) / metric.submissions.length) * 100)
-              });
-            }
-          });
-        }
-
+        // Sort by name as default
+        detailedStudents.sort((a, b) => a.name.localeCompare(b.name));
         setStudents(detailedStudents);
       } catch (error) {
         console.error(error);

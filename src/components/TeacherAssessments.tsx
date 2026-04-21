@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, BookOpen, Trash2, BarChart3, Settings, MoreVertical, Edit, Eye, EyeOff } from 'lucide-react';
+import { Plus, Search, BookOpen, Trash2, BarChart3, Settings, MoreVertical, Edit, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
 
@@ -198,6 +198,11 @@ export default function TeacherAssessments() {
                         </p>
                         {quiz.isHidden && (
                           <span className="text-[9px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100 font-bold uppercase tracking-tighter">Hidden</span>
+                        )}
+                        {quiz.allowedStudentIds && quiz.allowedStudentIds.length > 0 && (
+                          <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 font-bold uppercase tracking-tighter flex items-center gap-1">
+                            <ShieldCheck className="w-2.5 h-2.5" /> Restricted
+                          </span>
                         )}
                       </div>
                     </div>

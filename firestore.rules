@@ -61,9 +61,8 @@ service cloud.firestore {
     match /quizzes/{quizId} {
       allow read: if isSignedIn() && isNotBanned() && (
         resource.data.teacherId == request.auth.uid ||
-        !resource.data.keys().contains('allowedStudentIds') ||
-        resource.data.allowedStudentIds.size() == 0 ||
-        request.auth.uid in resource.data.allowedStudentIds
+        resource.data.get('allowedStudentIds', []).size() == 0 ||
+        request.auth.uid in resource.data.get('allowedStudentIds', [])
       );
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
       allow update, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
