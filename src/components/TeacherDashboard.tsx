@@ -216,7 +216,20 @@ export default function TeacherDashboard() {
                       <tr key={quiz.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group cursor-pointer" onClick={() => navigate(`/teacher/quiz/${quiz.id}`)}>
                         <td className="px-6 py-4">
                           <p className="font-bold text-slate-700 dark:text-slate-200 tracking-tight">{quiz.title}</p>
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{new Date(quiz.createdAt).toLocaleDateString()} • {quiz.questions.length} Items</p>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                              {new Date(quiz.createdAt).toLocaleDateString()} • {quiz.questions.length} Items
+                            </p>
+                            {quiz.deadline && (
+                              <p className={cn(
+                                "text-[9px] font-black uppercase tracking-tighter flex items-center gap-1",
+                                new Date(quiz.deadline) < new Date() ? "text-red-500" : "text-indigo-500"
+                              )}>
+                                <Clock className="h-2 w-2" />
+                                {new Date(quiz.deadline) < new Date() ? "Expired" : `Due: ${new Date(quiz.deadline).toLocaleDateString()}`}
+                              </p>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-100 dark:border-slate-700/50">{qSubs.length}</span>

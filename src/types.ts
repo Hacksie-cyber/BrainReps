@@ -30,6 +30,7 @@ export interface Quiz {
   questions: Question[];
   retakeLimit: number;
   timeLimit?: number; // In minutes
+  deadline?: string; // ISO format string
   isHidden?: boolean;
   allowedStudentIds?: string[];
   isPublic?: boolean;

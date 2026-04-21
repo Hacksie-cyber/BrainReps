@@ -15,6 +15,7 @@ export default function QuizCreator() {
   const { id } = useParams();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [deadline, setDeadline] = useState('');
   const [retakeLimit, setRetakeLimit] = useState(1);
   const [timeLimit, setTimeLimit] = useState(0);
   const [isUnlimited, setIsUnlimited] = useState(false);
@@ -56,6 +57,7 @@ export default function QuizCreator() {
           setOriginalTitle(data.title);
           setDescription(data.description);
           setQuestions(data.questions);
+          setDeadline(data.deadline || '');
           setTimeLimit(data.timeLimit || 0);
           setAllowedStudentIds(data.allowedStudentIds || []);
           setOriginalAllowedIds(data.allowedStudentIds || []);
@@ -126,6 +128,7 @@ export default function QuizCreator() {
         questions,
         retakeLimit: isUnlimited ? 0 : retakeLimit,
         timeLimit,
+        deadline,
         allowedStudentIds,
         isPublic,
         updatedAt: new Date().toISOString()
@@ -461,6 +464,25 @@ export default function QuizCreator() {
                       <span className="ms-3 text-xs font-bold text-slate-600 uppercase tracking-tight">Unlimited Retakes</span>
                     </label>
                   </div>
+               </div>
+
+               <div className="pt-4 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-indigo-500" />
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Submission Deadline</label>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 max-w-[280px]">
+                    <input
+                      type="datetime-local"
+                      value={deadline}
+                      onChange={(e) => setDeadline(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-500 transition-all font-sans"
+                    />
+                  </div>
+                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter italic">
+                    Assessment lockout triggers automatically after this timestamp. Leave empty for continuous access.
+                  </p>
                </div>
 
                <div className="pt-4 space-y-4">

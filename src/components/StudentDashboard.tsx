@@ -189,7 +189,19 @@ export default function StudentDashboard() {
                   </div>
                   
                   <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors tracking-tight">{quiz.title}</h3>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">Educator: {quiz.teacherName}</p>
+                  <div className="flex flex-col gap-1 mb-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Educator: {quiz.teacherName}</p>
+                    {quiz.deadline && (
+                      <p className={cn(
+                        "text-[9px] font-black uppercase tracking-tighter flex items-center gap-1",
+                        new Date(quiz.deadline) < new Date() ? "text-red-500 animate-pulse" : "text-indigo-500/70"
+                      )}>
+                        <Clock className="h-2.5 w-2.5" />
+                        Deadline: {new Date(quiz.deadline).toLocaleString()}
+                        {new Date(quiz.deadline) < new Date() && " (EXPIRED)"}
+                      </p>
+                    )}
+                  </div>
                   
                   <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-medium leading-relaxed italic line-clamp-2">
                     {quiz.description || "No overview provided for this module."}
@@ -210,6 +222,10 @@ export default function StudentDashboard() {
                       >
                         Review Achievement
                       </Link>
+                    ) : quiz.deadline && new Date(quiz.deadline) < new Date() ? (
+                      <div className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 font-black text-[10px] uppercase rounded-lg border border-slate-200 dark:border-slate-700 opacity-60">
+                        Expired
+                      </div>
                     ) : (
                       <Link
                         to={`/student/quiz/${quiz.id}`}

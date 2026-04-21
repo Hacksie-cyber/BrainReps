@@ -21,6 +21,7 @@ export default function QuizSession() {
   const [lastScore, setLastScore] = useState<{ score: number, total: number, rank: number, totalParticipants: number } | null>(null);
   const [attemptCount, setAttemptCount] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [isPastDue, setIsPastDue] = useState(false);
   const [isBlurred, setIsBlurred] = useState(false);
 
   useEffect(() => {
@@ -47,6 +48,15 @@ export default function QuizSession() {
           }
 
           setQuiz(quizData);
+
+          // Check if Past Due
+          if (quizData.deadline && profile.role === 'student') {
+            const deadlineDate = new Date(quizData.deadline);
+            if (deadlineDate < new Date()) {
+              setIsPastDue(true);
+            }
+          }
+
           if (quizData.timeLimit && quizData.timeLimit > 0) {
             setTimeLeft(quizData.timeLimit * 60);
           }
@@ -266,6 +276,36 @@ export default function QuizSession() {
 
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
   if (!quiz) return <div className="text-center py-20 text-slate-500 italic font-medium">Assessment module not found or restricted</div>;
+
+  // Block students if Past Due
+  if (isPastDue) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95 duration-500 px-4">
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mb-4 w-20 h-20 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 shadow-xl border border-red-100">
+          <Clock className="h-10 w-10 text-red-400" />
+        </motion.div>
+        <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-slate-900">Assessment Expired</h2>
+        <p className="mb-10 text-lg text-slate-500 font-medium max-w-sm mx-auto leading-relaxed">
+          The deadline for this module (<b>{new Date(quiz.deadline!).toLocaleString()}</b>) has passed. 
+          The curriculum is no longer accepting new submissions.
+        </p>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <button
+            onClick={() => navigate('/student/performance')}
+            className="w-full sm:w-auto rounded-xl bg-indigo-600 px-10 py-4 font-bold text-white transition-all hover:bg-indigo-700 shadow-xl shadow-indigo-600/20 active:scale-95"
+          >
+            Review Achievement
+          </button>
+          <button
+            onClick={() => navigate('/student')}
+            className="w-full sm:w-auto rounded-xl bg-slate-100 px-10 py-4 font-bold text-slate-600 transition-all hover:bg-slate-200 active:scale-95"
+          >
+            Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Block students if limit is reached
   if (profile?.role === 'student' && quiz.retakeLimit !== 0 && attemptCount >= (quiz.retakeLimit || 1)) {
