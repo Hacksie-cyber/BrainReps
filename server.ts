@@ -41,16 +41,18 @@ async function startServer() {
     });
   } else {
     // Production mode serving static files
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.resolve(process.cwd(), 'dist');
     app.use(express.static(distPath));
+    
     // SPA fallback: handle all requests by returning index.html
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    app.all('*', (req, res) => {
+      res.sendFile(path.resolve(distPath, 'index.html'));
     });
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Institutional server running on http://localhost:${PORT}`);
+    console.log(`[BrainReps] Institutional Server Active on Port ${PORT}`);
+    console.log(`[BrainReps] Mode: ${process.env.NODE_ENV || 'development'}`);
   });
 }
 
