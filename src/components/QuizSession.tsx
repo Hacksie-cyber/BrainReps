@@ -341,10 +341,10 @@ export default function QuizSession() {
   return (
     <div className={cn(
       "mx-auto max-w-3xl space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 select-none",
-      isBlurred && "blur-xl transition-all duration-300"
+      isBlurred && "blur-[100px] opacity-0 transition-none pointer-events-none"
     )}>
       {isBlurred && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/60 backdrop-blur-3xl text-center p-6 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white text-center p-6 transition-none">
            <div className="max-w-md space-y-6">
               <div className="mx-auto w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center">
                  <ShieldAlert className="w-8 h-8 text-amber-500" />
