@@ -156,6 +156,7 @@ export default function StudentPerformance() {
                   <tr className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400">
                     <th className="px-8 py-4">Assessment Module</th>
                     <th className="px-8 py-4">Completion Date</th>
+                    <th className="px-8 py-4 text-center">Deadline</th>
                     <th className="px-8 py-4 text-right">Metric</th>
                   </tr>
                 </thead>
@@ -180,6 +181,20 @@ export default function StudentPerformance() {
                             <Calendar className="h-3.5 w-3.5" />
                             {new Date(sub.submittedAt).toLocaleDateString()}
                          </div>
+                      </td>
+                      <td className="px-8 py-5 text-center">
+                         {quizzes[sub.quizId]?.deadline ? (
+                            <div className="flex flex-col items-center">
+                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                  {new Date(quizzes[sub.quizId].deadline!).toLocaleDateString()}
+                               </p>
+                               {new Date(quizzes[sub.quizId].deadline!) < new Date(sub.submittedAt) && (
+                                  <span className="text-[7px] font-black text-amber-500 uppercase">Late Submission</span>
+                               )}
+                            </div>
+                         ) : (
+                            <span className="text-[10px] text-slate-200 uppercase font-black">N/A</span>
+                         )}
                       </td>
                       <td className="px-8 py-5 text-right">
                          <span className={cn(
@@ -212,9 +227,16 @@ export default function StudentPerformance() {
                       {sub.score} / {sub.totalPoints}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    <Calendar className="h-3 w-3" />
-                    {new Date(sub.submittedAt).toLocaleDateString()}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(sub.submittedAt).toLocaleDateString()}
+                    </div>
+                    {quizzes[sub.quizId]?.deadline && (
+                      <div className="text-[9px] font-black text-slate-300 uppercase tracking-tighter">
+                         Due: {new Date(quizzes[sub.quizId].deadline!).toLocaleDateString()}
+                      </div>
+                    )}
                   </div>
                 </button>
               ))}

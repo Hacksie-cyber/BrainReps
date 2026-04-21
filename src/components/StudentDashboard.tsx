@@ -257,6 +257,7 @@ export default function StudentDashboard() {
                     <tr className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                         <th className="px-6 py-3">Assessment</th>
                         <th className="px-6 py-3 text-center">Submission Date</th>
+                        <th className="px-6 py-3 text-center">Deadline</th>
                         <th className="px-6 py-3 text-right">Result</th>
                     </tr>
                   </thead>
@@ -268,6 +269,15 @@ export default function StudentDashboard() {
                           </td>
                           <td className="px-6 py-4 text-center">
                               <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">{new Date(sub.submittedAt).toLocaleDateString()}</p>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                              {quizzes.find(q => q.id === sub.quizId)?.deadline ? (
+                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
+                                   {new Date(quizzes.find(q => q.id === sub.quizId)!.deadline!).toLocaleDateString()}
+                                </p>
+                              ) : (
+                                <p className="text-[10px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-tighter italic">N/A</p>
+                              )}
                           </td>
                           <td className="px-6 py-4 text-right">
                               <div className="flex flex-col items-end">
@@ -292,7 +302,14 @@ export default function StudentDashboard() {
                   <div key={sub.id} className="p-4 space-y-3">
                     <p className="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-tight line-clamp-1">{sub.quizTitle}</p>
                     <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{new Date(sub.submittedAt).toLocaleDateString()}</p>
+                      <div className="flex flex-col gap-0.5">
+                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{new Date(sub.submittedAt).toLocaleDateString()}</p>
+                         {quizzes.find(q => q.id === sub.quizId)?.deadline && (
+                            <p className="text-[8px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-tighter">
+                               Due: {new Date(quizzes.find(q => q.id === sub.quizId)!.deadline!).toLocaleDateString()}
+                            </p>
+                         )}
+                      </div>
                       <div className="flex items-baseline gap-1.5">
                         <p className="text-sm font-black text-slate-900 dark:text-slate-100">{sub.score}</p>
                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500">/ {sub.totalPoints}</p>
