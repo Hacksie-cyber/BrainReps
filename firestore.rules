@@ -59,7 +59,12 @@ service cloud.firestore {
     }
 
     match /quizzes/{quizId} {
-      allow read: if isSignedIn() && isNotBanned();
+      allow read: if isSignedIn() && isNotBanned() && (
+        resource.data.teacherId == request.auth.uid ||
+        !resource.data.keys().contains('allowedStudentIds') ||
+        resource.data.allowedStudentIds.size() == 0 ||
+        request.auth.uid in resource.data.allowedStudentIds
+      );
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
       allow update, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
     }
@@ -75,7 +80,10 @@ service cloud.firestore {
     }
 
     match /submissions/{submissionId} {
-      allow read: if isSignedIn() && isNotBanned();
+      allow read: if isSignedIn() && isNotBanned() && (
+        resource.data.studentId == request.auth.uid || 
+        resource.data.teacherId == request.auth.uid
+      );
       
       allow create: if isSignedIn() && isNotBanned() && 
         isValidSubmission(request.resource.data) &&

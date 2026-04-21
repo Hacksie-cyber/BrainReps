@@ -31,6 +31,7 @@ export interface Quiz {
   retakeLimit: number;
   timeLimit?: number; // In minutes
   isHidden?: boolean;
+  allowedStudentIds?: string[];
 }
 
 export interface QuizSubmission {

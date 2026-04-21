@@ -46,6 +46,14 @@ export default function StudentDashboard() {
 
   const filteredQuizzes = quizzes.filter(q => {
     if (q.isHidden && profile?.role !== 'teacher') return false;
+    
+    // Check if student is allowed to take this quiz
+    const isAllowed = !q.allowedStudentIds || 
+                      q.allowedStudentIds.length === 0 || 
+                      (profile && q.allowedStudentIds.includes(profile.uid));
+    
+    if (!isAllowed && profile?.role !== 'teacher') return false;
+
     return q.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
            q.teacherName.toLowerCase().includes(searchTerm.toLowerCase());
   });

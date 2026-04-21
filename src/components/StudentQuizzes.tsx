@@ -49,6 +49,13 @@ export default function StudentQuizzes() {
     const isCompleted = submissions.some(s => s.quizId === quiz.id);
     const matchesSearch = quiz.title.toLowerCase().includes(searchTerm.toLowerCase());
     
+    // Check if student is allowed to take this quiz
+    const isAllowed = !quiz.allowedStudentIds || 
+                      quiz.allowedStudentIds.length === 0 || 
+                      (profile && quiz.allowedStudentIds.includes(profile.uid));
+    
+    if (!isAllowed && profile?.role !== 'teacher') return false;
+
     if (filter === 'completed') return isCompleted && matchesSearch;
     if (filter === 'pending') return !isCompleted && matchesSearch;
     return matchesSearch;
