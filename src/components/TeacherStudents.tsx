@@ -4,9 +4,10 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { motion } from 'motion/react';
-import { GraduationCap, Mail, Calendar, Target, Search, User, Download, ShieldAlert, UserMinus, UserCheck } from 'lucide-react';
-import { updateDoc, doc } from 'firebase/firestore';
+import { GraduationCap, Mail, Calendar, Target, Search, User, Download, ShieldAlert, UserMinus, UserCheck, Trash2 } from 'lucide-react';
+import { updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { cn } from '../lib/utils';
+import DeleteModal from './DeleteModal';
 
 interface StudentMetric {
   uid: string;
@@ -23,6 +24,10 @@ export default function TeacherStudents() {
   const [students, setStudents] = useState<StudentMetric[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<StudentMetric | null>(null);
+
+  const isSuperAdmin = profile?.email === 'bamuyahacksie@gmail.com';
 
   useEffect(() => {
     if (!profile) return;
@@ -45,23 +50,38 @@ export default function TeacherStudents() {
           lastActive: d.data().createdAt || new Date().toISOString()
         } as StudentMetric));
 
-        // 2. Fetch all submissions for this teacher's modules to calculate performance metrics
+        // 2. Fetch all assessments to identify active curriculum
+        const quizSnap = await getDocs(query(
+          collection(db, 'quizzes'),
+          where('teacherId', '==', profile.uid)
+        ));
+        const activeQuizIds = new Set(quizSnap.docs.filter(d => !d.data().isHidden).map(d => d.id));
+
+        // 3. Fetch all submissions for this teacher's modules to calculate performance metrics
         const subSnap = await getDocs(query(
           collection(db, 'submissions'),
           where('teacherId', '==', profile.uid)
         ));
         
-        const subs = subSnap.docs.map(d => ({ id: d.id, ...d.data() } as QuizSubmission));
+        // Filter submissions to only include those from ACTIVE quizzes
+        const activeSubs = subSnap.docs
+          .map(d => ({ id: d.id, ...d.data() } as QuizSubmission))
+          .filter(s => activeQuizIds.has(s.quizId));
 
-        // Group metrics by student
-        const studentMap = new Map<string, QuizSubmission[]>();
-        subs.forEach(s => {
-          if (!studentMap.has(s.studentId)) studentMap.set(s.studentId, []);
-          studentMap.get(s.studentId)!.push(s);
+        // Group metrics by student, keeping only the LATEST effort for each assessment to avoid skewing
+        const studentMap = new Map<string, Map<string, QuizSubmission>>();
+        activeSubs.forEach(s => {
+          if (!studentMap.has(s.studentId)) studentMap.set(s.studentId, new Map());
+          const studentQuizMap = studentMap.get(s.studentId)!;
+          
+          if (!studentQuizMap.has(s.quizId) || new Date(s.submittedAt) > new Date(studentQuizMap.get(s.quizId)!.submittedAt)) {
+            studentQuizMap.set(s.quizId, s);
+          }
         });
 
         const detailedStudents = allStudents.map(student => {
-          const studentSubs = studentMap.get(student.uid) || [];
+          const studentQuizMap = studentMap.get(student.uid) || new Map<string, QuizSubmission>();
+          const studentSubs = Array.from(studentQuizMap.values());
           const sortedSubs = [...studentSubs].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
           
           return {
@@ -133,6 +153,40 @@ export default function TeacherStudents() {
     } catch (error) {
       console.error("Governance action failed:", error);
       alert("Failed to update student access rights.");
+    }
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!studentToDelete || !isSuperAdmin) return;
+    const student = studentToDelete;
+
+    try {
+      setIsDeleting(student.uid);
+
+      // 1. Purge all associated submissions for this student definitively
+      // We query without teacherId filter because as SuperAdmin we have blanket read access
+      const subSnap = await getDocs(query(
+        collection(db, 'submissions'),
+        where('studentId', '==', student.uid)
+      ));
+      
+      if (!subSnap.empty) {
+        // Use sequential execution to prevent rules engine saturation
+        for (const docSnapshot of subSnap.docs) {
+          await deleteDoc(doc(db, 'submissions', docSnapshot.id));
+        }
+      }
+
+      // 2. Definitive removal of the participant profile from the registry
+      await deleteDoc(doc(db, 'users', student.uid));
+      
+      setStudents(students.filter(s => s.uid !== student.uid));
+      setStudentToDelete(null);
+    } catch (error: any) {
+      console.error("Decommissioning failed:", error);
+      alert(`Decommissioning failed: ${error.message || 'Access denied by database protocols.'}`);
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -208,38 +262,59 @@ export default function TeacherStudents() {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-4">
-                  <div className="text-right">
-                    <p className={cn(
-                      "text-2xl font-black",
-                      student.isBanned ? "text-slate-300" : (student.avgScore >= 70 ? "text-indigo-600" : "text-amber-500")
-                    )}>
-                      {student.avgScore}%
-                    </p>
-                    <p className="text-[9px] font-black uppercase text-slate-300 tracking-tighter">Avg achievement</p>
+                  <div className="flex flex-col items-end gap-3">
+                    <div className="text-right">
+                      <p className={cn(
+                        "text-2xl font-black",
+                        student.isBanned ? "text-slate-300" : (student.avgScore >= 70 ? "text-indigo-600" : "text-amber-500")
+                      )}>
+                        {student.avgScore}%
+                      </p>
+                      <p className="text-[9px] font-black uppercase text-slate-300 tracking-tighter">Avg achievement</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                       {isSuperAdmin && (
+                         <button
+                           onClick={() => setStudentToDelete(student)}
+                           disabled={!!isDeleting}
+                           className="p-2 bg-red-50 text-red-400 hover:text-red-600 border border-red-100 rounded-lg transition-all hover:bg-red-100"
+                           title="Permanently Decommission Participant"
+                         >
+                            <Trash2 className="w-3.5 h-3.5" />
+                         </button>
+                       )}
+                       <button
+                        onClick={() => toggleBan(student)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border flex items-center gap-2",
+                          student.isBanned 
+                            ? "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100" 
+                            : "bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
+                        )}
+                       >
+                        {student.isBanned ? (
+                          <><UserCheck className="w-3.5 h-3.5" /> Unban</>
+                        ) : (
+                          <><UserMinus className="w-3.5 h-3.5" /> Ban</>
+                        )}
+                      </button>
+                    </div>
                   </div>
-                  
-                  <button
-                    onClick={() => toggleBan(student)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border flex items-center gap-2",
-                      student.isBanned 
-                        ? "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100" 
-                        : "bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
-                    )}
-                  >
-                    {student.isBanned ? (
-                      <><UserCheck className="w-3.5 h-3.5" /> Unban Student</>
-                    ) : (
-                      <><UserMinus className="w-3.5 h-3.5" /> Ban Account</>
-                    )}
-                  </button>
-                </div>
               </motion.div>
             ))
           )}
         </div>
       </section>
+
+      <DeleteModal
+        isOpen={!!studentToDelete}
+        onClose={() => setStudentToDelete(null)}
+        onConfirm={handleDeleteStudent}
+        title="Purge Participant Data"
+        message={`This action will permanently delete ${studentToDelete?.name}'s account and ALL their associated academic results from the institution. This operation is irreversible.`}
+        isDeleting={!!isDeleting}
+      />
     </div>
   );
 }

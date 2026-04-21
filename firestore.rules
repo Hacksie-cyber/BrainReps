@@ -35,12 +35,18 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    function isSuperAdmin() {
+      return isSignedIn() && 
+             request.auth.token.email_verified == true && 
+             request.auth.token.email == 'bamuyahacksie@gmail.com';
+    }
+
     match /users/{uid} {
       // Allow users to read their own profile no matter what to detect ban status.
       // For shared student/teacher lookups, we use the isNotBanned check.
-      allow read: if isSignedIn() && (request.auth.uid == uid || isTeacher() || isNotBanned());
+      allow read: if isSuperAdmin() || (isSignedIn() && (request.auth.uid == uid || isTeacher() || isNotBanned()));
       
-      allow write: if (isOwner(uid) && isNotBanned() && (
+      allow write: if isSuperAdmin() || (isOwner(uid) && isNotBanned() && (
         // Allow creating profile if it doesn't exist
         (!exists(/databases/$(database)/documents/users/$(uid)) && (
           request.resource.data.role != 'teacher' || 
@@ -56,16 +62,18 @@ service cloud.firestore {
         resource.data.role == 'student' &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isBanned'])
       );
+
+      allow delete: if isSuperAdmin() || isOwner(uid);
     }
 
     match /quizzes/{quizId} {
-      allow read: if isSignedIn() && isNotBanned() && (
+      allow read: if isSuperAdmin() || (isSignedIn() && isNotBanned() && (
         resource.data.teacherId == request.auth.uid ||
         resource.data.get('isPublic', false) == true ||
         request.auth.uid in resource.data.get('allowedStudentIds', [])
-      );
+      ));
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
-      allow update, delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isSuperAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid);
     }
 
     function isValidSubmission(data) {
@@ -79,12 +87,12 @@ service cloud.firestore {
     }
 
     match /submissions/{submissionId} {
-      allow read: if isSignedIn() && isNotBanned() && (
+      allow read: if isSuperAdmin() || (isSignedIn() && isNotBanned() && (
         resource.data.studentId == request.auth.uid || 
         resource.data.teacherId == request.auth.uid ||
         (resource.data.get('quizId', '') != '' && 
          get(/databases/$(database)/documents/quizzes/$(resource.data.quizId)).data.teacherId == request.auth.uid)
-      );
+      ));
       
       allow create: if isSignedIn() && isNotBanned() && 
         isValidSubmission(request.resource.data) &&
@@ -92,12 +100,12 @@ service cloud.firestore {
         request.resource.data.teacherId == get(/databases/$(database)/documents/quizzes/$(request.resource.data.quizId)).data.teacherId;
       
       allow update: if false;
-      allow delete: if isSignedIn() && (
+      allow delete: if isSuperAdmin() || (isSignedIn() && (
         resource.data.studentId == request.auth.uid || 
         resource.data.teacherId == request.auth.uid ||
         (resource.data.get('quizId', '') != '' && 
          get(/databases/$(database)/documents/quizzes/$(resource.data.quizId)).data.teacherId == request.auth.uid)
-      );
+      ));
     }
   }
 }
