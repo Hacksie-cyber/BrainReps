@@ -32,6 +32,7 @@ export interface Quiz {
   timeLimit?: number; // In minutes
   isHidden?: boolean;
   allowedStudentIds?: string[];
+  isPublic?: boolean;
 }
 
 export interface QuizSubmission {

@@ -37,6 +37,15 @@ export default function QuizSession() {
             return;
           }
 
+          // Check for cohort access
+          const isAllowed = quizData.isPublic === true || 
+                            quizData.allowedStudentIds?.includes(profile.uid);
+          
+          if (!isAllowed && profile.role !== 'teacher') {
+            setQuiz(null);
+            return;
+          }
+
           setQuiz(quizData);
           if (quizData.timeLimit && quizData.timeLimit > 0) {
             setTimeLeft(quizData.timeLimit * 60);

@@ -50,9 +50,8 @@ export default function StudentQuizzes() {
     const matchesSearch = quiz.title.toLowerCase().includes(searchTerm.toLowerCase());
     
     // Check if student is allowed to take this quiz
-    const isAllowed = !quiz.allowedStudentIds || 
-                      quiz.allowedStudentIds.length === 0 || 
-                      (profile && quiz.allowedStudentIds.includes(profile.uid));
+    const isAllowed = quiz.isPublic === true || 
+                      (profile && quiz.allowedStudentIds?.includes(profile.uid));
     
     if (!isAllowed && profile?.role !== 'teacher') return false;
 
