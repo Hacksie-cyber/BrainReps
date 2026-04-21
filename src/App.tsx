@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/AuthContext';
+import { ThemeProvider } from './lib/ThemeContext';
 import Layout from './components/Layout';
 import AuthPage from './components/AuthPage';
 import TeacherDashboard from './components/TeacherDashboard';
@@ -35,10 +36,11 @@ function RequireAuth({ children, role }: { children: React.ReactNode, role?: 'te
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Layout>
-          <Routes>
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <Layout>
+            <Routes>
             <Route path="/" element={<AuthPage />} />
             
             {/* Teacher Routes */}
@@ -86,5 +88,6 @@ export default function App() {
         </Layout>
       </Router>
     </AuthProvider>
+    </ThemeProvider>
   );
 }

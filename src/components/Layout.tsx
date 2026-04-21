@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
-import { LogOut, BookOpen, User as UserIcon, LayoutDashboard, Database, GraduationCap, BarChart3, Settings, Brain, Menu, X } from 'lucide-react';
+import { LogOut, BookOpen, User as UserIcon, LayoutDashboard, Database, GraduationCap, BarChart3, Settings, Brain, Menu, X, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../lib/ThemeContext';
 import { cn } from '../lib/utils';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -33,7 +35,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-indigo-600 selection:text-white">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 selection:bg-indigo-600 selection:text-white transition-colors duration-300">
         <main className="flex-1">
           {children}
         </main>
@@ -42,11 +44,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 selection:bg-indigo-600 selection:text-white overflow-hidden relative">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 selection:bg-indigo-600 selection:text-white overflow-hidden relative transition-colors duration-300">
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-slate-900/60 dark:bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -116,28 +118,35 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-slate-200 px-4 md:px-8 flex items-center justify-between flex-shrink-0">
+        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-8 flex items-center justify-between flex-shrink-0 transition-colors">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 text-slate-500 hover:bg-slate-50 rounded-lg transition-colors"
+              className="lg:hidden p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
             >
               <Menu className="w-6 h-6" />
             </button>
-            <h1 className="text-lg md:text-xl font-bold text-slate-800 truncate">
+            <h1 className="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate">
               {location.pathname.includes('teacher') ? 'Teacher Console' : 'Learning Hub'}
             </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+             <button
+                onClick={toggleTheme}
+                className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-95"
+                title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+             >
+                {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+             </button>
              <div className="hidden sm:flex gap-1">
-                <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100 font-bold uppercase tracking-tighter">MCQ</span>
-                <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100 font-bold uppercase tracking-tighter">T/F</span>
-                <span className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100 font-bold uppercase tracking-tighter">Short</span>
+                <span className="text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-800/50 font-bold uppercase tracking-tighter">MCQ</span>
+                <span className="text-[10px] bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-100 dark:border-amber-800/50 font-bold uppercase tracking-tighter">T/F</span>
+                <span className="text-[10px] bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-100 dark:border-purple-800/50 font-bold uppercase tracking-tighter">Short</span>
              </div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-4 md:p-8">
+        <div className="flex-1 overflow-auto p-4 md:p-8 bg-slate-50 dark:bg-slate-950 transition-colors">
           {children}
         </div>
       </main>

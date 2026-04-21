@@ -63,11 +63,11 @@ export default function AuthPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl border border-slate-200"
+          className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-8 shadow-xl border border-slate-200 dark:border-slate-800 transition-colors"
         >
           <div className="mb-6">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-800">Identify your role</h2>
-            <p className="text-sm text-slate-500 font-medium">Configure your profile as a student or educator.</p>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100">Identify your role</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Configure your profile as a student or educator.</p>
           </div>
 
           <form onSubmit={handleProfileSubmit} className="space-y-6">
@@ -79,15 +79,15 @@ export default function AuthPage() {
                 className={cn(
                   "flex flex-col items-center justify-center gap-4 rounded-xl border p-6 transition-all relative group",
                   role === 'teacher' 
-                    ? "border-indigo-600 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-600/20" 
-                    : "border-slate-100 bg-slate-50/50 text-slate-400 hover:border-slate-200 hover:bg-slate-50",
+                    ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 ring-2 ring-indigo-600/20" 
+                    : "border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/10 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30",
                   !isAuthorizedTeacher && "opacity-50 grayscale cursor-not-allowed border-dashed"
                 )}
               >
                 <BookOpen className="h-8 w-8" />
                 <span className="font-bold text-[10px] uppercase tracking-widest">Teacher</span>
                 {!isAuthorizedTeacher && (
-                  <span className="absolute -top-2 -right-2 bg-slate-100 text-slate-400 text-[8px] font-black px-1.5 py-0.5 rounded border border-slate-200">RESTRICTED</span>
+                  <span className="absolute -top-2 -right-2 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-[8px] font-black px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">RESTRICTED</span>
                 )}
               </button>
               <button
@@ -96,8 +96,8 @@ export default function AuthPage() {
                 className={cn(
                   "flex flex-col items-center justify-center gap-4 rounded-xl border p-6 transition-all",
                   role === 'student' 
-                    ? "border-indigo-600 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-600/20" 
-                    : "border-slate-100 bg-slate-50/50 text-slate-400 hover:border-slate-200 hover:bg-slate-50"
+                    ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 ring-2 ring-indigo-600/20" 
+                    : "border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/10 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30"
                 )}
               >
                 <GraduationCap className="h-8 w-8" />
@@ -106,8 +106,8 @@ export default function AuthPage() {
             </div>
 
             {!isAuthorizedTeacher && (
-              <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 leading-relaxed italic text-center">
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 leading-relaxed italic text-center">
                   Teacher access is limited to pre-authorized administrative accounts. 
                   Please select 'Student' to proceed.
                 </p>
@@ -115,14 +115,14 @@ export default function AuthPage() {
             )}
 
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Full Name</label>
+              <label className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Full Name</label>
               <input
                 required
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Dr. Sarah Jenkins"
-                className="w-full rounded-lg border border-slate-200 px-4 py-3 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all placeholder:text-slate-300"
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-slate-800 dark:text-slate-100 focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
               />
             </div>
 
@@ -149,17 +149,17 @@ export default function AuthPage() {
         className="max-w-2xl"
       >
         <div className="mb-8 flex justify-center">
-          <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-indigo-600/40 transform -rotate-6">
+          <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-indigo-600/40 transform -rotate-6 transition-transform hover:scale-105 active:scale-95">
             <Brain className="h-10 w-10" />
           </div>
         </div>
-        <h1 className="mb-4 text-5xl font-black tracking-tighter text-slate-900 md:text-8xl">
-          Brain<span className="text-indigo-600">Reps</span>
+        <h1 className="mb-4 text-5xl font-black tracking-tighter text-slate-900 dark:text-slate-50 md:text-8xl transition-colors">
+          Brain<span className="text-indigo-600 dark:text-indigo-400">Reps</span>
         </h1>
-        <p className="mb-10 text-xl font-bold text-slate-500 uppercase tracking-[0.2em]">
+        <p className="mb-10 text-xl font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] transition-colors">
           Stronger Mind, Better Grades.
         </p>
-        <p className="mb-12 text-lg text-slate-400 max-w-lg mx-auto font-medium leading-relaxed italic">
+        <p className="mb-12 text-lg text-slate-400 dark:text-slate-500 max-w-lg mx-auto font-medium leading-relaxed italic transition-colors">
           The ultimate regimen for academic excellence. Repetition, assessment, 
           and data-driven growth to sharpen your competitive edge.
         </p>
@@ -167,7 +167,7 @@ export default function AuthPage() {
         <button
           onClick={handleGoogleSignIn}
           disabled={loading}
-          className="inline-flex items-center gap-3 rounded-xl bg-white px-10 py-5 font-bold text-slate-700 shadow-xl shadow-slate-200 border border-slate-200 transition-all hover:bg-slate-50 hover:-translate-y-1 active:translate-y-0"
+          className="inline-flex items-center gap-3 rounded-xl bg-white dark:bg-slate-900 px-10 py-5 font-bold text-slate-700 dark:text-slate-300 shadow-xl shadow-slate-200 dark:shadow-black/20 border border-slate-200 dark:border-slate-800 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 hover:-translate-y-1 active:translate-y-0"
         >
           <img 
             src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" 
@@ -178,10 +178,10 @@ export default function AuthPage() {
           Sign in to get started
         </button>
 
-        <div className="mt-16 flex items-center justify-center gap-8 grayscale opacity-50">
-          <div className="flex items-center gap-2"><div className="w-6 h-6 bg-slate-300 rounded" /> <span className="text-sm font-bold tracking-tighter">MCQ Ready</span></div>
-          <div className="flex items-center gap-2"><div className="w-6 h-6 bg-slate-300 rounded" /> <span className="text-sm font-bold tracking-tighter">Instant Analysis</span></div>
-          <div className="flex items-center gap-2"><div className="w-6 h-6 bg-slate-300 rounded" /> <span className="text-sm font-bold tracking-tighter">Safe & Secure</span></div>
+        <div className="mt-16 flex items-center justify-center gap-8 grayscale opacity-50 dark:opacity-30">
+          <div className="flex items-center gap-2"><div className="w-6 h-6 bg-slate-300 dark:bg-slate-700 rounded" /> <span className="text-sm font-bold tracking-tighter dark:text-slate-100">MCQ Ready</span></div>
+          <div className="flex items-center gap-2"><div className="w-6 h-6 bg-slate-300 dark:bg-slate-700 rounded" /> <span className="text-sm font-bold tracking-tighter dark:text-slate-100">Instant Analysis</span></div>
+          <div className="flex items-center gap-2"><div className="w-6 h-6 bg-slate-300 dark:bg-slate-700 rounded" /> <span className="text-sm font-bold tracking-tighter dark:text-slate-100">Safe & Secure</span></div>
         </div>
       </motion.div>
     </div>
