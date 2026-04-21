@@ -16,14 +16,17 @@ export default function NotificationCenter() {
   useEffect(() => {
     if (!profile) return;
 
+    // Use a simple query to avoid the need for a composite index
     const q = query(
       collection(db, 'notifications'),
-      where('userId', '==', profile.uid),
-      orderBy('createdAt', 'desc')
+      where('userId', '==', profile.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification)));
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+      // Sort client-side to avoid composite index requirement
+      data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setNotifications(data);
       setLoading(false);
     }, (error) => {
       console.error("Notification listener error:", error);
