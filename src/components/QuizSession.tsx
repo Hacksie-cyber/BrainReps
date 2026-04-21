@@ -471,16 +471,14 @@ export default function QuizSession() {
                 )}
               </div>
            </div>
-           <div className="text-right flex flex-col items-end gap-2">
-              <div className="flex flex-col items-end">
-                <span className="text-xs font-bold text-indigo-600">{Math.round(progress)}% Complete</span>
-              </div>
+           <div className="flex flex-col items-end gap-1.5 min-w-[70px]">
+              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter whitespace-nowrap">{Math.round(progress)}% Complete</span>
               <button
                 onClick={() => setShowConfirmModal(true)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg border border-red-100 hover:bg-red-100 transition-all text-[9px] font-black uppercase tracking-tighter"
+                className="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-600 rounded-lg border border-red-100 hover:bg-red-200 transition-all text-[10px] font-black uppercase tracking-widest shadow-sm active:scale-95"
               >
-                <Send className="w-3 h-3" />
-                Finish Early
+                <Send className="w-2.5 h-2.5" />
+                End
               </button>
            </div>
         </div>
@@ -625,9 +623,9 @@ export default function QuizSession() {
                   <AlertCircle className="w-8 h-8 text-red-500" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-slate-800 tracking-tight uppercase">Finish Assessment?</h3>
+                  <h3 className="text-xl font-bold text-slate-800 tracking-tight uppercase">End Assessment?</h3>
                   <p className="text-sm text-slate-500 font-medium leading-relaxed mt-2">
-                    You are attempting to submit your responses before completing all case components. Once finalized, you cannot return to modify your assertions.
+                    You are attempting to end your session before completing all curriculum components. Once finalized, your current assertions will be submitted for permanent record.
                   </p>
                 </div>
               </div>
