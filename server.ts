@@ -25,7 +25,10 @@ async function startServer() {
     app.use(vite.middlewares);
 
     // Development SPA Fallback: Transformed by Vite
-    app.use('*', async (req, res, next) => {
+    app.all('*', async (req, res, next) => {
+      // Skip if the request has already been handled (e.g. by Vite middlewares)
+      if (res.headersSent) return;
+      
       const url = req.originalUrl;
       try {
         let template = await fs.readFile(path.resolve(__dirname, 'index.html'), 'utf-8');
