@@ -199,10 +199,16 @@ export default function TeacherAssessments() {
                         {quiz.isHidden && (
                           <span className="text-[9px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100 font-bold uppercase tracking-tighter">Hidden</span>
                         )}
-                        {quiz.allowedStudentIds && quiz.allowedStudentIds.length > 0 && (
-                          <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 font-bold uppercase tracking-tighter flex items-center gap-1">
-                            <ShieldCheck className="w-2.5 h-2.5" /> Restricted
+                        {quiz.isPublic ? (
+                          <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100 font-bold uppercase tracking-tighter flex items-center gap-1">
+                            <ShieldCheck className="w-2.5 h-2.5" /> Global
                           </span>
+                        ) : (
+                          quiz.allowedStudentIds && quiz.allowedStudentIds.length > 0 && (
+                            <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 font-bold uppercase tracking-tighter flex items-center gap-1">
+                              <ShieldCheck className="w-2.5 h-2.5" /> {quiz.allowedStudentIds.length} Restricted
+                            </span>
+                          )
                         )}
                       </div>
                     </div>

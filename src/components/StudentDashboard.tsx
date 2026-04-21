@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, query, getDocs, orderBy, where } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, where, or } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
@@ -20,9 +20,19 @@ export default function StudentDashboard() {
 
     const fetchData = async () => {
       try {
-        const quizSnap = await getDocs(query(collection(db, 'quizzes')));
+        // Query for quizzes that are global OR specifically assigned to this student
+        const q = query(
+          collection(db, 'quizzes'),
+          or(
+            where('isPublic', '==', true),
+            where('allowedStudentIds', 'array-contains', profile.uid)
+          )
+        );
+        
+        const quizSnap = await getDocs(q);
         const quizList = quizSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as Quiz))
+          .filter(q => !q.isHidden) // Secondary UI safety filter
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setQuizzes(quizList);
 
