@@ -51,4 +51,5 @@ export interface QuizSubmission {
   totalPoints: number;
   submittedAt: string;
   graded: boolean;
+  status?: 'in-progress' | 'completed';
 }

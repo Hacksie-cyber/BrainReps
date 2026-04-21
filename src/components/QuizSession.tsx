@@ -76,20 +76,18 @@ export default function QuizSession() {
     return () => clearInterval(timer);
   }, [timeLeft, finished]);
 
-  const handleResponse = (questionId: string, answer: string) => {
-    setResponses({ ...responses, [questionId]: answer });
-  };
+  const [sessionDocId, setSessionDocId] = useState<string | null>(null);
 
-  const handleSubmit = async () => {
-    if (!quiz || !profile) return;
-    
-    setSubmitting(true);
+  // Auto-save function to record progress "automatically" as they take the assessment
+  const autoSaveSession = async (currentResponses: Record<string, string>, isFinal = false) => {
+    if (!quiz || !profile) return { finalScore: 0, totalPoints: 0 };
+
     try {
-      let score = 0;
+      let currentScore = 0;
       let totalPoints = 0;
       
       const gradedResponses = quiz.questions.map(q => {
-        const studentAnswer = (responses[q.id] || '').trim().toLowerCase();
+        const studentAnswer = (currentResponses[q.id] || '').trim().toLowerCase();
         const correctAnswer = q.correctAnswer.trim().toLowerCase();
         let pointsEarned = 0;
         let isCorrect = false;
@@ -98,11 +96,9 @@ export default function QuizSession() {
           const keywords = correctAnswer.split(',').map(k => k.trim()).filter(k => k !== '');
           if (keywords.length > 0) {
             const matches = keywords.filter(k => studentAnswer.includes(k));
-            const matchRatio = matches.length / keywords.length;
-            pointsEarned = Math.round(matchRatio * q.points * 10) / 10;
+            pointsEarned = Math.round((matches.length / keywords.length) * q.points * 10) / 10;
             isCorrect = matches.length === keywords.length;
           } else {
-            // No keywords defined, check exact match
             isCorrect = studentAnswer === correctAnswer;
             pointsEarned = isCorrect ? q.points : 0;
           }
@@ -111,37 +107,65 @@ export default function QuizSession() {
           pointsEarned = isCorrect ? q.points : 0;
         }
 
-        score += pointsEarned;
+        currentScore += pointsEarned;
         totalPoints += q.points;
 
         return {
           questionId: q.id,
-          answer: responses[q.id] || '',
+          answer: currentResponses[q.id] || '',
           isCorrect,
           pointsEarned,
           maxPoints: q.points
         };
       });
 
-      // Round final score to nearest 0.1
-      const finalScore = Math.round(score * 10) / 10;
-
-      const submission: Omit<QuizSubmission, 'id'> = {
+      const finalScore = Math.round(currentScore * 10) / 10;
+      const submissionData = {
         quizId: quiz.id,
         quizTitle: quiz.title,
-        teacherId: quiz.teacherId, // Added for efficient querying
+        teacherId: quiz.teacherId,
         studentId: profile.uid,
         studentName: profile.name,
         responses: gradedResponses,
         score: finalScore,
         totalPoints,
         submittedAt: new Date().toISOString(),
-        graded: true
+        graded: isFinal, // Record as in-progress until finalized
+        status: isFinal ? 'completed' : 'in-progress'
       };
 
-      await addDoc(collection(db, 'submissions'), submission);
+      const { doc, setDoc, collection, addDoc } = await import('firebase/firestore');
       
-      // Calculate Rank (wrapped in try-catch to prevent submission failure on index/permission issues)
+      if (sessionDocId && !isFinal) {
+        await setDoc(doc(db, 'submissions', sessionDocId), submissionData, { merge: true });
+      } else {
+        const docRef = await addDoc(collection(db, 'submissions'), submissionData);
+        if (!isFinal) setSessionDocId(docRef.id);
+      }
+      
+      return { finalScore, totalPoints };
+    } catch (error) {
+      console.error("Auto-save failed:", error);
+      return { finalScore: 0, totalPoints: 0 };
+    }
+  };
+
+  const handleResponse = (questionId: string, answer: string) => {
+    const updatedResponses = { ...responses, [questionId]: answer };
+    setResponses(updatedResponses);
+    // Periodically sync progress automatically
+    autoSaveSession(updatedResponses, false);
+  };
+
+  const handleSubmit = async () => {
+    if (!quiz || !profile) return;
+    
+    setSubmitting(true);
+    try {
+      // Execute final score recording automatically
+      const { finalScore, totalPoints } = await autoSaveSession(responses, true);
+      
+      // Calculate Rank for final results
       try {
         const { getDocs, query, where, orderBy } = await import('firebase/firestore');
         const allSubsSnap = await getDocs(query(
@@ -338,6 +362,22 @@ export default function QuizSession() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Calculate current score live
+  const calculateCurrentLiveScore = () => {
+    if (!quiz) return 0;
+    let earned = 0;
+    let total = 0;
+    quiz.questions.forEach(q => {
+      const studentAnswer = (responses[q.id] || '').trim().toLowerCase();
+      const correctAnswer = q.correctAnswer.trim().toLowerCase();
+      if (studentAnswer === correctAnswer) {
+        earned += q.points;
+      }
+      total += q.points;
+    });
+    return Math.round((earned / total) * 100);
+  };
+
   return (
     <div className={cn(
       "mx-auto max-w-3xl space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 select-none",
@@ -381,8 +421,9 @@ export default function QuizSession() {
                 )}
               </div>
            </div>
-           <div className="text-right">
+           <div className="text-right flex flex-col items-end gap-1">
               <span className="text-xs font-bold text-indigo-600">{Math.round(progress)}% Complete</span>
+              <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 rounded tracking-tighter shadow-sm">Projected Score: {calculateCurrentLiveScore()}%</span>
            </div>
         </div>
         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">

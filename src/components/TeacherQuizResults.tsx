@@ -262,7 +262,12 @@ export default function TeacherQuizResults() {
                             {sub.studentName.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-bold text-slate-700 tracking-tight">{sub.studentName}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-slate-700 tracking-tight">{sub.studentName}</p>
+                              {sub.status === 'in-progress' && (
+                                <span className="text-[8px] font-black uppercase text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 animate-pulse">In Progress</span>
+                              )}
+                            </div>
                             <p className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">View Attempt Breakdown</p>
                           </div>
                           <Info className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
