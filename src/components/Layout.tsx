@@ -120,19 +120,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header */}
         <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-8 flex items-center justify-between flex-shrink-0 transition-colors">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
+          <div className="flex items-center gap-2 md:gap-4">
+            <div className="flex items-center gap-1 md:gap-2">
+              <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="lg:hidden p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+              <div className="lg:hidden">
+                <NotificationCenter />
+              </div>
+            </div>
             <h1 className="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 truncate">
               {location.pathname.includes('teacher') ? 'Teacher Console' : 'Learning Hub'}
             </h1>
           </div>
           <div className="flex items-center gap-4">
-             <NotificationCenter />
+             <div className="hidden lg:block">
+               <NotificationCenter />
+             </div>
              <button
                 onClick={toggleTheme}
                 className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-95"
