@@ -68,11 +68,28 @@
         "graded": { "type": "boolean" }
       },
       "required": ["id", "quizId", "studentId", "responses", "score", "totalPoints", "submittedAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Alerts for students regarding assigned assessments.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["assignment", "system"] },
+        "relatedId": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "message", "type", "createdAt", "isRead"]
     }
   },
   "firestore": {
     "/users/{uid}": { "schema": "User", "description": "Global user profiles" },
     "/quizzes/{quizId}": { "schema": "Quiz", "description": "Available quizzes" },
-    "/submissions/{submissionId}": { "schema": "Submission", "description": "Student quiz results" }
+    "/submissions/{submissionId}": { "schema": "Submission", "description": "Student quiz results" },
+    "/notifications/{notificationId}": { "schema": "Notification", "description": "Personalized alerts" }
   }
 }

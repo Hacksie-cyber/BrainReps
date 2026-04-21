@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
-import { LogOut, BookOpen, User as UserIcon, LayoutDashboard, Database, GraduationCap, BarChart3, Settings, Brain, Menu, X, Sun, Moon } from 'lucide-react';
+import { LogOut, BookOpen, User as UserIcon, LayoutDashboard, Database, GraduationCap, BarChart3, Settings, Brain, Menu, X, Sun, Moon, Bell } from 'lucide-react';
 import { useTheme } from '../lib/ThemeContext';
 import { cn } from '../lib/utils';
+import NotificationCenter from './NotificationCenter';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useAuth();
@@ -131,6 +132,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </h1>
           </div>
           <div className="flex items-center gap-4">
+             <NotificationCenter />
              <button
                 onClick={toggleTheme}
                 className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-95"

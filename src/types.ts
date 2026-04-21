@@ -56,3 +56,14 @@ export interface QuizSubmission {
   graded: boolean;
   status?: 'in-progress' | 'completed';
 }
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'assignment' | 'system';
+  relatedId?: string;
+  isRead: boolean;
+  createdAt: string;
+}

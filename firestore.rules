@@ -20,7 +20,9 @@ service cloud.firestore {
     }
 
     function isNotBanned() {
-      return !isSignedIn() || !exists(/databases/$(database)/documents/users/$(request.auth.uid)) || !getUserData().get('isBanned', false);
+      return !isSignedIn() || 
+             !exists(/databases/$(database)/documents/users/$(request.auth.uid)) || 
+             getUserData().get('isBanned', false) == false;
     }
 
     function isTeacher() {
@@ -106,6 +108,14 @@ service cloud.firestore {
         (resource.data.get('quizId', '') != '' && 
          get(/databases/$(database)/documents/quizzes/$(resource.data.quizId)).data.teacherId == request.auth.uid)
       ));
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin());
+      allow create: if isTeacher();
+      allow update: if isSignedIn() && isNotBanned() && resource.data.userId == request.auth.uid && 
+                   request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+      allow delete: if isSignedIn() && isNotBanned() && resource.data.userId == request.auth.uid;
     }
   }
 }

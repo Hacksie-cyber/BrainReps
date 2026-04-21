@@ -145,6 +145,26 @@ export default function QuizCreator() {
         finalId = docRef.id;
       }
 
+      // 3. ENROLLMENT NOTIFICATION PROTOCOL
+      // Trigger notifications for newly added students in private assessments
+      if (!isPublic && finalId) {
+        const newlyAdded = allowedStudentIds.filter(uid => !originalAllowedIds.includes(uid));
+        if (newlyAdded.length > 0) {
+          const notificationPromises = newlyAdded.map(uid => 
+            addDoc(collection(db, 'notifications'), {
+              userId: uid,
+              title: 'New Assessment Assigned',
+              message: `Educator ${profile.name} has enrolled you in "${title}".`,
+              type: 'assignment',
+              relatedId: finalId,
+              isRead: false,
+              createdAt: new Date().toISOString()
+            })
+          );
+          await Promise.all(notificationPromises);
+        }
+      }
+
       // DATA SYNCHRONIZATION PROTOCOL
       // 1. Purge data for students who are no longer authorized (only if assessment is private)
       if (!isPublic && finalId) {
