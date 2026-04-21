@@ -432,7 +432,6 @@ export default function QuizSession() {
            </div>
            <div className="text-right flex flex-col items-end gap-1">
               <span className="text-xs font-bold text-indigo-600">{Math.round(progress)}% Complete</span>
-              <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 rounded tracking-tighter shadow-sm">Projected Score: {calculateCurrentLiveScore()}%</span>
            </div>
         </div>
         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
