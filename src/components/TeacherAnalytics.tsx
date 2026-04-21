@@ -48,8 +48,12 @@ export default function TeacherAnalytics() {
 
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
 
+  const activeQuizzes = quizzes.filter(q => !q.isHidden);
+  const activeQuizIds = new Set(activeQuizzes.map(q => q.id));
+  const activeSubmissions = submissions.filter(s => activeQuizIds.has(s.quizId));
+
   // Aggregate data for trends
-  const trendData = submissions.map(s => ({
+  const trendData = activeSubmissions.map(s => ({
     date: new Date(s.submittedAt).toLocaleDateString(),
     score: Math.round((s.score / s.totalPoints) * 100)
   }));
@@ -59,8 +63,8 @@ export default function TeacherAnalytics() {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
-  const lastWeekSubs = submissions.filter(s => new Date(s.submittedAt) >= sevenDaysAgo);
-  const prevWeekSubs = submissions.filter(s => {
+  const lastWeekSubs = activeSubmissions.filter(s => new Date(s.submittedAt) >= sevenDaysAgo);
+  const prevWeekSubs = activeSubmissions.filter(s => {
     const d = new Date(s.submittedAt);
     return d >= fourteenDaysAgo && d < sevenDaysAgo;
   });
@@ -70,19 +74,19 @@ export default function TeacherAnalytics() {
     : `${(((lastWeekSubs.length - prevWeekSubs.length) / prevWeekSubs.length) * 100).toFixed(0)}%`;
 
   const stats = {
-    avg: submissions.length > 0 ? Math.round((submissions.reduce((acc, curr) => acc + (curr.score / curr.totalPoints), 0) / submissions.length) * 100) : 0,
+    avg: activeSubmissions.length > 0 ? Math.round((activeSubmissions.reduce((acc, curr) => acc + (curr.score / curr.totalPoints), 0) / activeSubmissions.length) * 100) : 0,
     total: submissions.length,
-    activeQuizzes: quizzes.length,
+    activeQuizzes: activeQuizzes.length,
     students: studentCount,
     growth: (growth.startsWith('-') ? '' : '+') + growth
   };
 
   // Pie chart data: Performance tiers
   const tierData = [
-    { name: 'Mastery', value: submissions.filter(s => (s.score / s.totalPoints) >= 0.9).length, color: '#10b981' },
-    { name: 'Proficiency', value: submissions.filter(s => (s.score / s.totalPoints) >= 0.7 && (s.score / s.totalPoints) < 0.9).length, color: '#6366f1' },
-    { name: 'Developing', value: submissions.filter(s => (s.score / s.totalPoints) >= 0.5 && (s.score / s.totalPoints) < 0.7).length, color: '#f59e0b' },
-    { name: 'Critical', value: submissions.filter(s => (s.score / s.totalPoints) < 0.5).length, color: '#ef4444' },
+    { name: 'Mastery', value: activeSubmissions.filter(s => (s.score / s.totalPoints) >= 0.9).length, color: '#10b981' },
+    { name: 'Proficiency', value: activeSubmissions.filter(s => (s.score / s.totalPoints) >= 0.7 && (s.score / s.totalPoints) < 0.9).length, color: '#6366f1' },
+    { name: 'Developing', value: activeSubmissions.filter(s => (s.score / s.totalPoints) >= 0.5 && (s.score / s.totalPoints) < 0.7).length, color: '#f59e0b' },
+    { name: 'Critical', value: activeSubmissions.filter(s => (s.score / s.totalPoints) < 0.5).length, color: '#ef4444' },
   ].filter(t => t.value > 0);
 
   return (

@@ -28,6 +28,10 @@ export default function QuizCreator() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
 
+  const [originalTitle, setOriginalTitle] = useState('');
+  const [originalIsPublic, setOriginalIsPublic] = useState(false);
+  const [originalAllowedIds, setOriginalAllowedIds] = useState<string[]>([]);
+
   useEffect(() => {
     const fetchStudents = async () => {
       try {
@@ -49,11 +53,14 @@ export default function QuizCreator() {
         if (docSnap.exists()) {
           const data = docSnap.data() as Quiz;
           setTitle(data.title);
+          setOriginalTitle(data.title);
           setDescription(data.description);
           setQuestions(data.questions);
           setTimeLimit(data.timeLimit || 0);
           setAllowedStudentIds(data.allowedStudentIds || []);
+          setOriginalAllowedIds(data.allowedStudentIds || []);
           setIsPublic(data.isPublic || false);
+          setOriginalIsPublic(data.isPublic || false);
           // If 0, treat as unlimited
           if (data.retakeLimit === 0) {
             setIsUnlimited(true);
@@ -124,13 +131,45 @@ export default function QuizCreator() {
         updatedAt: new Date().toISOString()
       };
       
+      let finalId = id;
       if (id) {
         await updateDoc(doc(db, 'quizzes', id), quizData);
       } else {
-        await addDoc(collection(db, 'quizzes'), {
+        const docRef = await addDoc(collection(db, 'quizzes'), {
           ...quizData,
           createdAt: new Date().toISOString()
         });
+        finalId = docRef.id;
+      }
+
+      // DATA SYNCHRONIZATION PROTOCOL
+      // 1. Purge data for students who are no longer authorized (only if assessment is private)
+      if (!isPublic && finalId) {
+        const subSnap = await getDocs(query(
+          collection(db, 'submissions'),
+          where('quizId', '==', finalId)
+        ));
+        
+        const unauthorizedSubs = subSnap.docs.filter(d => !allowedStudentIds.includes(d.data().studentId));
+        if (unauthorizedSubs.length > 0) {
+          const purgePromises = unauthorizedSubs.map(d => deleteDoc(doc(db, 'submissions', d.id)));
+          await Promise.all(purgePromises);
+        }
+      }
+
+      // 2. Cascade title changes to all existing result datasets
+      if (id && title !== originalTitle) {
+        const subSnap = await getDocs(query(
+          collection(db, 'submissions'),
+          where('quizId', '==', id)
+        ));
+        
+        if (!subSnap.empty) {
+          const updatePromises = subSnap.docs.map(d => updateDoc(doc(db, 'submissions', d.id), {
+            quizTitle: title
+          }));
+          await Promise.all(updatePromises);
+        }
       }
       
       navigate('/teacher/assessments');

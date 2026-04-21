@@ -16,6 +16,7 @@ export default function TeacherDashboard() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
   const [studentCount, setStudentCount] = useState(0);
+  const [teacherCount, setTeacherCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [quizToDelete, setQuizToDelete] = useState<string | null>(null);
@@ -35,9 +36,12 @@ export default function TeacherDashboard() {
         setQuizzes(quizList);
 
         // Fetch all students to calculate school/class engagement
-        const studentQuery = query(collection(db, 'users'), where('role', '==', 'student'));
-        const studentSnap = await getDocs(studentQuery);
+        const studentSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
         setStudentCount(studentSnap.size);
+
+        // Fetch all teachers
+        const teacherSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'teacher')));
+        setTeacherCount(teacherSnap.size);
 
         const subQuery = query(
           collection(db, 'submissions'),
@@ -89,15 +93,19 @@ export default function TeacherDashboard() {
     }
   };
 
-  const uniqueStudentsCount = new Set(submissions.map(s => s.studentId)).size;
+  const activeQuizzes = quizzes.filter(q => !q.isHidden);
+  const activeQuizIds = new Set(activeQuizzes.map(q => q.id));
+  const activeSubmissions = submissions.filter(s => activeQuizIds.has(s.quizId));
+
+  const uniqueStudentsCount = new Set(activeSubmissions.map(s => s.studentId)).size;
   const engagementRate = studentCount > 0 ? Math.round((uniqueStudentsCount / studentCount) * 100) : 0;
-  const avgGrade = submissions.length > 0 
-    ? Math.round((submissions.reduce((acc, curr) => acc + curr.score, 0) / submissions.reduce((acc, curr) => acc + curr.totalPoints, 0)) * 100)
+  const avgGrade = activeSubmissions.length > 0 
+    ? Math.round((activeSubmissions.reduce((acc, curr) => acc + curr.score, 0) / activeSubmissions.reduce((acc, curr) => acc + curr.totalPoints, 0)) * 100)
     : 0;
 
   // Simple distribution calculation (0-20, 21-40, 41-60, 61-80, 81-100)
   const distribution = [0, 0, 0, 0, 0];
-  submissions.forEach(s => {
+  activeSubmissions.forEach(s => {
     const percent = (s.score / s.totalPoints) * 100;
     if (percent <= 20) distribution[0]++;
     else if (percent <= 40) distribution[1]++;
@@ -108,8 +116,8 @@ export default function TeacherDashboard() {
 
   const maxDist = Math.max(...distribution, 1);
 
-  // Identify students with low scores
-  const lowPerforming = submissions
+  // Identify students with low scores in ACTIVE quizzes
+  const lowPerforming = activeSubmissions
     .filter(s => (s.score / s.totalPoints) < 0.6)
     .sort((a, b) => (a.score / a.totalPoints) - (b.score / b.totalPoints))
     .slice(0, 3)
@@ -140,26 +148,36 @@ export default function TeacherDashboard() {
       </header>
 
       {/* Analytics Overview */}
-      <section className="grid gap-6 lg:grid-cols-4">
+      <section className="grid gap-6 lg:grid-cols-4 xl:grid-cols-6">
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Active Tests</p>
-          <h3 className="text-2xl font-bold text-slate-900">{quizzes.length}</h3>
-          <p className="text-emerald-600 text-[11px] mt-2 flex items-center font-bold italic">Module Count</p>
+          <h3 className="text-2xl font-bold text-slate-900">{activeQuizzes.length}</h3>
+          <p className="text-emerald-600 text-[11px] mt-2 flex items-center font-bold italic">{quizzes.length - activeQuizzes.length} Hidden</p>
         </div>
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Avg. Grade</p>
           <h3 className="text-2xl font-bold text-slate-900">{avgGrade}%</h3>
-          <p className="text-slate-400 text-[11px] mt-2 font-medium tracking-tighter italic">Across {submissions.length} results</p>
+          <p className="text-slate-400 text-[11px] mt-2 font-medium tracking-tighter italic">Active modules</p>
+        </div>
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Total Submissions</p>
+          <h3 className="text-2xl font-bold text-slate-900">{submissions.length}</h3>
+          <p className="text-indigo-600 text-[11px] mt-2 font-bold italic">{activeSubmissions.length} Active</p>
         </div>
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Audience Engagement</p>
           <h3 className="text-2xl font-bold text-slate-900">{engagementRate}%</h3>
-          <p className="text-slate-400 text-[11px] mt-2 font-medium italic">Of {studentCount} total students</p>
+          <p className="text-slate-400 text-[11px] mt-2 font-medium italic">Active participation</p>
         </div>
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Total Impact</p>
-          <h3 className="text-2xl font-bold text-slate-900">{submissions.length}</h3>
-          <p className="text-indigo-600 text-[11px] mt-2 font-bold italic">Submissions</p>
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Student Population</p>
+          <h3 className="text-2xl font-bold text-slate-800 tracking-tight">{studentCount}</h3>
+          <p className="text-slate-400 text-[11px] mt-2 font-medium italic">Enrolled participants</p>
+        </div>
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">Teacher Faculty</p>
+          <h3 className="text-2xl font-bold text-slate-800 tracking-tight">{teacherCount}</h3>
+          <p className="text-slate-400 text-[11px] mt-2 font-medium italic">Faculty members</p>
         </div>
       </section>
 
