@@ -49,17 +49,19 @@ export default function TeacherAssessments() {
     try {
       setIsDeleting(quizId);
       
-      // 1. Delete associated submissions
+      // 1. Purge all associated submissions and performance history
       const subQuery = query(
         collection(db, 'submissions'), 
-        where('quizId', '==', quizId),
-        where('teacherId', '==', profile.uid)
+        where('quizId', '==', quizId)
       );
       const subSnap = await getDocs(subQuery);
-      const deletePromises = subSnap.docs.map(d => deleteDoc(doc(db, 'submissions', d.id)));
-      await Promise.all(deletePromises);
+      
+      if (!subSnap.empty) {
+        const deletePromises = subSnap.docs.map(d => deleteDoc(doc(db, 'submissions', d.id)));
+        await Promise.all(deletePromises);
+      }
 
-      // 2. Delete the quiz itself
+      // 2. Definitive removal of the Knowledge Module
       await deleteDoc(doc(db, 'quizzes', quizId));
       
       setQuizzes(quizzes.filter(q => q.id !== quizId));
