@@ -23,6 +23,7 @@ export default function QuizSession() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isPastDue, setIsPastDue] = useState(false);
   const [isBlurred, setIsBlurred] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
     if (!id || !profile) return;
@@ -470,8 +471,17 @@ export default function QuizSession() {
                 )}
               </div>
            </div>
-           <div className="text-right flex flex-col items-end gap-1">
-              <span className="text-xs font-bold text-indigo-600">{Math.round(progress)}% Complete</span>
+           <div className="text-right flex flex-col items-end gap-2">
+              <div className="flex flex-col items-end">
+                <span className="text-xs font-bold text-indigo-600">{Math.round(progress)}% Complete</span>
+              </div>
+              <button
+                onClick={() => setShowConfirmModal(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg border border-red-100 hover:bg-red-100 transition-all text-[9px] font-black uppercase tracking-tighter"
+              >
+                <Send className="w-3 h-3" />
+                Finish Early
+              </button>
            </div>
         </div>
         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -592,6 +602,58 @@ export default function QuizSession() {
           </button>
         )}
       </footer>
+
+      {/* Early Submission Confirmation Modal */}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowConfirmModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-8 space-y-6"
+            >
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center">
+                  <AlertCircle className="w-8 h-8 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800 tracking-tight uppercase">Finish Assessment?</h3>
+                  <p className="text-sm text-slate-500 font-medium leading-relaxed mt-2">
+                    You are attempting to submit your responses before completing all case components. Once finalized, you cannot return to modify your assertions.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    setShowConfirmModal(false);
+                    handleSubmit();
+                  }}
+                  disabled={submitting}
+                  className="w-full py-4 bg-red-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 active:scale-95"
+                >
+                  {submitting ? 'Transmitting...' : 'Confirm Submission'}
+                </button>
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="w-full py-4 bg-slate-50 text-slate-400 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-100 transition-all"
+                >
+                  Continue Assessment
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {!responses[currentQuestion.id] && (
         <p className="flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest text-amber-500 animate-pulse">
