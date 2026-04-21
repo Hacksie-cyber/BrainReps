@@ -6,7 +6,7 @@ import { Quiz, QuizSubmission } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, Search, CheckCircle2, Clock, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { cn } from '../lib/utils';
+import { cn, formatDeadline } from '../lib/utils';
 
 export default function StudentQuizzes() {
   const { profile } = useAuth();
@@ -170,7 +170,7 @@ export default function StudentQuizzes() {
                           new Date(quiz.deadline) < new Date() ? "text-red-500 animate-pulse" : "text-indigo-500/70"
                         )}>
                           <Clock className="h-2.5 w-2.5" />
-                          Deadline: {new Date(quiz.deadline).toLocaleString()}
+                          Deadline: {formatDeadline(quiz.deadline)}
                           {new Date(quiz.deadline) < new Date() && " (EXPIRED)"}
                         </p>
                       )}

@@ -6,7 +6,7 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAlert } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, formatDeadline } from '../lib/utils';
 
 export default function QuizSession() {
   const { id } = useParams();
@@ -286,7 +286,7 @@ export default function QuizSession() {
         </motion.div>
         <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-slate-900">Assessment Expired</h2>
         <p className="mb-10 text-lg text-slate-500 font-medium max-w-sm mx-auto leading-relaxed">
-          The deadline for this module (<b>{new Date(quiz.deadline!).toLocaleString()}</b>) has passed. 
+          The deadline for this module (<b>{formatDeadline(quiz.deadline!)}</b>) has passed. 
           The curriculum is no longer accepting new submissions.
         </p>
         <div className="flex flex-col sm:flex-row items-center gap-4">

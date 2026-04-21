@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, formatDeadline } from '../lib/utils';
 import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import DeleteModal from './DeleteModal';
@@ -226,7 +226,7 @@ export default function TeacherDashboard() {
                                 new Date(quiz.deadline) < new Date() ? "text-red-500" : "text-indigo-500"
                               )}>
                                 <Clock className="h-2 w-2" />
-                                {new Date(quiz.deadline) < new Date() ? "Expired" : `Due: ${new Date(quiz.deadline).toLocaleDateString()}`}
+                                {new Date(quiz.deadline) < new Date() ? "Expired" : `Due: ${formatDeadline(quiz.deadline)}`}
                               </p>
                             )}
                           </div>

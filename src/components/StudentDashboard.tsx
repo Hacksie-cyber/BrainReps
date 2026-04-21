@@ -6,7 +6,7 @@ import { Quiz, QuizSubmission } from '../types';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { BookOpen, Trophy, Clock, Search, ArrowRight, CheckCircle2, History } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, formatDeadline } from '../lib/utils';
 
 export default function StudentDashboard() {
   const { profile } = useAuth();
@@ -197,7 +197,7 @@ export default function StudentDashboard() {
                         new Date(quiz.deadline) < new Date() ? "text-red-500 animate-pulse" : "text-indigo-500/70"
                       )}>
                         <Clock className="h-2.5 w-2.5" />
-                        Deadline: {new Date(quiz.deadline).toLocaleString()}
+                        Deadline: {formatDeadline(quiz.deadline)}
                         {new Date(quiz.deadline) < new Date() && " (EXPIRED)"}
                       </p>
                     )}
@@ -273,7 +273,7 @@ export default function StudentDashboard() {
                           <td className="px-6 py-4 text-center">
                               {quizzes.find(q => q.id === sub.quizId)?.deadline ? (
                                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
-                                   {new Date(quizzes.find(q => q.id === sub.quizId)!.deadline!).toLocaleDateString()}
+                                   {formatDeadline(quizzes.find(q => q.id === sub.quizId)!.deadline!)}
                                 </p>
                               ) : (
                                 <p className="text-[10px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-tighter italic">N/A</p>
@@ -306,7 +306,7 @@ export default function StudentDashboard() {
                          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{new Date(sub.submittedAt).toLocaleDateString()}</p>
                          {quizzes.find(q => q.id === sub.quizId)?.deadline && (
                             <p className="text-[8px] font-black text-slate-300 dark:text-slate-700 uppercase tracking-tighter">
-                               Due: {new Date(quizzes.find(q => q.id === sub.quizId)!.deadline!).toLocaleDateString()}
+                               Due: {formatDeadline(quizzes.find(q => q.id === sub.quizId)!.deadline!)}
                             </p>
                          )}
                       </div>

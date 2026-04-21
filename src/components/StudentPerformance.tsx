@@ -6,7 +6,7 @@ import { Quiz, QuizSubmission, Question } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Trophy, Target, TrendingUp, Calendar, ArrowRight, Award, Zap, Info, X, CheckCircle2 } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, formatDeadline } from '../lib/utils';
 
 export default function StudentPerformance() {
   const { profile } = useAuth();
@@ -186,7 +186,7 @@ export default function StudentPerformance() {
                          {quizzes[sub.quizId]?.deadline ? (
                             <div className="flex flex-col items-center">
                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                                  {new Date(quizzes[sub.quizId].deadline!).toLocaleDateString()}
+                                  {formatDeadline(quizzes[sub.quizId].deadline!)}
                                </p>
                                {new Date(quizzes[sub.quizId].deadline!) < new Date(sub.submittedAt) && (
                                   <span className="text-[7px] font-black text-amber-500 uppercase">Late Submission</span>
@@ -234,7 +234,7 @@ export default function StudentPerformance() {
                     </div>
                     {quizzes[sub.quizId]?.deadline && (
                       <div className="text-[9px] font-black text-slate-300 uppercase tracking-tighter">
-                         Due: {new Date(quizzes[sub.quizId].deadline!).toLocaleDateString()}
+                         Due: {formatDeadline(quizzes[sub.quizId].deadline!)}
                       </div>
                     )}
                   </div>
