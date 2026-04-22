@@ -158,7 +158,7 @@ export default function StudentQuizzes() {
                       </div>
                     </div>
                     
-                    <h3 className="text-xl font-bold font-display text-slate-900 group-hover:text-indigo-600 transition-colors tracking-tight leading-tight mb-2 line-clamp-1">
+                    <h3 className="text-xl font-bold font-display text-slate-900 group-hover:text-indigo-600 transition-colors tracking-tight leading-tight mb-2">
                       {quiz.title}
                     </h3>
                     

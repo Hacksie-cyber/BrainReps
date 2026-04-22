@@ -30,6 +30,7 @@ export default function TeacherAnalytics() {
         ));
         const sList = subSnap.docs
           .map(d => ({ id: d.id, ...d.data() } as QuizSubmission))
+          .filter(s => s.studentRole === 'student') // Exclude educators from metrics
           .sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
         
         const validQuizIds = new Set(qList.map(q => q.id));

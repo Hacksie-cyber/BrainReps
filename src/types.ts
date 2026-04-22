@@ -56,6 +56,7 @@ export interface QuizSubmission {
   graded: boolean;
   status?: 'in-progress' | 'completed';
   timeTaken?: number; // In seconds
+  studentRole?: UserRole;
 }
 
 export interface Notification {

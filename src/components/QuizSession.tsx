@@ -746,7 +746,7 @@ export default function QuizSession() {
 
         {/* Real-time Insights Side-panel */}
         <aside className="w-full lg:w-72 flex flex-col gap-6">
-           {profile?.role === 'teacher' && (
+           {profile?.role === 'student' && (
              <LiveLeaderboard quizId={quiz.id} currentStudentId={profile?.uid || ''} />
            )}
         </aside>

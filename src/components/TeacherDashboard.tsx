@@ -6,7 +6,7 @@ import { Quiz, QuizSubmission, UserProfile } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { cn, formatDeadline } from '../lib/utils';
-import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2, UserX, ShieldAlert } from 'lucide-react';
+import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2, UserX, ShieldAlert, Edit } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import DeleteModal from './DeleteModal';
 
@@ -51,7 +51,9 @@ export default function TeacherDashboard() {
           where('teacherId', '==', profile.uid)
         );
         const subSnap = await getDocs(subQuery);
-        const filteredSubs = subSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission));
+        const filteredSubs = subSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
+          .filter(s => s.studentRole === 'student'); // Exclude educators from statistics
         
         setSubmissions(filteredSubs);
       } catch (error) {
@@ -327,12 +329,22 @@ export default function TeacherDashboard() {
                              <button 
                                onClick={(e) => {
                                  e.stopPropagation();
+                                 navigate(`/student/quiz/${quiz.id}`);
+                               }}
+                               className="p-2.5 bg-white dark:bg-slate-900 text-slate-400 hover:text-indigo-600 border border-slate-100 dark:border-slate-800 rounded-xl transition-all shadow-sm active:scale-90"
+                               title="Review Assessment"
+                             >
+                                <BookOpen className="h-4 w-4" />
+                             </button>
+                             <button 
+                               onClick={(e) => {
+                                 e.stopPropagation();
                                  navigate(`/teacher/edit/${quiz.id}`);
                                }}
                                className="p-2.5 bg-white dark:bg-slate-900 text-slate-400 hover:text-indigo-600 border border-slate-100 dark:border-slate-800 rounded-xl transition-all shadow-sm active:scale-90"
                                title="Modulate Content"
                              >
-                                <Plus className="h-4 w-4 rotate-45" />
+                                <Edit className="h-4 w-4" />
                              </button>
                              <button 
                                onClick={(e) => {
@@ -422,7 +434,7 @@ export default function TeacherDashboard() {
                         "text-sm font-bold tracking-tight truncate font-display",
                         item.type === 'inactive' ? "text-slate-800 dark:text-slate-200" : "text-amber-900 dark:text-amber-100"
                       )}>{item.name}</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-500 font-medium tracking-tight mt-1 line-clamp-1 italic uppercase">
+                      <p className="text-[10px] text-slate-500 dark:text-slate-500 font-medium tracking-tight mt-1 italic uppercase">
                         {item.type === 'inactive' ? 'Activity Gap Detected' : `Accuracy: ${item.score}% • "${item.quiz}"`}
                       </p>
                     </div>

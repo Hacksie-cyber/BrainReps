@@ -201,7 +201,7 @@ export default function TeacherAssessments() {
                     </div>
 
                     <div className="space-y-4 mb-6">
-                      <h3 className="text-xl font-bold font-display text-slate-900 group-hover:text-indigo-600 transition-colors tracking-tight leading-tight line-clamp-1">{quiz.title}</h3>
+                      <h3 className="text-xl font-bold font-display text-slate-900 group-hover:text-indigo-600 transition-colors tracking-tight leading-tight">{quiz.title}</h3>
                       
                       <div className="flex flex-col gap-2.5">
                         <div className="flex items-center gap-2 group/educator cursor-help">

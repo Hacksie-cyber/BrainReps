@@ -12,6 +12,7 @@ export default function StudentDashboard() {
   const { profile } = useAuth();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
+  const [allSubmissions, setAllSubmissions] = useState<QuizSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -44,6 +45,14 @@ export default function StudentDashboard() {
           .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
           .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
         setSubmissions(subList);
+
+        // Fetch ALL institutional submissions to determine rankings and Top 1
+        const allSubSnap = await getDocs(query(
+          collection(db, 'submissions'),
+          where('studentRole', '==', 'student')
+        ));
+        const allSubList = allSubSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission));
+        setAllSubmissions(allSubList);
       } catch (error) {
         console.error(error);
       } finally {
@@ -179,6 +188,25 @@ export default function StudentDashboard() {
               const isUnlimited = profile?.role === 'teacher' || quiz.retakeLimit === 0;
               const limitReached = !isUnlimited && userSubs.length >= (quiz.retakeLimit || 1);
 
+              // Ranking Logic
+              const quizAllSubs = allSubmissions.filter(s => s.quizId === quiz.id);
+              const latestSubsMap = new Map<string, QuizSubmission>();
+              quizAllSubs.forEach(s => {
+                const existing = latestSubsMap.get(s.studentId);
+                // Use best score for competitive metrics
+                if (!existing || s.score > existing.score) {
+                  latestSubsMap.set(s.studentId, s);
+                }
+              });
+              
+              const sortedSubs = Array.from(latestSubsMap.values()).sort((a, b) => {
+                if (b.score !== a.score) return b.score - a.score;
+                return (a.timeTaken || 0) - (b.timeTaken || 0); // Efficiency tie-breaker
+              });
+
+              const top1 = sortedSubs[0];
+              const myRank = submission ? sortedSubs.findIndex(s => s.studentId === profile?.uid) + 1 : 0;
+
               return (
                 <motion.div
                   key={quiz.id}
@@ -209,7 +237,7 @@ export default function StudentDashboard() {
                     </div>
                   </div>
                   
-                  <h3 className="text-xl font-bold font-display text-slate-900 dark:text-slate-50 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors tracking-tight leading-tight mb-2 line-clamp-1">
+                  <h3 className="text-xl font-bold font-display text-slate-900 dark:text-slate-50 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors tracking-tight leading-tight mb-2">
                     {quiz.title}
                   </h3>
                   
@@ -241,9 +269,38 @@ export default function StudentDashboard() {
                     </div>
                   </div>
                   
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 font-medium leading-relaxed italic line-clamp-2">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 font-medium leading-relaxed italic line-clamp-2">
                     {quiz.description || "Instructional module for structural logic evaluation."}
                   </p>
+                  
+                  {/* Competitive Metrics */}
+                  <div className="mb-8 space-y-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800/50 transition-colors group-hover:bg-white dark:group-hover:bg-slate-800">
+                     <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                           <Trophy className="h-3.5 w-3.5 text-amber-500" />
+                           <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Top Achievement</span>
+                        </div>
+                        {top1 ? (
+                          <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200">{top1.studentName} <span className="text-amber-500 ml-1">({top1.score}pts)</span></p>
+                        ) : (
+                          <p className="text-[10px] font-medium text-slate-300 italic uppercase">Awaiting results</p>
+                        )}
+                     </div>
+                     
+                     <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                           <div className="w-3.5 h-3.5 rounded bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                              <span className="text-[8px] font-black text-indigo-600">#</span>
+                           </div>
+                           <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Institutional Rank</span>
+                        </div>
+                        {myRank > 0 ? (
+                           <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">Rank #{myRank} <span className="text-[8px] text-slate-400 font-bold ml-1">/ {sortedSubs.length}</span></p>
+                        ) : (
+                           <p className="text-[10px] font-medium text-slate-300 italic uppercase">Not Ranked</p>
+                        )}
+                     </div>
+                  </div>
                   
                   <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     {submission ? (
@@ -345,7 +402,7 @@ export default function StudentDashboard() {
              <div className="md:hidden divide-y divide-slate-50 dark:divide-slate-800/50">
                 {submissions.slice(0, 5).map((sub) => (
                   <div key={sub.id} className="p-4 space-y-3">
-                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-tight line-clamp-1">{sub.quizTitle}</p>
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-tight">{sub.quizTitle}</p>
                     <div className="flex items-center justify-between">
                       <div className="flex flex-col gap-0.5">
                          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{new Date(sub.submittedAt).toLocaleDateString()}</p>
