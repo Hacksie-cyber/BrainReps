@@ -98,8 +98,18 @@ export default function TeacherDashboard() {
   const activeQuizIds = new Set(activeQuizzes.map(q => q.id));
   const activeSubmissions = submissions.filter(s => activeQuizIds.has(s.quizId));
 
+  // Identify all students who are assigned to AT LEAST ONE active quiz
+  const assignedStudentIds = new Set<string>();
+  activeQuizzes.forEach(q => {
+    if (q.isPublic) {
+      students.forEach(s => assignedStudentIds.add(s.uid));
+    } else {
+      q.allowedStudentIds?.forEach(id => assignedStudentIds.add(id));
+    }
+  });
+
   const uniqueStudentsCount = new Set(activeSubmissions.map(s => s.studentId)).size;
-  const engagementRate = students.length > 0 ? Math.round((uniqueStudentsCount / students.length) * 100) : 0;
+  const engagementRate = assignedStudentIds.size > 0 ? Math.round((uniqueStudentsCount / assignedStudentIds.size) * 100) : 0;
   
   const avgGrade = activeSubmissions.length > 0 
     ? Math.round((activeSubmissions.reduce((acc, curr) => acc + curr.score, 0) / Math.max(activeSubmissions.reduce((acc, curr) => acc + curr.totalPoints, 0), 1)) * 100)
@@ -119,10 +129,11 @@ export default function TeacherDashboard() {
   const maxDist = Math.max(...distribution, 1);
 
   // Identify UNIQUE students from the ROSTER with performance or engagement alerts
+  // Only include students who are assigned to at least one active assessment
   const studentMap = new Map<string, { id: string, name: string, earned: number, total: number, recentQuiz: string, submissionCount: number, recentSubmittedAt: string }>();
   
-  // Initialize map with all students from roster
-  students.forEach(s => {
+  // Initialize map only with assigned students
+  students.filter(s => assignedStudentIds.has(s.uid)).forEach(s => {
     studentMap.set(s.uid, { id: s.uid, name: s.name, earned: 0, total: 0, recentQuiz: 'None', submissionCount: 0, recentSubmittedAt: '' });
   });
 
@@ -202,9 +213,9 @@ export default function TeacherDashboard() {
           <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-2 font-medium italic">Active participation</p>
         </div>
         <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
-          <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Student Population</p>
-          <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{students.length}</h3>
-          <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-2 font-medium italic">Enrolled participants</p>
+          <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Target Audience</p>
+          <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{assignedStudentIds.size}</h3>
+          <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-2 font-medium italic">Assigned participants</p>
         </div>
         <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
           <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Teacher Faculty</p>
@@ -243,14 +254,19 @@ export default function TeacherDashboard() {
                     const qSubsRaw = submissions.filter(s => s.quizId === quiz.id);
                     
                     // Filter to only include the LATEST submission per student for this quiz
+                    // AND only include students officially added to the assessment
                     const studentLatestMap = new Map<string, QuizSubmission>();
                     qSubsRaw.forEach(s => {
-                      if (!studentLatestMap.has(s.studentId) || new Date(s.submittedAt) > new Date(studentLatestMap.get(s.studentId)!.submittedAt)) {
-                        studentLatestMap.set(s.studentId, s);
+                      const isAssigned = quiz.isPublic || quiz.allowedStudentIds?.includes(s.studentId);
+                      if (isAssigned) {
+                        if (!studentLatestMap.has(s.studentId) || new Date(s.submittedAt) > new Date(studentLatestMap.get(s.studentId)!.submittedAt)) {
+                          studentLatestMap.set(s.studentId, s);
+                        }
                       }
                     });
                     
                     const qSubs = Array.from(studentLatestMap.values());
+                    const targetAudienceCount = quiz.isPublic ? students.length : (quiz.allowedStudentIds?.length || 0);
                     
                     const avg = qSubs.length > 0
                       ? Math.round((qSubs.reduce((acc, curr) => acc + curr.score, 0) / Math.max(qSubs.reduce((acc, curr) => acc + curr.totalPoints, 0), 1)) * 100)
@@ -262,6 +278,7 @@ export default function TeacherDashboard() {
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
                             <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                               {new Date(quiz.createdAt).toLocaleDateString()} • {quiz.questions.length} Items
+                              {quiz.isPublic ? ' • Public' : ' • Private'}
                             </p>
                             {quiz.deadline && (
                               <p className={cn(
@@ -276,7 +293,7 @@ export default function TeacherDashboard() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-100 dark:border-slate-700/50">
-                            {qSubs.length} / {students.length}
+                            {qSubs.length} / {targetAudienceCount}
                           </span>
                         </td>
                         <td className="px-6 py-4">
