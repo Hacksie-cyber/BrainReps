@@ -52,6 +52,7 @@
         "quizTitle": { "type": "string" },
         "studentId": { "type": "string" },
         "studentName": { "type": "string" },
+        "studentRole": { "type": "string", "enum": ["teacher", "student", "admin"] },
         "responses": {
           "type": "array",
           "items": {

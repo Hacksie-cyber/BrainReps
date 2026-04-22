@@ -50,10 +50,7 @@ service cloud.firestore {
       
       allow write: if isSuperAdmin() || (isOwner(uid) && isNotBanned() && (
         // Allow creating profile if it doesn't exist
-        (!exists(/databases/$(database)/documents/users/$(uid)) && (
-          request.resource.data.role != 'teacher' || 
-          request.auth.token.email == 'bamuyahacksie@gmail.com'
-        )) || 
+        !exists(/databases/$(database)/documents/users/$(uid)) || 
         // Allow updates only if role and isBanned remain the same for owner
         (exists(/databases/$(database)/documents/users/$(uid)) && 
          request.resource.data.role == resource.data.role &&
@@ -80,6 +77,7 @@ service cloud.firestore {
 
     function isValidSubmission(data) {
       return data.studentId is string &&
+             data.studentRole is string &&
              data.quizId is string &&
              data.score is number &&
              data.totalPoints is number &&
