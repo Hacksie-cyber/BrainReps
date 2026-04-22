@@ -286,6 +286,12 @@ export default function TeacherDashboard() {
                         <td className="px-6 py-4">
                           <p className="font-bold text-slate-700 dark:text-slate-200 tracking-tight">{quiz.title}</p>
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                            <div className="flex items-center gap-1.5 border-r border-slate-100 dark:border-slate-800 pr-3">
+                              <div className="w-3 h-3 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-[5px] font-black text-slate-400 dark:text-slate-500 uppercase">
+                                {quiz.teacherName?.charAt(0) || 'E'}
+                              </div>
+                              <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter italic">Educator: {quiz.teacherName}</p>
+                            </div>
                             <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                               {new Date(quiz.createdAt).toLocaleDateString()} • {quiz.questions.length} Items
                               {quiz.isPublic ? ' • Public' : ' • Private'}

@@ -162,8 +162,13 @@ export default function StudentQuizzes() {
                     </div>
                     
                     <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors tracking-tight line-clamp-1">{quiz.title}</h3>
-                    <div className="flex flex-col gap-1 mb-3">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Educator: {quiz.teacherName}</p>
+                    <div className="flex flex-col gap-1 mb-4">
+                      <div className="flex items-center gap-2 group/educator cursor-help" title={`Curriculum designed by ${quiz.teacherName}`}>
+                         <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center text-[7px] font-black text-slate-400 group-hover/educator:bg-indigo-100 group-hover/educator:text-indigo-600 transition-colors uppercase">
+                            {quiz.teacherName?.charAt(0) || 'E'}
+                         </div>
+                         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover/educator:text-slate-600 transition-colors">Educator: {quiz.teacherName}</p>
+                      </div>
                       {quiz.deadline && (
                         <p className={cn(
                           "text-[9px] font-black uppercase tracking-tighter flex items-center gap-1",

@@ -171,7 +171,12 @@ export default function StudentPerformance() {
                          <div className="flex items-center gap-3">
                             <div>
                                <p className="font-bold text-slate-700 tracking-tight">{sub.quizTitle}</p>
-                               <p className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">Click to review breakdown</p>
+                               <div className="flex items-center gap-1.5 mt-0.5">
+                                 <div className="w-3 h-3 rounded-full bg-slate-100 flex items-center justify-center text-[5px] font-black text-slate-400 uppercase">
+                                   {quizzes[sub.quizId]?.teacherName?.charAt(0) || 'E'}
+                                 </div>
+                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Educator: {quizzes[sub.quizId]?.teacherName || "Assigned Faculty"}</p>
+                               </div>
                             </div>
                             <Info className="h-3.5 w-3.5 text-slate-200 group-hover:text-indigo-400 transition-colors" />
                          </div>
@@ -264,7 +269,7 @@ export default function StudentPerformance() {
               <header className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <div>
                   <h3 className="text-xl font-bold text-slate-800 tracking-tight">{selectedSubmission.quizTitle}</h3>
-                  <p className="text-xs text-slate-500 font-medium">Personal Performance Breakdown • {selectedSubmission.score} / {selectedSubmission.totalPoints}</p>
+                  <p className="text-xs text-slate-500 font-medium">Educator: {quizzes[selectedSubmission.quizId]?.teacherName || "Assigned Faculty"} • Score: {selectedSubmission.score} / {selectedSubmission.totalPoints}</p>
                 </div>
                 <button 
                   onClick={() => setSelectedSubmission(null)}

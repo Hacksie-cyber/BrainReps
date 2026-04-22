@@ -191,36 +191,44 @@ export default function TeacherAssessments() {
 
                     <div>
                       <h3 className="font-bold text-slate-800 text-lg group-hover:text-indigo-600 transition-colors tracking-tight">{quiz.title}</h3>
-                      <div className="flex gap-3 mt-1 items-center">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          {quiz.questions.length} Questions
-                        </p>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 border-l border-slate-200 pl-3">
-                          Limit: {quiz.retakeLimit === 0 ? 'Unlimited' : `${quiz.retakeLimit} ${quiz.retakeLimit === 1 ? 'Attempt' : 'Attempts'}`}
-                        </p>
-                        {quiz.deadline && (
-                          <p className={cn(
-                            "text-[9px] font-black uppercase tracking-tighter flex items-center gap-1 border-l border-slate-200 pl-3",
-                            new Date(quiz.deadline) < new Date() ? "text-red-500" : "text-indigo-500"
-                          )}>
-                            <Clock className="w-2.5 h-2.5" />
-                            {new Date(quiz.deadline) < new Date() ? "Expired" : `Due: ${formatDeadline(quiz.deadline)}`}
+                      <div className="flex flex-col gap-1.5 mt-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3.5 h-3.5 rounded-full bg-slate-100 flex items-center justify-center text-[6px] font-black text-slate-400 uppercase">
+                            {quiz.teacherName?.charAt(0) || 'E'}
+                          </div>
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 italic">Educator: {quiz.teacherName}</p>
+                        </div>
+                        <div className="flex gap-3 items-center">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            {quiz.questions.length} Questions
                           </p>
-                        )}
-                        {quiz.isHidden && (
-                          <span className="text-[9px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100 font-bold uppercase tracking-tighter">Hidden</span>
-                        )}
-                        {quiz.isPublic ? (
-                          <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100 font-bold uppercase tracking-tighter flex items-center gap-1">
-                            <ShieldCheck className="w-2.5 h-2.5" /> Global
-                          </span>
-                        ) : (
-                          quiz.allowedStudentIds && quiz.allowedStudentIds.length > 0 && (
-                            <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 font-bold uppercase tracking-tighter flex items-center gap-1">
-                              <ShieldCheck className="w-2.5 h-2.5" /> {quiz.allowedStudentIds.length} Students
+                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 border-l border-slate-200 pl-3">
+                            Limit: {quiz.retakeLimit === 0 ? 'Unlimited' : `${quiz.retakeLimit} ${quiz.retakeLimit === 1 ? 'Attempt' : 'Attempts'}`}
+                          </p>
+                          {quiz.deadline && (
+                            <p className={cn(
+                              "text-[9px] font-black uppercase tracking-tighter flex items-center gap-1 border-l border-slate-200 pl-3",
+                              new Date(quiz.deadline) < new Date() ? "text-red-500" : "text-indigo-500"
+                            )}>
+                              <Clock className="w-2.5 h-2.5" />
+                              {new Date(quiz.deadline) < new Date() ? "Expired" : `Due: ${formatDeadline(quiz.deadline)}`}
+                            </p>
+                          )}
+                          {quiz.isHidden && (
+                            <span className="text-[9px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100 font-bold uppercase tracking-tighter">Hidden</span>
+                          )}
+                          {quiz.isPublic ? (
+                            <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100 font-bold uppercase tracking-tighter flex items-center gap-1">
+                              <ShieldCheck className="w-2.5 h-2.5" /> Global
                             </span>
-                          )
-                        )}
+                          ) : (
+                            quiz.allowedStudentIds && quiz.allowedStudentIds.length > 0 && (
+                              <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 font-bold uppercase tracking-tighter flex items-center gap-1">
+                                <ShieldCheck className="w-2.5 h-2.5" /> {quiz.allowedStudentIds.length} Students
+                              </span>
+                            )
+                          )}
+                        </div>
                       </div>
                     </div>
 
