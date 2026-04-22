@@ -11,6 +11,7 @@ import { cn, formatDeadline } from '../lib/utils';
 interface LeaderboardEntry {
   studentId: string;
   studentName: string;
+  studentRole?: string;
   score: number;
   totalPoints: number;
   timeTaken: number;
@@ -27,10 +28,12 @@ function LiveLeaderboard({ quizId, currentStudentId }: { quizId: string, current
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const allSubs = snapshot.docs.map(doc => ({ ...doc.data() } as QuizSubmission));
+      const allSubs = snapshot.docs
+        .map(doc => ({ ...doc.data() } as any))
+        .filter(sub => sub.studentRole === 'student'); // Exclude educators from statistics
       
       // Get only the latest submission per student
-      const studentMap = new Map<string, QuizSubmission>();
+      const studentMap = new Map<string, any>();
       allSubs.forEach(sub => {
         const existing = studentMap.get(sub.studentId);
         if (!existing || new Date(sub.submittedAt) > new Date(existing.submittedAt)) {
@@ -41,6 +44,7 @@ function LiveLeaderboard({ quizId, currentStudentId }: { quizId: string, current
       const processedEntries = Array.from(studentMap.values()).map(sub => ({
         studentId: sub.studentId,
         studentName: sub.studentName,
+        studentRole: sub.studentRole,
         score: sub.score,
         totalPoints: sub.totalPoints,
         timeTaken: sub.timeTaken || 0,
@@ -71,38 +75,46 @@ function LiveLeaderboard({ quizId, currentStudentId }: { quizId: string, current
               <p className="text-[10px] font-medium text-slate-400 italic">Awating initial synchronization...</p>
             </div>
           ) : (
-            entries.slice(0, 10).map((entry, i) => (
-              <div 
-                key={entry.studentId}
-                className={cn(
-                  "p-3 flex items-center justify-between gap-3 transition-colors",
-                  entry.studentId === currentStudentId ? "bg-indigo-50/50 dark:bg-indigo-900/20" : ""
-                )}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className={cn(
-                    "w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0",
-                    i === 0 ? "bg-amber-100 text-amber-700" : 
-                    i === 1 ? "bg-slate-100 text-slate-700" :
-                    i === 2 ? "bg-orange-100 text-orange-700" : "bg-slate-50 dark:bg-slate-800 text-slate-400"
-                  )}>
-                    {i + 1}
-                  </span>
-                  <div className="truncate">
-                    <p className="text-[10px] font-bold text-slate-800 dark:text-slate-100 truncate">{entry.studentName}</p>
-                    <p className="text-[8px] font-black uppercase tracking-tighter text-slate-400">
-                      {entry.status === 'completed' ? 'Finalized' : 'Drafting'}
+            entries.slice(0, 10).map((entry, i) => {
+              const isTeacher = entry.studentRole === 'teacher' || entry.studentRole === 'admin';
+              return (
+                <div 
+                  key={entry.studentId}
+                  className={cn(
+                    "p-3 flex items-center justify-between gap-3 transition-colors",
+                    entry.studentId === currentStudentId ? "bg-indigo-50/50 dark:bg-indigo-900/20" : ""
+                  )}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={cn(
+                      "w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0",
+                      i === 0 ? "bg-amber-100 text-amber-700" : 
+                      i === 1 ? "bg-slate-100 text-slate-700" :
+                      i === 2 ? "bg-orange-100 text-orange-700" : "bg-slate-50 dark:bg-slate-800 text-slate-400"
+                    )}>
+                      {i + 1}
+                    </span>
+                    <div className="truncate">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[10px] font-bold text-slate-800 dark:text-slate-100 truncate">{entry.studentName}</p>
+                        {isTeacher && (
+                          <span className="text-[6px] font-black uppercase text-indigo-600 bg-indigo-50 px-1 rounded-sm border border-indigo-100">Educator</span>
+                        )}
+                      </div>
+                      <p className="text-[8px] font-black uppercase tracking-tighter text-slate-400">
+                        {entry.status === 'completed' ? 'Finalized' : 'Drafting'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400">{entry.score}</p>
+                    <p className="text-[8px] font-medium text-slate-400 flex items-center justify-end gap-1">
+                      <Timer className="w-2 h-2" /> {Math.floor(entry.timeTaken / 60)}m {entry.timeTaken % 60}s
                     </p>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400">{entry.score}</p>
-                  <p className="text-[8px] font-medium text-slate-400 flex items-center justify-end gap-1">
-                    <Timer className="w-2 h-2" /> {Math.floor(entry.timeTaken / 60)}m {entry.timeTaken % 60}s
-                  </p>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
         <div className="p-2 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex justify-center">
@@ -265,6 +277,7 @@ export default function QuizSession() {
         teacherId: quiz.teacherId,
         studentId: profile.uid,
         studentName: profile.name,
+        studentRole: profile.role, // Record role for advanced filtering
         responses: gradedResponses,
         score: finalScore,
         totalPoints,
@@ -736,7 +749,9 @@ export default function QuizSession() {
 
         {/* Real-time Insights Side-panel */}
         <aside className="w-full lg:w-72 flex flex-col gap-6">
-           <LiveLeaderboard quizId={quiz.id} currentStudentId={profile?.uid || ''} />
+           {profile?.role === 'teacher' && (
+             <LiveLeaderboard quizId={quiz.id} currentStudentId={profile?.uid || ''} />
+           )}
            
            <div className="bg-slate-900 rounded-2xl p-6 text-white space-y-4">
               <div className="flex items-center gap-2">

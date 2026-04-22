@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs, orderBy, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission, Question } from '../types';
@@ -23,44 +23,57 @@ export default function TeacherQuizResults() {
 
   useEffect(() => {
     if (!id || !profile) return;
-    const fetchData = async () => {
+    
+    // 1. Fetch Quiz Metadata (Static)
+    const fetchQuiz = async () => {
       try {
         const quizSnap = await getDoc(doc(db, 'quizzes', id));
         if (quizSnap.exists()) {
           setQuiz({ id: quizSnap.id, ...quizSnap.data() } as Quiz);
         }
-
-        const subSnap = await getDocs(query(
-          collection(db, 'submissions'),
-          where('quizId', '==', id),
-          where('teacherId', '==', profile.uid)
-        ));
-        
-        const allSubs = subSnap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
-          .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-        
-        // De-duplicate: Keep only the latest attempt for each student
-        const latestSubsMap = new Map<string, QuizSubmission>();
-        allSubs.forEach(sub => {
-          if (!latestSubsMap.has(sub.studentId)) {
-            latestSubsMap.set(sub.studentId, sub);
-          }
-        });
-        
-        // Sort by score (percentage) descending for ranking
-        const sortedSubs = Array.from(latestSubsMap.values()).sort((a, b) => 
-          (b.score / b.totalPoints) - (a.score / a.totalPoints)
-        );
-        
-        setSubmissions(sortedSubs);
       } catch (error) {
         console.error(error);
-      } finally {
-        setLoading(false);
       }
     };
-    fetchData();
+    fetchQuiz();
+
+    // 2. Establish Real-time Submission Stream
+    const q = query(
+      collection(db, 'submissions'),
+      where('quizId', '==', id),
+      where('teacherId', '==', profile.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allSubs = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
+        .filter(sub => (sub as any).studentRole === 'student') // Exclude educators from results
+        .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+      
+      // De-duplicate: Keep only the latest attempt for each student
+      const latestSubsMap = new Map<string, QuizSubmission>();
+      allSubs.forEach(sub => {
+        if (!latestSubsMap.has(sub.studentId)) {
+          latestSubsMap.set(sub.studentId, sub);
+        }
+      });
+      
+      // Sort by score (percentage) descending for ranking
+      const sortedSubs = Array.from(latestSubsMap.values()).sort((a, b) => {
+        const scoreA = a.score / Math.max(a.totalPoints, 1);
+        const scoreB = b.score / Math.max(b.totalPoints, 1);
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return (a.timeTaken || 0) - (b.timeTaken || 0); // Tie-break with efficiency
+      });
+      
+      setSubmissions(sortedSubs);
+      setLoading(false);
+    }, (error) => {
+      console.error("Live sync error:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [id, profile]);
 
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
