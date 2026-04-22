@@ -59,10 +59,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInAs = async (role: UserRole, name: string) => {
     if (!auth.currentUser) throw new Error("Not authenticated");
     
-    if (role === 'teacher' && auth.currentUser.email !== 'bamuyahacksie@gmail.com') {
-      throw new Error("You are not authorized to be a teacher.");
-    }
-    
     const newProfile: UserProfile = {
       uid: auth.currentUser.uid,
       name,

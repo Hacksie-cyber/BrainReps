@@ -56,8 +56,6 @@ export default function AuthPage() {
   };
 
   if (auth.currentUser && !profile) {
-    const isAuthorizedTeacher = auth.currentUser.email === 'bamuyahacksie@gmail.com';
-
     return (
       <div className="flex min-h-[80vh] items-center justify-center p-4">
         <motion.div
@@ -74,21 +72,16 @@ export default function AuthPage() {
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
-                disabled={!isAuthorizedTeacher}
                 onClick={() => setRole('teacher')}
                 className={cn(
                   "flex flex-col items-center justify-center gap-4 rounded-xl border p-6 transition-all relative group",
                   role === 'teacher' 
                     ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 ring-2 ring-indigo-600/20" 
-                    : "border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/10 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30",
-                  !isAuthorizedTeacher && "opacity-50 grayscale cursor-not-allowed border-dashed"
+                    : "border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/10 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/30"
                 )}
               >
                 <BookOpen className="h-8 w-8" />
                 <span className="font-bold text-[10px] uppercase tracking-widest">Teacher</span>
-                {!isAuthorizedTeacher && (
-                  <span className="absolute -top-2 -right-2 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-[8px] font-black px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">RESTRICTED</span>
-                )}
               </button>
               <button
                 type="button"
@@ -104,15 +97,6 @@ export default function AuthPage() {
                 <span className="font-bold text-[10px] uppercase tracking-widest">Student</span>
               </button>
             </div>
-
-            {!isAuthorizedTeacher && (
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 leading-relaxed italic text-center">
-                  Teacher access is limited to pre-authorized administrative accounts. 
-                  Please select 'Student' to proceed.
-                </p>
-              </div>
-            )}
 
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Full Name</label>
