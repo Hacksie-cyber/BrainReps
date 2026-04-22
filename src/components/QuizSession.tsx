@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, addDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -64,9 +64,15 @@ function LiveLeaderboard({ quizId, currentStudentId }: { quizId: string, current
 
   return (
     <div className="w-full lg:w-64 shrink-0 space-y-4">
-      <div className="flex items-center gap-2 mb-2">
-        <Trophy className="w-4 h-4 text-amber-500" />
-        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">Live Standings</h3>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-amber-500" />
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">Live Standings</h3>
+        </div>
+        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-100 dark:border-emerald-800/50">
+           <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+           <span className="text-[7px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-tighter">Live Sync</span>
+        </div>
       </div>
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -224,10 +230,24 @@ export default function QuizSession() {
   }, [timeLeft, finished]);
 
   const [sessionDocId, setSessionDocId] = useState<string | null>(null);
+  const savingRef = useRef(false);
+  const pendingSaveRef = useRef<Record<string, string> | null>(null);
+  const sessionDocIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    sessionDocIdRef.current = sessionDocId;
+  }, [sessionDocId]);
 
   // Auto-save function to record progress "automatically" as they take the assessment
   const autoSaveSession = async (currentResponses: Record<string, string>, isFinal = false) => {
     if (!quiz || !profile) return { finalScore: 0, totalPoints: 0 };
+
+    if (savingRef.current && !isFinal) {
+      pendingSaveRef.current = currentResponses;
+      return { finalScore: 0, totalPoints: 0 };
+    }
+
+    savingRef.current = true;
 
     let currentScore = 0;
     let totalPoints = 0;
@@ -287,19 +307,28 @@ export default function QuizSession() {
 
       const { doc, setDoc, collection, addDoc } = await import('firebase/firestore');
       
-      let newSessionDocId = sessionDocId;
-      if (newSessionDocId) {
-        await setDoc(doc(db, 'submissions', newSessionDocId), submissionData, { merge: true });
+      let currentDocId = sessionDocIdRef.current;
+      if (currentDocId) {
+        await setDoc(doc(db, 'submissions', currentDocId), submissionData, { merge: true });
       } else {
         const docRef = await addDoc(collection(db, 'submissions'), submissionData);
         if (!isFinal) {
           setSessionDocId(docRef.id);
-          newSessionDocId = docRef.id;
+          currentDocId = docRef.id;
         }
+      }
+      
+      savingRef.current = false;
+      // Handle any saves that were requested during the write
+      if (pendingSaveRef.current && !isFinal) {
+        const nextSave = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+        autoSaveSession(nextSave, false);
       }
       
       return { finalScore, totalPoints, submissionAt };
     } catch (error: any) {
+      savingRef.current = false;
       console.error("Auto-save failed:", error);
       // Fallback: If it's the final submission, we return the score even if the DB write failed, 
       // but we log the error. This ensures the user doesn't see 0/0.
