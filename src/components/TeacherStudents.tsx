@@ -19,6 +19,9 @@ interface StudentMetric {
   isBanned?: boolean;
 }
 
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
 export default function TeacherStudents() {
   const { profile } = useAuth();
   const [students, setStudents] = useState<StudentMetric[]>([]);
@@ -145,6 +148,47 @@ export default function TeacherStudents() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const exportToPDF = () => {
+    if (!students.length) return;
+
+    const doc = new jsPDF();
+    const timestamp = new Date().toLocaleString();
+    
+    doc.setFontSize(20);
+    doc.setTextColor(79, 70, 229);
+    doc.text("Institutional Student Roster", 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`Generated: ${timestamp}`, 14, 30);
+    doc.text(`Educator: ${profile?.name || 'Authorized Instructor'}`, 14, 35);
+
+    const tableData = students
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((s, i) => [
+        i + 1,
+        s.name,
+        s.email,
+        `${s.avgScore}%`,
+        s.isBanned ? 'Restricted' : 'Active'
+      ]);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['#', 'Full Name', 'Email Identifier', 'Academic Score', 'Status']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [79, 70, 229], fontSize: 9 },
+      styles: { fontSize: 8, cellPadding: 3 },
+      columnStyles: {
+        4: { fontStyle: 'bold' }
+      }
+    });
+
+    const fileName = `student_roster_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
   };
 
   const toggleBan = async (student: StudentMetric) => {

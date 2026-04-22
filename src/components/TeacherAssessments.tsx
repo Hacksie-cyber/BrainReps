@@ -95,39 +95,43 @@ export default function TeacherAssessments() {
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+      <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Assessment Inventory</h1>
-          <p className="text-sm text-slate-500 font-medium tracking-tight">Manage and monitor your curriculum evaluation modules.</p>
+          <h1 className="text-3xl font-bold font-display text-slate-800 tracking-tight">Assessment Inventory</h1>
+          <p className="text-sm text-slate-500 font-medium tracking-tight">Manage and monitor your higher-order curriculum evaluation modules.</p>
         </div>
         <Link
           to="/teacher/create"
-          className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 active:scale-95"
+          className="flex items-center justify-center gap-3 rounded-xl bg-indigo-600 px-8 py-3.5 text-[11px] font-bold uppercase tracking-widest text-white transition-all hover:bg-indigo-700 shadow-[0_10px_20px_rgba(79,70,229,0.15)] hover:shadow-[0_15px_30px_rgba(79,70,229,0.3)] active:scale-95 group"
         >
-          <Plus className="h-4 w-4" />
-          New Assessment
+          <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
+          Create New Module
         </Link>
       </header>
 
-      <section className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <div className="col-span-full bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3 shadow-sm">
-            <Search className="h-5 w-5 text-slate-400" />
+      <section className="space-y-8">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <div className="col-span-full relative group">
+            <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-300 group-focus-within:text-indigo-400 transition-colors" />
+            </div>
             <input
               type="text"
-              placeholder="Filter inventory by module title or keywords..."
+              placeholder="Filter inventory by module title, keywords, or educator identifier..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-600 placeholder:text-slate-300 italic"
+              className="w-full rounded-2xl bg-white border border-slate-100 py-5 pl-14 pr-6 text-sm font-medium text-slate-800 dark:text-slate-100 shadow-sm focus:border-indigo-100 focus:ring-4 focus:ring-indigo-600/5 outline-none transition-all placeholder:text-slate-300 placeholder:italic"
             />
           </div>
 
           <AnimatePresence>
             {filteredQuizzes.length === 0 ? (
-              <div className="col-span-full py-20 text-center text-slate-300 italic font-medium">
-                <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-10" />
-                No matching assessment modules found.
+              <div className="col-span-full py-24 text-center">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100 opacity-20">
+                  <BookOpen className="h-8 w-8 text-slate-400" />
+                </div>
+                <p className="text-slate-400 italic font-medium tracking-tight">No matching assessment modules discovered in your current inventory.</p>
               </div>
             ) : (
               filteredQuizzes.map((quiz, i) => (
@@ -138,41 +142,48 @@ export default function TeacherAssessments() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ delay: i * 0.05 }}
-                  className="group relative bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col cursor-pointer"
+                  className="group relative flex flex-col bg-white rounded-2xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-2 hover:border-indigo-100 transition-all duration-300 overflow-hidden cursor-pointer"
                   onClick={() => navigate(`/teacher/quiz/${quiz.id}`)}
                 >
-                  <div className="p-6 space-y-4">
-                    <div className="flex justify-between items-start">
+                  {/* Subtle Top Gradient Bar */}
+                  <div className={cn(
+                    "h-1.5 w-full transition-colors",
+                    quiz.isHidden ? "bg-amber-100" : "bg-indigo-50 dark:bg-indigo-900/20 group-hover:bg-indigo-600"
+                  )} />
+                  
+                  <div className="p-7 flex-1 flex flex-col">
+                    <div className="mb-6 flex items-start justify-between">
                       <div className={cn(
-                        "w-10 h-10 rounded-lg flex items-center justify-center",
-                        "bg-slate-50 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors"
+                        "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shadow-sm border",
+                        "bg-slate-50 text-slate-400 border-slate-100 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-500"
                       )}>
-                        <BookOpen className="h-5 w-5" />
+                        <BookOpen className="h-6 w-6" />
                       </div>
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleHide(quiz.id, !!quiz.isHidden);
-                            }}
-                            className={cn(
-                              "p-1.5 rounded-md transition-all opacity-0 group-hover:opacity-100",
-                              quiz.isHidden ? "text-amber-500 hover:bg-amber-50" : "text-slate-300 hover:text-indigo-500 hover:bg-indigo-50"
-                            )}
-                            title={quiz.isHidden ? "Show Module" : "Hide Module"}
-                          >
-                            {quiz.isHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/teacher/edit/${quiz.id}`);
-                            }}
-                            className="p-1.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-md transition-all opacity-0 group-hover:opacity-100"
-                            title="Edit Module"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
+                      
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleHide(quiz.id, !!quiz.isHidden);
+                          }}
+                          className={cn(
+                            "p-2.5 rounded-xl transition-all shadow-sm border opacity-0 group-hover:opacity-100 active:scale-90",
+                            quiz.isHidden ? "bg-amber-50 text-amber-500 border-amber-100" : "bg-white text-slate-300 hover:text-indigo-500 border-slate-100"
+                          )}
+                          title={quiz.isHidden ? "Show Module" : "Hide Module"}
+                        >
+                          {quiz.isHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/teacher/edit/${quiz.id}`);
+                          }}
+                          className="p-2.5 bg-white text-slate-300 hover:text-indigo-500 border border-slate-100 rounded-xl transition-all shadow-sm opacity-0 group-hover:opacity-100 active:scale-90"
+                          title="Configuration Settings"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </button>
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
@@ -180,8 +191,8 @@ export default function TeacherAssessments() {
                           }}
                           disabled={isDeleting === quiz.id}
                           className={cn(
-                            "p-1.5 rounded-md transition-all opacity-0 group-hover:opacity-100",
-                            isDeleting === quiz.id ? "text-slate-200 animate-pulse" : "text-slate-300 hover:text-red-500 hover:bg-red-50"
+                            "p-2.5 bg-white border border-slate-100 rounded-xl transition-all shadow-sm opacity-0 group-hover:opacity-100 active:scale-90",
+                            isDeleting === quiz.id ? "text-slate-200 animate-pulse" : "text-slate-300 hover:text-red-500"
                           )}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -189,61 +200,65 @@ export default function TeacherAssessments() {
                       </div>
                     </div>
 
-                    <div>
-                      <h3 className="font-bold text-slate-800 text-lg group-hover:text-indigo-600 transition-colors tracking-tight">{quiz.title}</h3>
-                      <div className="flex flex-col gap-1.5 mt-1.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3.5 h-3.5 rounded-full bg-slate-100 flex items-center justify-center text-[6px] font-black text-slate-400 uppercase">
+                    <div className="space-y-4 mb-6">
+                      <h3 className="text-xl font-bold font-display text-slate-900 group-hover:text-indigo-600 transition-colors tracking-tight leading-tight line-clamp-1">{quiz.title}</h3>
+                      
+                      <div className="flex flex-col gap-2.5">
+                        <div className="flex items-center gap-2 group/educator cursor-help">
+                          <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[7px] font-black text-slate-500 group-hover/educator:bg-indigo-100 group-hover/educator:text-indigo-600 transition-colors uppercase border border-slate-200/50">
                             {quiz.teacherName?.charAt(0) || 'E'}
                           </div>
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 italic">Educator: {quiz.teacherName}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic group-hover/educator:text-slate-600 transition-colors">By {quiz.teacherName}</p>
                         </div>
-                        <div className="flex gap-3 items-center">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            {quiz.questions.length} Questions
-                          </p>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 border-l border-slate-200 pl-3">
-                            Limit: {quiz.retakeLimit === 0 ? 'Unlimited' : `${quiz.retakeLimit} ${quiz.retakeLimit === 1 ? 'Attempt' : 'Attempts'}`}
-                          </p>
+                        
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                             <Clock className="h-3.5 w-3.5" />
+                             {quiz.questions.length} Items
+                          </div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-indigo-400 bg-indigo-50/50 px-2.5 py-0.5 rounded border border-indigo-100/50">
+                            Limit: {quiz.retakeLimit === 0 ? 'Unlimited' : `${quiz.retakeLimit} Attempt${quiz.retakeLimit === 1 ? '' : 's'}`}
+                          </div>
+                          
                           {quiz.deadline && (
-                            <p className={cn(
-                              "text-[9px] font-black uppercase tracking-tighter flex items-center gap-1 border-l border-slate-200 pl-3",
-                              new Date(quiz.deadline) < new Date() ? "text-red-500" : "text-indigo-500"
+                            <div className={cn(
+                              "text-[9px] font-black uppercase tracking-tighter flex items-center gap-1 px-2 py-0.5 rounded-md",
+                              new Date(quiz.deadline) < new Date() ? "bg-red-50 text-red-500 border border-red-100 animate-pulse" : "bg-indigo-50 text-indigo-500 border border-indigo-100"
                             )}>
                               <Clock className="w-2.5 h-2.5" />
-                              {new Date(quiz.deadline) < new Date() ? "Expired" : `Due: ${formatDeadline(quiz.deadline)}`}
-                            </p>
+                              {new Date(quiz.deadline) < new Date() ? "Expired" : formatDeadline(quiz.deadline)}
+                            </div>
                           )}
+                          
                           {quiz.isHidden && (
-                            <span className="text-[9px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100 font-bold uppercase tracking-tighter">Hidden</span>
+                            <span className="text-[9px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md border border-amber-100 font-black uppercase tracking-tighter">Private</span>
                           )}
-                          {quiz.isPublic ? (
-                            <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100 font-bold uppercase tracking-tighter flex items-center gap-1">
-                              <ShieldCheck className="w-2.5 h-2.5" /> Global
-                            </span>
-                          ) : (
-                            quiz.allowedStudentIds && quiz.allowedStudentIds.length > 0 && (
-                              <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 font-bold uppercase tracking-tighter flex items-center gap-1">
-                                <ShieldCheck className="w-2.5 h-2.5" /> {quiz.allowedStudentIds.length} Students
-                              </span>
-                            )
-                          )}
+                          
+                          <span className={cn(
+                             "text-[9px] px-2 py-0.5 rounded-md border font-black uppercase tracking-tighter flex items-center gap-1",
+                             quiz.isPublic 
+                               ? "bg-emerald-50 text-emerald-700 border-emerald-100" 
+                               : "bg-indigo-50 text-indigo-700 border-indigo-100"
+                          )}>
+                             <ShieldCheck className="w-2.5 h-2.5" /> 
+                             {quiz.isPublic ? 'Institutional' : `Secure: ${quiz.allowedStudentIds?.length || 0}`}
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    <p className="text-xs text-slate-500 font-medium line-clamp-2 italic leading-relaxed">
-                      {quiz.description || "Instructional metadata not specified for this module."}
+                    <p className="text-sm text-slate-500 font-medium line-clamp-2 italic leading-relaxed mb-auto">
+                      {quiz.description || "Experimental instructional metadata for curriculum synchronization."}
                     </p>
                   </div>
 
-                  <div className="mt-auto px-6 py-4 bg-slate-50/50 border-t border-slate-100 rounded-b-xl flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                      <BarChart3 className="h-3 w-3" />
-                      View Analytics
+                  <div className="px-7 py-5 bg-slate-50/30 border-t border-slate-100 flex items-center justify-between group-hover:bg-indigo-50/20 transition-all">
+                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest group-hover:text-indigo-500 transition-colors">
+                      <BarChart3 className="h-4 w-4" />
+                      Analytical Matrix
                     </div>
                     <span className="text-[10px] font-bold text-slate-300">
-                      Created {new Date(quiz.createdAt).toLocaleDateString()}
+                      Sync {new Date(quiz.createdAt).toLocaleDateString()}
                     </span>
                   </div>
                 </motion.div>

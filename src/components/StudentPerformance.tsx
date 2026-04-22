@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission, Question } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Trophy, Target, TrendingUp, Calendar, ArrowRight, Award, Zap, Info, X, CheckCircle2 } from 'lucide-react';
+import { Trophy, Target, TrendingUp, Calendar, ArrowRight, Award, Zap, Info, X, CheckCircle2, BookOpen } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 
 export default function StudentPerformance() {
@@ -85,45 +85,45 @@ export default function StudentPerformance() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       <header>
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Academic Performance</h1>
+        <h1 className="text-3xl font-bold font-display text-slate-900 tracking-tight">Academic Performance</h1>
         <p className="text-sm text-slate-500 font-medium">Metrical analysis of your learning trajectory and achievement scores.</p>
       </header>
 
       <section className="grid gap-6 md:grid-cols-4">
         {[
-          { label: 'Avg Achievement', value: `${stats.avgScore}%`, icon: Target, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-          { label: 'Modules Mastered', value: stats.completed, icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50' },
-          { label: 'Record High', value: `${stats.topScore}%`, icon: Trophy, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-          { label: 'Total Credits', value: stats.totalPoints, icon: Award, color: 'text-blue-500', bg: 'bg-blue-50' },
+          { label: 'Avg Achievement', value: `${stats.avgScore}%`, icon: Target, color: 'text-indigo-600', bg: 'bg-indigo-50/50' },
+          { label: 'Modules Mastered', value: stats.completed, icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50/50' },
+          { label: 'Record High', value: `${stats.topScore}%`, icon: Trophy, color: 'text-emerald-500', bg: 'bg-emerald-50/50' },
+          { label: 'Total Credits', value: stats.totalPoints, icon: Award, color: 'text-blue-500', bg: 'bg-blue-50/50' },
         ].map((stat, i) => (
-          <div key={i} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center mb-4", stat.bg)}>
-              <stat.icon className={cn("h-5 w-5", stat.color)} />
+          <div key={i} className="bg-white p-7 rounded-2xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] transition-all group">
+            <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110", stat.bg)}>
+              <stat.icon className={cn("h-6 w-6", stat.color)} />
             </div>
-            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">{stat.label}</p>
-            <h3 className="text-2xl font-bold text-slate-800">{stat.value}</h3>
+            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.2em] mb-1">{stat.label}</p>
+            <h3 className="text-3xl font-bold font-display text-slate-900 leading-none">{stat.value}</h3>
           </div>
         ))}
       </section>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 bg-white p-8 rounded-xl border border-slate-200 shadow-sm space-y-6">
-          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+        <div className="lg:col-span-2 bg-white p-8 rounded-2xl border border-slate-100 shadow-sm space-y-8">
+          <h3 className="text-sm font-bold font-display text-slate-900 flex items-center gap-2 uppercase tracking-widest">
             <TrendingUp className="h-4 w-4 text-indigo-500" />
             Progression Timeline
           </h3>
-          <div className="h-[250px] w-full">
+          <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
                 <XAxis dataKey="name" hide />
                 <YAxis hide domain={[0, 100]} />
                 <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)' }}
                   cursor={{ fill: '#f8fafc' }}
                 />
-                <Bar dataKey="score" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="score" radius={[6, 6, 0, 0]} barSize={40}>
                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.score >= 70 ? '#4f46e5' : '#cbd5e1'} />
+                      <Cell key={`cell-${index}`} fill={entry.score >= 75 ? '#4f46e5' : entry.score >= 50 ? '#818cf8' : '#cbd5e1'} />
                    ))}
                 </Bar>
               </BarChart>
@@ -131,83 +131,93 @@ export default function StudentPerformance() {
           </div>
         </div>
 
-        <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center space-y-6">
-           <div className="w-20 h-20 rounded-full border-4 border-slate-50 flex items-center justify-center text-indigo-600 shadow-inner relative overflow-hidden">
+        <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center space-y-8 relative overflow-hidden group">
+           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+              <Award className="w-24 h-24 text-indigo-600 rotate-12" />
+           </div>
+           <div className="w-28 h-28 rounded-full border-[6px] border-slate-50 flex items-center justify-center text-indigo-600 shadow-inner relative overflow-hidden ring-1 ring-slate-100">
               <div 
-                className="absolute bottom-0 left-0 w-full bg-indigo-50 transition-all duration-1000" 
+                className="absolute bottom-0 left-0 w-full bg-indigo-50 transition-all duration-1000 ease-out" 
                 style={{ height: `${stats.avgScore}%` }}
               />
-              <span className="relative z-10 text-2xl font-black">{stats.avgScore}%</span>
+              <span className="relative z-10 text-3xl font-black font-display">{stats.avgScore}%</span>
            </div>
-           <div>
-              <h4 className="font-bold text-slate-800">Mastery Coefficient</h4>
-              <p className="text-xs text-slate-500 font-medium italic mt-1 px-4 leading-relaxed">Your current standing is based on verified assessment metrics across all curriculum headers.</p>
+           <div className="relative z-10">
+              <h4 className="font-bold font-display text-slate-900 tracking-tight">Mastery Coefficient</h4>
+              <p className="text-xs text-slate-500 font-medium italic mt-2 px-6 leading-relaxed">Your ranking is formulated through multi-variable assessment metrics across all curriculum headers.</p>
            </div>
         </div>
       </div>
 
       <section className="space-y-6">
-        <h2 className="text-lg font-bold text-slate-800 tracking-tight">Recent Activity Log</h2>
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-left">
+        <h2 className="text-xl font-bold font-display text-slate-900 tracking-tight">Recent Activity Log</h2>
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden">
            {/* Desktop view */}
            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-left">
                 <thead>
-                  <tr className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    <th className="px-8 py-4">Assessment Module</th>
-                    <th className="px-8 py-4">Completion Date</th>
-                    <th className="px-8 py-4 text-center">Deadline</th>
-                    <th className="px-8 py-4 text-right">Metric</th>
+                  <tr className="bg-slate-50/50 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100">
+                    <th className="px-8 py-5">Assessment Title</th>
+                    <th className="px-8 py-5">Submited Date</th>
+                    <th className="px-8 py-5 text-center">Reference Deadline</th>
+                    <th className="px-8 py-5 text-right">Metric</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {submissions.map((sub) => (
                     <tr 
                       key={sub.id} 
-                      className="group cursor-pointer hover:bg-slate-50/50 transition-colors"
+                      className="group cursor-pointer hover:bg-slate-50/30 transition-colors"
                       onClick={() => setSelectedSubmission(sub)}
                     >
-                      <td className="px-8 py-5">
-                         <div className="flex items-center gap-3">
+                      <td className="px-8 py-6">
+                         <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center text-slate-300 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors">
+                               <BookOpen className="h-5 w-5" />
+                            </div>
                             <div>
-                               <p className="font-bold text-slate-700 tracking-tight">{sub.quizTitle}</p>
-                               <div className="flex items-center gap-1.5 mt-0.5">
-                                 <div className="w-3 h-3 rounded-full bg-slate-100 flex items-center justify-center text-[5px] font-black text-slate-400 uppercase">
+                               <p className="font-bold text-slate-800 tracking-tight text-base">{sub.quizTitle}</p>
+                               <div className="flex items-center gap-2 mt-1">
+                                 <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center text-[7px] font-black text-slate-400 uppercase">
                                    {quizzes[sub.quizId]?.teacherName?.charAt(0) || 'E'}
                                  </div>
-                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Educator: {quizzes[sub.quizId]?.teacherName || "Assigned Faculty"}</p>
+                                 <p className="text-[10px] font-semibold text-slate-500 tracking-tight">By {quizzes[sub.quizId]?.teacherName || "Assigned Faculty"}</p>
                                </div>
                             </div>
-                            <Info className="h-3.5 w-3.5 text-slate-200 group-hover:text-indigo-400 transition-colors" />
                          </div>
                       </td>
-                      <td className="px-8 py-5">
+                      <td className="px-8 py-6">
                          <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
                             <Calendar className="h-3.5 w-3.5" />
                             {new Date(sub.submittedAt).toLocaleDateString()}
                          </div>
                       </td>
-                      <td className="px-8 py-5 text-center">
+                      <td className="px-8 py-6 text-center">
                          {quizzes[sub.quizId]?.deadline ? (
-                            <div className="flex flex-col items-center">
-                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                            <div className="inline-flex flex-col items-center px-3 py-1 bg-slate-50 rounded-md border border-slate-100">
+                               <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
                                   {formatDeadline(quizzes[sub.quizId].deadline!)}
                                </p>
                                {new Date(quizzes[sub.quizId].deadline!) < new Date(sub.submittedAt) && (
-                                  <span className="text-[7px] font-black text-amber-500 uppercase">Late Submission</span>
+                                  <span className="text-[7px] font-black text-red-400 uppercase tracking-widest mt-0.5">Retardate</span>
                                )}
                             </div>
                          ) : (
-                            <span className="text-[10px] text-slate-200 uppercase font-black">N/A</span>
+                            <span className="text-[9px] text-slate-300 uppercase font-bold tracking-widest italic">Open Access</span>
                          )}
                       </td>
-                      <td className="px-8 py-5 text-right">
-                         <span className={cn(
-                            "text-sm font-black",
-                            (sub.score/sub.totalPoints) >= 0.7 ? "text-indigo-600" : "text-amber-500"
-                         )}>
-                            {sub.score} / {sub.totalPoints}
-                         </span>
+                      <td className="px-8 py-6 text-right">
+                         <div className="flex flex-col items-end">
+                           <span className={cn(
+                              "text-lg font-black font-display leading-none",
+                              (sub.score/sub.totalPoints) >= 0.75 ? "text-indigo-600" : "text-amber-500"
+                           )}>
+                              {sub.score} / {sub.totalPoints}
+                           </span>
+                           <span className="text-[10px] font-bold text-slate-400 uppercase mt-1">
+                              {Math.round((sub.score/sub.totalPoints) * 100)}% Performance
+                           </span>
+                         </div>
                       </td>
                     </tr>
                   ))}
@@ -221,27 +231,28 @@ export default function StudentPerformance() {
                 <button
                   key={sub.id}
                   onClick={() => setSelectedSubmission(sub)}
-                  className="w-full p-4 flex flex-col gap-2 hover:bg-slate-50/50 transition-colors"
+                  className="w-full p-6 flex flex-col gap-4 text-left hover:bg-slate-50/50 transition-colors"
                 >
                   <div className="flex justify-between items-start gap-4">
-                    <p className="font-bold text-slate-700 tracking-tight text-left leading-snug">{sub.quizTitle}</p>
+                    <div>
+                      <p className="font-bold text-slate-900 tracking-tight text-base leading-tight">{sub.quizTitle}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Educator: {quizzes[sub.quizId]?.teacherName || "Assigned Faculty"}</p>
+                    </div>
                     <span className={cn(
-                      "text-sm font-black shrink-0",
-                      (sub.score/sub.totalPoints) >= 0.7 ? "text-indigo-600" : "text-amber-500"
+                      "text-xl font-black font-display shrink-0",
+                      (sub.score/sub.totalPoints) >= 0.75 ? "text-indigo-600" : "text-amber-500"
                     )}>
-                      {sub.score} / {sub.totalPoints}
+                      {sub.score}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-50">
                     <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                       <Calendar className="h-3 w-3" />
                       {new Date(sub.submittedAt).toLocaleDateString()}
                     </div>
-                    {quizzes[sub.quizId]?.deadline && (
-                      <div className="text-[9px] font-black text-slate-300 uppercase tracking-tighter">
-                         Due: {formatDeadline(quizzes[sub.quizId].deadline!)}
-                      </div>
-                    )}
+                    <div className="text-[10px] font-black text-slate-800 bg-slate-100 px-2 py-1 rounded">
+                      {Math.round((sub.score/sub.totalPoints) * 100)}%
+                    </div>
                   </div>
                 </button>
               ))}
@@ -252,60 +263,64 @@ export default function StudentPerformance() {
       {/* Breakdown Modal */}
       <AnimatePresence>
         {selectedSubmission && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 sm:pb-24">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedSubmission(null)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" 
             />
             <motion.div 
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border border-white/20"
             >
-              <header className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <header className="px-8 py-7 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 backdrop-blur-xl">
                 <div>
-                  <h3 className="text-xl font-bold text-slate-800 tracking-tight">{selectedSubmission.quizTitle}</h3>
-                  <p className="text-xs text-slate-500 font-medium">Educator: {quizzes[selectedSubmission.quizId]?.teacherName || "Assigned Faculty"} • Score: {selectedSubmission.score} / {selectedSubmission.totalPoints}</p>
+                  <h3 className="text-2xl font-bold font-display text-slate-900 tracking-tight underline decoration-indigo-200 decoration-4 underline-offset-4">{selectedSubmission.quizTitle}</h3>
+                  <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-2">By {quizzes[selectedSubmission.quizId]?.teacherName || "Assigned Faculty"} • Result: {selectedSubmission.score} / {selectedSubmission.totalPoints}</p>
                 </div>
                 <button 
                   onClick={() => setSelectedSubmission(null)}
-                  className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400"
+                  className="p-2.5 bg-white hover:bg-slate-100 rounded-xl transition-all text-slate-400 border border-slate-100 shadow-sm active:scale-90"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </header>
 
-              <div className="p-8 overflow-y-auto space-y-8">
+              <div className="p-8 overflow-y-auto space-y-10 custom-scrollbar">
                 {selectedSubmission.responses.map((res, idx) => {
                   const q = getQuestion(selectedSubmission.quizId, res.questionId);
                   if (!q) return null;
                   
                   return (
-                    <div key={idx} className="space-y-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Question {idx + 1}</span>
-                          <h4 className="font-bold text-slate-800 leading-snug">{q.question}</h4>
+                    <div key={idx} className="space-y-5">
+                      <div className="flex items-start justify-between gap-6">
+                        <div className="space-y-1.5">
+                          <span className="text-[9px] font-black uppercase text-indigo-400 tracking-[0.2em]">Requirement {idx + 1}</span>
+                          <h4 className="text-lg font-bold text-slate-800 leading-tight tracking-tight">{q.question}</h4>
                         </div>
-                        <div className="text-right">
-                          <p className={cn(
-                            "text-lg font-black",
-                            res.pointsEarned === res.maxPoints ? "text-emerald-500" : res.pointsEarned > 0 ? "text-amber-500" : "text-slate-300"
+                        <div className="text-right shrink-0">
+                          <div className={cn(
+                            "text-2xl font-black font-display rounded-xl px-3 py-1 border flex flex-col items-center justify-center",
+                            res.pointsEarned === res.maxPoints ? "text-emerald-600 bg-emerald-50 border-emerald-100" : res.pointsEarned > 0 ? "text-amber-600 bg-amber-50 border-amber-100" : "text-slate-300 bg-slate-50 border-slate-100"
                           )}>
-                            {res.pointsEarned} <span className="text-[10px] text-slate-300">/ {res.maxPoints}</span>
-                          </p>
+                            {res.pointsEarned}
+                            <span className="text-[9px] font-bold text-slate-300 uppercase leading-none mt-0.5">Pts</span>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 space-y-3">
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-bold uppercase text-slate-400">Your Response</p>
+                      <div className="bg-slate-50/50 rounded-2xl p-6 border border-slate-100 space-y-4">
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                             <TrendingUp className="h-3 w-3" />
+                             Student Response
+                          </p>
                           <p className={cn(
-                            "text-sm font-medium italic",
+                            "text-sm font-medium italic leading-relaxed",
                             res.pointsEarned === res.maxPoints ? "text-emerald-700" : "text-slate-700"
                           )}>
                             {q.type === 'multiple-choice' && q.options && !isNaN(parseInt(res.answer)) 
@@ -313,9 +328,12 @@ export default function StudentPerformance() {
                               : `"${res.answer || "No response provided"}"`}
                           </p>
                         </div>
-                        <div className="space-y-1 pt-2 border-t border-slate-100">
-                           <p className="text-[9px] font-bold uppercase text-slate-400">Correct Answer / Reference</p>
-                           <p className="text-sm font-bold text-indigo-600">
+                        <div className="space-y-2 pt-4 border-t border-slate-100/50">
+                           <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center gap-2">
+                              <CheckCircle2 className="h-3 w-3 text-indigo-400" />
+                              Instructonal Reference
+                           </p>
+                           <p className="text-sm font-bold text-indigo-600 tracking-tight">
                              {q.type === 'multiple-choice' && q.options && !isNaN(parseInt(q.correctAnswer))
                                ? q.options[parseInt(q.correctAnswer)]
                                : q.correctAnswer}

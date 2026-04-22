@@ -46,13 +46,14 @@ service cloud.firestore {
     match /users/{uid} {
       // Allow users to read their own profile no matter what to detect ban status.
       // For shared student/teacher lookups, we use the isNotBanned check.
-      allow read: if isSuperAdmin() || (isSignedIn() && (request.auth.uid == uid || isTeacher() || isNotBanned()));
+      allow read: if isSuperAdmin() || isSignedIn();
       
-      allow write: if isSuperAdmin() || (isOwner(uid) && isNotBanned() && (
-        // Allow creating profile if it doesn't exist
-        !exists(/databases/$(database)/documents/users/$(uid)) || 
-        // Allow updates only if role and isBanned remain the same for owner
+      allow write: if isSuperAdmin() || (isOwner(uid) && (
+        // Case: Initial Profile Creation
+        (!exists(/databases/$(database)/documents/users/$(uid))) ||
+        // Case: Standard Update (Immutability of Role and Ban Status)
         (exists(/databases/$(database)/documents/users/$(uid)) && 
+         isNotBanned() &&
          request.resource.data.role == resource.data.role &&
          request.resource.data.get('isBanned', false) == resource.data.get('isBanned', false))
       )) || (

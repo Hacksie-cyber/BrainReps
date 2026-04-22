@@ -3,7 +3,7 @@ import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { UserProfile } from '../types';
 import { motion } from 'motion/react';
-import { GraduationCap, Mail, Search, User, Award, BookOpen } from 'lucide-react';
+import { GraduationCap, Mail, Search, User, Award, BookOpen, ShieldCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function StudentRoster() {
@@ -38,66 +38,77 @@ export default function StudentRoster() {
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       <header>
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Peer Roster</h1>
-        <p className="text-sm text-slate-500 font-medium tracking-tight">Meet your fellow learners and academic peers.</p>
+        <h1 className="text-3xl font-bold font-display text-slate-800 tracking-tight">Peer Roster</h1>
+        <p className="text-sm text-slate-500 font-medium tracking-tight">Meet your fellow learners and academic peers within the institutional framework.</p>
       </header>
 
-      <section className="space-y-6">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3 shadow-sm">
-          <Search className="h-5 w-5 text-slate-400" />
+      <section className="space-y-8">
+        <div className="relative group">
+          <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-slate-300 group-focus-within:text-indigo-400 transition-colors" />
+          </div>
           <input
             type="text"
-            placeholder="Search by peer name..."
+            placeholder="Search by peer name or academic identifier..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-600 placeholder:text-slate-300 italic"
+            className="w-full rounded-2xl bg-white border border-slate-100 py-5 pl-14 pr-6 text-sm font-medium text-slate-800 shadow-sm focus:border-indigo-100 focus:ring-4 focus:ring-indigo-600/5 outline-none transition-all placeholder:text-slate-300 placeholder:italic"
           />
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {filteredStudents.length === 0 ? (
-            <div className="col-span-full py-20 text-center text-slate-300 italic font-medium">
-              <User className="h-12 w-12 mx-auto mb-4 opacity-10" />
-              No peer profiles detected in the database.
+            <div className="col-span-full py-24 text-center">
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100 opacity-20">
+                <User className="h-8 w-8 text-slate-400" />
+              </div>
+              <p className="text-slate-400 italic font-medium tracking-tight">No peer profiles detected within the current institutional scope.</p>
             </div>
           ) : (
-            filteredStudents.map((student, i) => (
+            filteredStudents.slice(0, 30).map((student, i) => (
               <motion.div
                 key={student.uid}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center text-center group hover:border-indigo-200 hover:shadow-xl transition-all relative overflow-hidden"
+                className="group relative flex flex-col items-center bg-white p-8 rounded-2xl border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-2 hover:border-indigo-100 transition-all duration-300 overflow-hidden cursor-pointer"
               >
-                <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500/10 group-hover:bg-indigo-500 transition-colors" />
+                {/* Visual Identity Decor */}
+                <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
+                   <GraduationCap className="w-16 h-16 text-indigo-600 rotate-12" />
+                </div>
                 
-                <div className="mb-4 relative">
-                  <div className="w-20 h-20 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-indigo-50 group-hover:text-indigo-600 group-hover:rotate-3 transition-all duration-500 border border-slate-100">
+                <div className="mb-6 relative">
+                  <div className="w-24 h-24 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 border border-slate-100 shadow-sm group-hover:shadow-[0_10px_20px_rgba(79,70,229,0.2)]">
                     <User className="h-10 w-10" />
                   </div>
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-lg shadow-md flex items-center justify-center border border-slate-100">
-                    <GraduationCap className="h-3 w-3 text-indigo-500" />
+                  <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-xl shadow-lg flex items-center justify-center border border-slate-100 group-hover:scale-110 transition-transform">
+                    <ShieldCheck className="h-4 w-4 text-emerald-500" />
                   </div>
                 </div>
 
-                <h3 className="font-bold text-slate-800 tracking-tight mb-1 group-hover:text-indigo-600 transition-colors">{student.name}</h3>
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Learner Profile</p>
+                <h3 className="text-xl font-bold font-display text-slate-900 group-hover:text-indigo-600 transition-colors tracking-tight leading-tight mb-1">{student.name}</h3>
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-6">Verified Learner</p>
                 
-                <div className="w-full flex items-center justify-center gap-4 pt-4 border-t border-slate-50">
-                   <div className="flex flex-col items-center">
-                      <span className="text-[10px] font-black uppercase text-slate-300 tracking-tighter mb-0.5">Joined</span>
-                      <span className="text-xs font-bold text-slate-500">{new Date(student.createdAt).getFullYear()}</span>
+                <div className="w-full grid grid-cols-2 gap-4 pt-6 mt-auto border-t border-slate-50">
+                   <div className="flex flex-col items-center border-r border-slate-100">
+                      <span className="text-[9px] font-black uppercase text-slate-300 tracking-widest mb-1 leading-none">Matriculation</span>
+                      <span className="text-sm font-bold text-slate-700 font-display">{new Date(student.createdAt).getFullYear()}</span>
                    </div>
-                   <div className="w-px h-6 bg-slate-100" />
                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] font-black uppercase text-slate-300 tracking-tighter mb-0.5">Status</span>
-                      <span className="text-xs font-bold text-emerald-500">Active</span>
+                      <span className="text-[9px] font-black uppercase text-slate-300 tracking-widest mb-1 leading-none">Activity</span>
+                      <span className="text-sm font-black text-emerald-500 uppercase italic text-[11px]">Sync Live</span>
                    </div>
                 </div>
               </motion.div>
             ))
+          )}
+          {filteredStudents.length > 30 && (
+             <div className="col-span-full py-10 text-center">
+                <p className="text-xs text-slate-400 font-medium italic tracking-tight">Displaying primary 30 results. Refine your search for specific peer identification.</p>
+             </div>
           )}
         </div>
       </section>

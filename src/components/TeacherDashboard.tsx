@@ -6,7 +6,7 @@ import { Quiz, QuizSubmission, UserProfile } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { cn, formatDeadline } from '../lib/utils';
-import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2, UserX } from 'lucide-react';
+import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2, UserX, ShieldAlert } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import DeleteModal from './DeleteModal';
 
@@ -181,16 +181,16 @@ export default function TeacherDashboard() {
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Dashboard Overview</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight">Monitor your performance and manage questionnaires.</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 font-display tracking-tight">Dashboard Overview</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight italic">Monitor institutional performance and questionnaire management.</p>
         </div>
         <div className="flex gap-3">
           <Link
             to="/teacher/create"
-            className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 active:scale-95"
+            className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition-all hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 active:scale-95"
           >
             <Plus className="h-4 w-4" />
             Create Questionnaire
@@ -199,72 +199,70 @@ export default function TeacherDashboard() {
       </header>
 
       {/* Analytics Overview */}
-      <section className="grid gap-6 lg:grid-cols-4 xl:grid-cols-6">
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
-          <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Active Tests</p>
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{activeQuizzes.length}</h3>
-          <p className="text-emerald-600 dark:text-emerald-400 text-[11px] mt-2 flex items-center font-bold italic">
+      <section className="grid gap-6 lg:grid-cols-4 xl:grid-cols-6 text-center lg:text-left">
+        <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 group">
+          <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-2 font-sans">Active Modules</p>
+          <h3 className="text-3xl font-bold font-display text-slate-900 dark:text-slate-50 leading-none">{activeQuizzes.length}</h3>
+          <p className="text-emerald-600 dark:text-emerald-400 text-[11px] mt-4 flex items-center justify-center lg:justify-start font-bold italic">
             {quizzes.length - activeQuizzes.length} Inactive / Hidden
           </p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
-          <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Avg. Grade</p>
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{avgGrade}%</h3>
-          <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-2 font-medium tracking-tighter italic">Active modules</p>
+        <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 group">
+          <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-2 font-sans">Cohort GPA</p>
+          <h3 className="text-3xl font-bold font-display text-slate-900 dark:text-slate-50 leading-none">{avgGrade}%</h3>
+          <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-4 font-medium tracking-tight italic">Verified academic metric</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
-          <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Total Submissions</p>
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{validSubmissions.length}</h3>
-          <p className="text-indigo-600 dark:text-indigo-400 text-[11px] mt-2 font-bold italic">{activeSubmissions.length} Active</p>
+        <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 group">
+          <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-2 font-sans">Total Responses</p>
+          <h3 className="text-3xl font-bold font-display text-slate-900 dark:text-slate-50 leading-none">{validSubmissions.length}</h3>
+          <p className="text-indigo-600 dark:text-indigo-400 text-[11px] mt-4 font-bold italic">{activeSubmissions.length} Active context</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
-          <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Audience Engagement</p>
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{engagementRate}%</h3>
-          <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-2 font-medium italic">Active participation</p>
+        <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 group">
+          <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-2 font-sans">Audience reach</p>
+          <h3 className="text-3xl font-bold font-display text-slate-900 dark:text-slate-50 leading-none">{engagementRate}%</h3>
+          <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-4 font-medium italic">Participation velocity</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
-          <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Target Audience</p>
-          <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{assignedStudentIds.size}</h3>
-          <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-2 font-medium italic">Assigned participants</p>
+        <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 group">
+          <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-2 font-sans">Assigned Roster</p>
+          <h3 className="text-3xl font-bold font-display text-slate-900 dark:text-slate-50 leading-none">{assignedStudentIds.size}</h3>
+          <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-4 font-medium italic">Baseline participants</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
-          <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Teacher Faculty</p>
-          <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{teacherCount}</h3>
-          <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-2 font-medium italic">Faculty members</p>
+        <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 group">
+          <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-2 font-sans">Faculty Peers</p>
+          <h3 className="text-3xl font-bold font-display text-slate-900 dark:text-slate-50 leading-none">{teacherCount}</h3>
+          <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-4 font-medium italic">Expert verified collaborators</p>
         </div>
       </section>
 
-      <div className="grid grid-cols-12 gap-6 min-h-0">
+      <div className="grid grid-cols-12 gap-8 min-h-0">
         {/* Main Content Split */}
-        <div className="col-span-12 lg:col-span-8 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col shadow-sm transition-colors">
-          <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <h2 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <BookCheck className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-              Recent Assessments
+        <div className="col-span-12 lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col shadow-sm transition-all overflow-hidden lg:h-[700px]">
+          <div className="px-8 py-6 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between bg-slate-50/10 backdrop-blur-sm">
+            <h2 className="font-bold font-display text-slate-900 dark:text-slate-50 flex items-center gap-3">
+              <BookCheck className="h-5 w-5 text-indigo-500" />
+              Institutional Curricula
             </h2>
+            <Link to="/teacher/assessments" className="text-[10px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700 transition-colors">Details Inventory</Link>
           </div>
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-slate-200">
             {quizzes.length === 0 ? (
-               <div className="p-12 text-center text-slate-400 dark:text-slate-600">
-                  <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                  <p className="text-sm italic">No assessments discovered yet.</p>
+               <div className="p-20 text-center text-slate-400 dark:text-slate-600">
+                  <BookOpen className="h-16 w-16 mx-auto mb-4 opacity-10" />
+                  <p className="text-sm italic font-medium">No instructional modules discovered in current matrix.</p>
                </div>
             ) : (
               <table className="w-full text-left">
                 <thead>
-                  <tr className="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-widest bg-slate-50/50 dark:bg-slate-800/30">
-                    <th className="px-6 py-3 font-bold border-b border-slate-100 dark:border-slate-800">Assessment Title</th>
-                    <th className="px-6 py-3 font-bold border-b border-slate-100 dark:border-slate-800 text-center">Submitted</th>
-                    <th className="px-6 py-3 font-bold border-b border-slate-100 dark:border-slate-800">Avg Result</th>
-                    <th className="px-6 py-3 font-bold border-b border-slate-100 dark:border-slate-800 text-right pr-8">Actions</th>
+                  <tr className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-50 dark:border-slate-800">
+                    <th className="px-8 py-4 font-black">Assessment Metadata</th>
+                    <th className="px-8 py-4 font-black text-center">Responses</th>
+                    <th className="px-8 py-4 font-black">Success Ratio</th>
+                    <th className="px-8 py-4 font-black text-right pr-12">Controls</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                   {quizzes.map((quiz) => {
                     const qSubsRaw = submissions.filter(s => s.quizId === quiz.id);
-                    
-                    // Filter to only include the LATEST submission per student for this quiz
-                    // AND only include students officially added to the assessment
                     const studentLatestMap = new Map<string, QuizSubmission>();
                     qSubsRaw.forEach(s => {
                       const isAssigned = quiz.isPublic || quiz.allowedStudentIds?.includes(s.studentId);
@@ -283,57 +281,58 @@ export default function TeacherDashboard() {
                       : '--';
                     return (
                       <tr key={quiz.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group cursor-pointer" onClick={() => navigate(`/teacher/quiz/${quiz.id}`)}>
-                        <td className="px-6 py-4">
-                          <p className="font-bold text-slate-700 dark:text-slate-200 tracking-tight">{quiz.title}</p>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
-                            <div className="flex items-center gap-1.5 border-r border-slate-100 dark:border-slate-800 pr-3">
-                              <div className="w-3 h-3 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-[5px] font-black text-slate-400 dark:text-slate-500 uppercase">
-                                {quiz.teacherName?.charAt(0) || 'E'}
-                              </div>
-                              <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter italic">Educator: {quiz.teacherName}</p>
-                            </div>
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                              {new Date(quiz.createdAt).toLocaleDateString()} • {quiz.questions.length} Items
-                              {quiz.isPublic ? ' • Public' : ' • Private'}
+                        <td className="px-8 py-7">
+                          <p className="font-bold text-slate-900 dark:text-slate-50 tracking-tight text-base leading-tight group-hover:text-indigo-600 transition-colors uppercase italic">{quiz.title}</p>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2.5">
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold flex items-center gap-1.5">
+                              {new Date(quiz.createdAt).toLocaleDateString()} • {quiz.questions.length} Questions
+                              {quiz.isPublic ? (
+                                <span className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] px-1.5 py-0.5 rounded font-black uppercase border border-emerald-100/50">Public</span>
+                              ) : (
+                                <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[9px] px-1.5 py-0.5 rounded font-black uppercase border border-indigo-100/50">Restricted</span>
+                              )}
                             </p>
                             {quiz.deadline && (
-                              <p className={cn(
-                                "text-[9px] font-black uppercase tracking-tighter flex items-center gap-1",
-                                new Date(quiz.deadline) < new Date() ? "text-red-500" : "text-indigo-500"
+                              <div className={cn(
+                                "text-[9px] font-black uppercase tracking-tight flex items-center gap-1.5 px-2 py-0.5 rounded border shadow-sm",
+                                new Date(quiz.deadline) < new Date() ? "bg-red-50 text-red-500 border-red-100/50 animate-pulse" : "bg-white text-slate-400 border-slate-100"
                               )}>
-                                <Clock className="h-2 w-2" />
-                                {new Date(quiz.deadline) < new Date() ? "Expired" : `Due: ${formatDeadline(quiz.deadline)}`}
-                              </p>
+                                <Clock className="h-3 w-3" />
+                                {new Date(quiz.deadline) < new Date() ? "Expired" : formatDeadline(quiz.deadline)}
+                              </div>
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-100 dark:border-slate-700/50">
-                            {qSubs.length} / {targetAudienceCount}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                           <div className="flex items-center gap-3">
-                             <div className="w-16 bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden hidden sm:block transition-colors">
-                               <div 
-                                style={{ width: avg !== '--' ? `${avg}%` : '0%' }}
-                                className="bg-indigo-600 h-full transition-all duration-700" 
-                               />
-                             </div>
-                             <span className={cn("font-bold text-sm", avg !== '--' ? "text-slate-800 dark:text-slate-200" : "text-slate-300 dark:text-slate-700")}>{avg}{avg !== '--' ? '%' : ''}</span>
+                        <td className="px-8 py-7 text-center">
+                           <div className="inline-flex items-center gap-2.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100/50 dark:border-slate-700 shadow-sm">
+                              <Users className="h-3.5 w-3.5 text-slate-400" />
+                              <span className="text-xs font-black text-slate-900 dark:text-slate-100">
+                                {qSubs.length} <span className="text-slate-400 font-bold ml-1">/ {targetAudienceCount}</span>
+                              </span>
                            </div>
                         </td>
-                        <td className="px-6 py-4 text-right pr-8">
-                           <div className="flex items-center justify-end gap-2">
+                        <td className="px-8 py-7">
+                           <div className="flex items-center gap-4">
+                             <div className="w-20 bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden hidden xl:block border border-slate-200/50 dark:border-slate-700 shadow-inner">
+                               <div 
+                                 style={{ width: avg !== '--' ? `${avg}%` : '0%' }}
+                                 className="bg-indigo-600 h-full transition-all duration-1000 ease-out" 
+                               />
+                             </div>
+                             <span className={cn("font-black font-display text-base tracking-tight", avg !== '--' ? "text-slate-900 dark:text-slate-50" : "text-slate-300 dark:text-slate-700")}>{avg}{avg !== '--' ? '%' : ''}</span>
+                           </div>
+                        </td>
+                        <td className="px-8 py-7 text-right pr-12">
+                           <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                              <button 
                                onClick={(e) => {
                                  e.stopPropagation();
-                                 navigate(`/student/quiz/${quiz.id}`);
+                                 navigate(`/teacher/edit/${quiz.id}`);
                                }}
-                               className="p-1.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-100 dark:border-slate-700 rounded-md transition-all"
-                               title="Review Assessment"
+                               className="p-2.5 bg-white dark:bg-slate-900 text-slate-400 hover:text-indigo-600 border border-slate-100 dark:border-slate-800 rounded-xl transition-all shadow-sm active:scale-90"
+                               title="Modulate Content"
                              >
-                                <BookOpen className="h-3.5 w-3.5" />
+                                <Plus className="h-4 w-4 rotate-45" />
                              </button>
                              <button 
                                onClick={(e) => {
@@ -342,12 +341,12 @@ export default function TeacherDashboard() {
                                }}
                                disabled={isDeleting === quiz.id}
                                className={cn(
-                                 "p-1.5 rounded-md transition-all",
-                                 isDeleting === quiz.id ? "text-slate-200 dark:text-slate-700 animate-pulse" : "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border border-slate-100 dark:border-slate-700"
+                                 "p-2.5 bg-white dark:bg-slate-900 rounded-xl transition-all shadow-sm active:scale-90 border border-slate-100 dark:border-slate-800",
+                                 isDeleting === quiz.id ? "text-slate-200 animate-pulse" : "text-slate-400 hover:text-red-500"
                                )}
-                               title="Remove Module"
+                               title="Purge Module"
                              >
-                                <Trash2 className="h-3.5 w-3.5" />
+                                <Trash2 className="h-4 w-4" />
                              </button>
                            </div>
                         </td>
@@ -361,33 +360,34 @@ export default function TeacherDashboard() {
         </div>
 
         {/* Performance Trends Sidebar */}
-        <div className="col-span-12 lg:col-span-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col shadow-sm transition-colors overflow-hidden">
-          <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 transition-colors">
-            <h2 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+        <div className="col-span-12 lg:col-span-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col shadow-sm transition-all overflow-hidden lg:h-[700px]">
+          <div className="px-8 py-6 border-b border-slate-50 dark:border-slate-800 bg-slate-50/10 backdrop-blur-sm">
+            <h2 className="font-bold font-display text-slate-900 dark:text-slate-50 flex items-center gap-3">
+              <BarChart3 className="h-5 w-5 text-indigo-500" />
               Scoring Distribution
             </h2>
           </div>
-          <div className="p-6 space-y-8">
+          <div className="p-8 flex-1 overflow-auto space-y-12 scrollbar-thin scrollbar-thumb-slate-200">
             <div>
-              <div className="flex justify-between items-end mb-4">
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Participant reach</p>
-                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">Peak: {Math.max(...distribution)}</span>
+              <div className="flex justify-between items-end mb-6">
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Institutional Spread</p>
+                <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full border border-indigo-100/50 dark:border-indigo-900/30 uppercase tracking-widest italic">Peak Intensity: {Math.max(...distribution)}</span>
               </div>
-              <div className="h-32 flex items-end gap-1.5">
+              <div className="h-48 flex items-end gap-3 font-sans">
                 {distribution.map((val, i) => (
                   <div 
                     key={i} 
-                    className="bg-indigo-100 dark:bg-indigo-900/40 hover:bg-indigo-500 dark:hover:bg-indigo-600 transition-all rounded-t w-full cursor-help group relative" 
+                    className="bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-600 transition-all rounded-xl w-full cursor-help group relative shadow-inner overflow-hidden" 
                     style={{ height: `${(val / maxDist) * 100}%` }}
                   >
-                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                        {val} submission{val !== 1 ? 's' : ''}
+                     <div className="absolute inset-0 bg-gradient-to-t from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                     <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-black px-4 py-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100 whitespace-nowrap z-30 shadow-2xl">
+                        {val} Active Responses
                      </div>
                   </div>
                 ))}
               </div>
-              <div className="flex justify-between text-[9px] text-slate-400 dark:text-slate-500 font-bold mt-2">
+              <div className="flex justify-between text-[11px] text-slate-400 dark:text-slate-600 font-bold mt-6 tracking-tighter uppercase italic">
                 <span>0-20%</span>
                 <span>40%</span>
                 <span>60%</span>
@@ -396,34 +396,43 @@ export default function TeacherDashboard() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">Roster Actionable Insights</p>
-              <div className="space-y-2">
+            <div className="space-y-8 pb-4">
+              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                 <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
+                 Instructional Interventions
+              </p>
+              <div className="space-y-4">
                 {rosterInsights.length > 0 ? rosterInsights.map((item, i) => (
                   <div key={i} className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg border group transition-all",
-                    item.type === 'inactive' ? "bg-slate-50/50 dark:bg-slate-800/20 border-slate-100 dark:border-slate-800" : "bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800/30 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                    "flex items-center gap-4 p-5 rounded-2xl border group transition-all duration-300",
+                    item.type === 'inactive' 
+                      ? "bg-slate-50/50 dark:bg-slate-800/10 border-slate-100 dark:border-slate-800 shadow-sm" 
+                      : "bg-amber-50/40 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800 hover:bg-amber-100/50 dark:hover:bg-amber-900/20 hover:border-amber-200 shadow-sm hover:shadow-md"
                   )}>
                     <div className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] transition-colors",
-                      item.type === 'inactive' ? "bg-slate-100 dark:bg-slate-800 text-slate-400" : "bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400"
+                      "w-12 h-12 rounded-xl flex items-center justify-center font-bold text-base transition-all group-hover:scale-110 shadow-sm uppercase font-display",
+                      item.type === 'inactive' 
+                        ? "bg-white dark:bg-slate-800 text-slate-400 border border-slate-100 dark:border-slate-700" 
+                        : "bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
                     )}>
-                      {item.type === 'inactive' ? <UserX className="w-4 h-4" /> : item.name.charAt(0)}
+                      {item.type === 'inactive' ? <UserX className="w-6 h-6 opacity-60" /> : item.name.charAt(0)}
                     </div>
                     <div className="flex-1 overflow-hidden">
                       <p className={cn(
-                        "text-[11px] font-bold truncate",
-                        item.type === 'inactive' ? "text-slate-600 dark:text-slate-400" : "text-amber-900 dark:text-amber-100"
+                        "text-sm font-bold tracking-tight truncate font-display",
+                        item.type === 'inactive' ? "text-slate-800 dark:text-slate-200" : "text-amber-900 dark:text-amber-100"
                       )}>{item.name}</p>
-                      <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap overflow-hidden text-ellipsis">
-                        {item.type === 'inactive' ? 'No assessment activity recorded' : `Accuracy: ${item.score}% • "${item.quiz}"`}
+                      <p className="text-[10px] text-slate-500 dark:text-slate-500 font-medium tracking-tight mt-1 line-clamp-1 italic uppercase">
+                        {item.type === 'inactive' ? 'Activity Gap Detected' : `Accuracy: ${item.score}% • "${item.quiz}"`}
                       </p>
                     </div>
-                    <button onClick={() => navigate(`/teacher/students`)} className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 underline underline-offset-2">Roster</button>
+                    <button onClick={() => navigate(`/teacher/students`)} className="p-2.5 bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 rounded-xl border border-indigo-100 dark:border-indigo-800 shadow-sm hover:bg-indigo-50 dark:hover:bg-indigo-900 transition-all shrink-0 active:scale-90">
+                       <ArrowRight className="h-4 w-4" />
+                    </button>
                   </div>
                 )) : (
-                  <div className="p-4 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
-                    <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold">No roster alerts recorded.</p>
+                  <div className="p-12 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-3xl bg-slate-50/20 dark:bg-slate-800/10">
+                    <p className="text-xs text-slate-400 dark:text-slate-600 font-bold italic tracking-tight">No high-priority roster alerts identified.</p>
                   </div>
                 )}
               </div>
@@ -431,13 +440,13 @@ export default function TeacherDashboard() {
           </div>
         </div>
       </div>
-
+      
       <DeleteModal
         isOpen={!!quizToDelete}
         onClose={() => setQuizToDelete(null)}
         onConfirm={handleDelete}
         title="Purge Assessment"
-        message="Are you sure you want to permanently delete this assessment and all its submission history? This action is irreversible."
+        message="Are you sure you want to permanently delete this assessment and all its submission history? This action is irreversible within the institutional database."
         isDeleting={!!isDeleting}
       />
     </div>
