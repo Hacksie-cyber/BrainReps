@@ -55,7 +55,7 @@ export default function TeacherAnalytics() {
   // Aggregate data for trends
   const trendData = activeSubmissions.map(s => ({
     date: new Date(s.submittedAt).toLocaleDateString(),
-    score: Math.round((s.score / s.totalPoints) * 100)
+    score: Math.round((s.score / Math.max(s.totalPoints, 1)) * 100)
   }));
 
   // Real participant growth calculation (last 7 days vs previous 7 days)
@@ -71,10 +71,10 @@ export default function TeacherAnalytics() {
 
   const growth = prevWeekSubs.length === 0 
     ? (lastWeekSubs.length > 0 ? '+100%' : '0%') 
-    : `${(((lastWeekSubs.length - prevWeekSubs.length) / prevWeekSubs.length) * 100).toFixed(0)}%`;
+    : `${(((lastWeekSubs.length - prevWeekSubs.length) / Math.max(prevWeekSubs.length, 1)) * 100).toFixed(0)}%`;
 
   const stats = {
-    avg: activeSubmissions.length > 0 ? Math.round((activeSubmissions.reduce((acc, curr) => acc + (curr.score / curr.totalPoints), 0) / activeSubmissions.length) * 100) : 0,
+    avg: activeSubmissions.length > 0 ? Math.round((activeSubmissions.reduce((acc, curr) => acc + (curr.score / Math.max(curr.totalPoints, 1)), 0) / activeSubmissions.length) * 100) : 0,
     total: submissions.length,
     activeQuizzes: activeQuizzes.length,
     students: studentCount,
@@ -83,10 +83,10 @@ export default function TeacherAnalytics() {
 
   // Pie chart data: Performance tiers
   const tierData = [
-    { name: 'Mastery', value: activeSubmissions.filter(s => (s.score / s.totalPoints) >= 0.9).length, color: '#10b981' },
-    { name: 'Proficiency', value: activeSubmissions.filter(s => (s.score / s.totalPoints) >= 0.7 && (s.score / s.totalPoints) < 0.9).length, color: '#6366f1' },
-    { name: 'Developing', value: activeSubmissions.filter(s => (s.score / s.totalPoints) >= 0.5 && (s.score / s.totalPoints) < 0.7).length, color: '#f59e0b' },
-    { name: 'Critical', value: activeSubmissions.filter(s => (s.score / s.totalPoints) < 0.5).length, color: '#ef4444' },
+    { name: 'Mastery', value: activeSubmissions.filter(s => (s.score / Math.max(s.totalPoints, 1)) >= 0.9).length, color: '#10b981' },
+    { name: 'Proficiency', value: activeSubmissions.filter(s => (s.score / Math.max(s.totalPoints, 1)) >= 0.7 && (s.score / Math.max(s.totalPoints, 1)) < 0.9).length, color: '#6366f1' },
+    { name: 'Developing', value: activeSubmissions.filter(s => (s.score / Math.max(s.totalPoints, 1)) >= 0.5 && (s.score / Math.max(s.totalPoints, 1)) < 0.7).length, color: '#f59e0b' },
+    { name: 'Critical', value: activeSubmissions.filter(s => (s.score / Math.max(s.totalPoints, 1)) < 0.5).length, color: '#ef4444' },
   ].filter(t => t.value > 0);
 
   return (

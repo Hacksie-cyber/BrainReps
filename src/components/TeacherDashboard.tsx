@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
-import { Quiz, QuizSubmission } from '../types';
+import { Quiz, QuizSubmission, UserProfile } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { cn, formatDeadline } from '../lib/utils';
-import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2 } from 'lucide-react';
+import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2, UserX } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import DeleteModal from './DeleteModal';
 
@@ -15,7 +15,7 @@ export default function TeacherDashboard() {
   const navigate = useNavigate();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
-  const [studentCount, setStudentCount] = useState(0);
+  const [students, setStudents] = useState<UserProfile[]>([]);
   const [teacherCount, setTeacherCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -35,9 +35,10 @@ export default function TeacherDashboard() {
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setQuizzes(quizList);
 
-        // Fetch all students to calculate school/class engagement
+        // Fetch all students (the roster)
         const studentSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
-        setStudentCount(studentSnap.size);
+        const studentList = studentSnap.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile));
+        setStudents(studentList);
 
         // Fetch all teachers
         const teacherSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'teacher')));
@@ -98,15 +99,16 @@ export default function TeacherDashboard() {
   const activeSubmissions = submissions.filter(s => activeQuizIds.has(s.quizId));
 
   const uniqueStudentsCount = new Set(activeSubmissions.map(s => s.studentId)).size;
-  const engagementRate = studentCount > 0 ? Math.round((uniqueStudentsCount / studentCount) * 100) : 0;
+  const engagementRate = students.length > 0 ? Math.round((uniqueStudentsCount / students.length) * 100) : 0;
+  
   const avgGrade = activeSubmissions.length > 0 
-    ? Math.round((activeSubmissions.reduce((acc, curr) => acc + curr.score, 0) / activeSubmissions.reduce((acc, curr) => acc + curr.totalPoints, 0)) * 100)
+    ? Math.round((activeSubmissions.reduce((acc, curr) => acc + curr.score, 0) / Math.max(activeSubmissions.reduce((acc, curr) => acc + curr.totalPoints, 0), 1)) * 100)
     : 0;
 
   // Simple distribution calculation (0-20, 21-40, 41-60, 61-80, 81-100)
   const distribution = [0, 0, 0, 0, 0];
   activeSubmissions.forEach(s => {
-    const percent = (s.score / s.totalPoints) * 100;
+    const percent = (s.score / Math.max(s.totalPoints, 1)) * 100;
     if (percent <= 20) distribution[0]++;
     else if (percent <= 40) distribution[1]++;
     else if (percent <= 60) distribution[2]++;
@@ -116,15 +118,45 @@ export default function TeacherDashboard() {
 
   const maxDist = Math.max(...distribution, 1);
 
-  // Identify students with low scores in ACTIVE quizzes
-  const lowPerforming = activeSubmissions
-    .filter(s => (s.score / s.totalPoints) < 0.6)
-    .sort((a, b) => (a.score / a.totalPoints) - (b.score / b.totalPoints))
-    .slice(0, 3)
+  // Identify UNIQUE students from the ROSTER with performance or engagement alerts
+  const studentMap = new Map<string, { id: string, name: string, earned: number, total: number, recentQuiz: string, submissionCount: number, recentSubmittedAt: string }>();
+  
+  // Initialize map with all students from roster
+  students.forEach(s => {
+    studentMap.set(s.uid, { id: s.uid, name: s.name, earned: 0, total: 0, recentQuiz: 'None', submissionCount: 0, recentSubmittedAt: '' });
+  });
+
+  // Batch process active submissions - finding the ABSOLUTE LATEST submission for each student
+  activeSubmissions.forEach(s => {
+    const current = studentMap.get(s.studentId);
+    if (current) {
+      if (!current.recentSubmittedAt || new Date(s.submittedAt) > new Date(current.recentSubmittedAt)) {
+        current.earned = s.score;
+        current.total = s.totalPoints;
+        current.recentQuiz = s.quizTitle;
+        current.recentSubmittedAt = s.submittedAt;
+      }
+      current.submissionCount += 1;
+    }
+  });
+
+  const rosterInsights = Array.from(studentMap.values())
     .map(s => ({
-      name: s.studentName,
-      score: Math.round((s.score / s.totalPoints) * 100),
-      quiz: s.quizTitle
+      ...s,
+      percentage: s.total > 0 ? Math.round((s.earned / s.total) * 100) : null
+    }))
+    // Prioritize students with 0 submissions (Inactive) then low percentage in LATEST quiz
+    .sort((a, b) => {
+      if (a.submissionCount === 0 && b.submissionCount !== 0) return -1;
+      if (a.submissionCount !== 0 && b.submissionCount === 0) return 1;
+      return (a.percentage || 0) - (b.percentage || 0);
+    })
+    .slice(0, 5) // Show top 5 priority students
+    .map(s => ({
+      name: s.name,
+      score: s.percentage,
+      quiz: s.recentQuiz,
+      type: s.submissionCount === 0 ? 'inactive' : 'at-risk'
     }));
 
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
@@ -171,7 +203,7 @@ export default function TeacherDashboard() {
         </div>
         <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
           <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Student Population</p>
-          <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{studentCount}</h3>
+          <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{students.length}</h3>
           <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-2 font-medium italic">Enrolled participants</p>
         </div>
         <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
@@ -319,22 +351,33 @@ export default function TeacherDashboard() {
             </div>
 
             <div className="space-y-4">
-              <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">Actionable Insights</p>
+              <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">Roster Actionable Insights</p>
               <div className="space-y-2">
-                {lowPerforming.length > 0 ? lowPerforming.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 bg-amber-50/50 dark:bg-amber-900/10 rounded-lg border border-amber-100 dark:border-amber-800/30 group transition-all hover:bg-amber-50 dark:hover:bg-amber-900/20">
-                    <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400 font-bold text-[10px] transition-colors">
-                      {item.name.charAt(0)}
+                {rosterInsights.length > 0 ? rosterInsights.map((item, i) => (
+                  <div key={i} className={cn(
+                    "flex items-center gap-3 p-3 rounded-lg border group transition-all",
+                    item.type === 'inactive' ? "bg-slate-50/50 dark:bg-slate-800/20 border-slate-100 dark:border-slate-800" : "bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800/30 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                  )}>
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] transition-colors",
+                      item.type === 'inactive' ? "bg-slate-100 dark:bg-slate-800 text-slate-400" : "bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400"
+                    )}>
+                      {item.type === 'inactive' ? <UserX className="w-4 h-4" /> : item.name.charAt(0)}
                     </div>
                     <div className="flex-1 overflow-hidden">
-                      <p className="text-[11px] font-bold text-amber-900 dark:text-amber-100 truncate">{item.name}</p>
-                      <p className="text-[9px] text-amber-700 dark:text-amber-400 font-medium">Scored {item.score}% in "{item.quiz}"</p>
+                      <p className={cn(
+                        "text-[11px] font-bold truncate",
+                        item.type === 'inactive' ? "text-slate-600 dark:text-slate-400" : "text-amber-900 dark:text-amber-100"
+                      )}>{item.name}</p>
+                      <p className="text-[9px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                        {item.type === 'inactive' ? 'No assessment activity recorded' : `Accuracy: ${item.score}% • "${item.quiz}"`}
+                      </p>
                     </div>
-                    <button onClick={() => navigate(`/teacher/assessments`)} className="text-[10px] font-bold text-amber-800 dark:text-amber-400 underline underline-offset-2">Review</button>
+                    <button onClick={() => navigate(`/teacher/students`)} className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 underline underline-offset-2">Roster</button>
                   </div>
                 )) : (
                   <div className="p-4 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
-                    <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold">No performance alerts recorded.</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold">No roster alerts recorded.</p>
                   </div>
                 )}
               </div>

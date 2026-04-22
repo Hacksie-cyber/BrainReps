@@ -82,13 +82,16 @@ export default function TeacherStudents() {
         const detailedStudents = allStudents.map(student => {
           const studentQuizMap = studentMap.get(student.uid) || new Map<string, QuizSubmission>();
           const studentSubs = Array.from(studentQuizMap.values());
-          const sortedSubs = [...studentSubs].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+          // Sort to find the ABSOLUTE LATEST submission across all quizzes
+          const sortedSubs = [...activeSubs.filter(s => s.studentId === student.uid)].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
           
+          const latestSubmission = sortedSubs.length > 0 ? sortedSubs[0] : null;
+
           return {
             ...student,
             submissions: studentSubs,
-            avgScore: studentSubs.length > 0
-              ? Math.round((studentSubs.reduce((acc, curr) => acc + (curr.score / curr.totalPoints), 0) / studentSubs.length) * 100)
+            avgScore: latestSubmission
+              ? Math.round((latestSubmission.score / Math.max(latestSubmission.totalPoints, 1)) * 100)
               : 0,
             lastActive: sortedSubs.length > 0 ? sortedSubs[0].submittedAt : student.lastActive
           };
@@ -119,7 +122,7 @@ export default function TeacherStudents() {
       a.name.localeCompare(b.name)
     );
 
-    const headers = ['Full Name', 'Avg Score (%)'];
+    const headers = ['Full Name', 'Latest Score (%)'];
     const rows = sortedForExport.map(s => [
       `"${s.name}"`,
       `"${s.avgScore}%"`
@@ -270,7 +273,7 @@ export default function TeacherStudents() {
                       )}>
                         {student.avgScore}%
                       </p>
-                      <p className="text-[9px] font-black uppercase text-slate-300 tracking-tighter">Avg achievement</p>
+                      <p className="text-[9px] font-black uppercase text-slate-300 tracking-tighter">Latest achievement</p>
                     </div>
                     
                     <div className="flex items-center gap-2">
