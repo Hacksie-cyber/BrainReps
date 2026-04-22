@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, query, getDocs, orderBy, where, or } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, where, or, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
@@ -19,9 +19,9 @@ export default function StudentDashboard() {
   useEffect(() => {
     if (!profile) return;
 
-    const fetchData = async () => {
+    // 1. Fetch assessments
+    const fetchQuizzes = async () => {
       try {
-        // Query for quizzes that are global OR specifically assigned to this student
         const q = query(
           collection(db, 'quizzes'),
           or(
@@ -29,38 +29,45 @@ export default function StudentDashboard() {
             where('allowedStudentIds', 'array-contains', profile.uid)
           )
         );
-        
         const quizSnap = await getDocs(q);
         const quizList = quizSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as Quiz))
-          .filter(q => !q.isHidden) // Secondary UI safety filter
+          .filter(q => !q.isHidden)
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setQuizzes(quizList);
-
-        const subSnap = await getDocs(query(
-          collection(db, 'submissions'),
-          where('studentId', '==', profile.uid)
-        ));
-        const subList = subSnap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
-          .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-        setSubmissions(subList);
-
-        // Fetch ALL institutional submissions to determine rankings and Top 1
-        const allSubSnap = await getDocs(query(
-          collection(db, 'submissions'),
-          where('studentRole', '==', 'student')
-        ));
-        const allSubList = allSubSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission));
-        setAllSubmissions(allSubList);
       } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
+        console.error("Quiz fetch failed:", error);
       }
     };
 
-    fetchData();
+    // 2. Real-time sync for current user's submissions
+    const qUserSubs = query(
+      collection(db, 'submissions'),
+      where('studentId', '==', profile.uid)
+    );
+    const unsubUser = onSnapshot(qUserSubs, (snapshot) => {
+      const subList = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
+        .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+      setSubmissions(subList);
+    });
+
+    // 3. Real-time sync for ALL institutional submissions (for Rankings/Top 1)
+    // Note: We fetch all and filter in memory to handle legacy docs without 'studentRole'
+    const unsubAll = onSnapshot(collection(db, 'submissions'), (snapshot) => {
+      const allList = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
+        .filter(s => s.studentRole !== 'teacher' && s.studentRole !== 'admin'); // Be inclusive of old docs
+      setAllSubmissions(allList);
+      setLoading(false);
+    });
+
+    fetchQuizzes();
+
+    return () => {
+      unsubUser();
+      unsubAll();
+    };
   }, [profile]);
 
   const filteredQuizzes = quizzes.filter(q => {
