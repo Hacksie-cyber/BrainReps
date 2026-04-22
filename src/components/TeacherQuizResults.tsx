@@ -5,9 +5,11 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission, Question } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download, FileText } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function TeacherQuizResults() {
   const { id } = useParams();
@@ -152,6 +154,83 @@ export default function TeacherQuizResults() {
     document.body.removeChild(link);
   };
 
+  const exportToPDF = () => {
+    if (!submissions.length || !quiz) return;
+
+    const doc = new jsPDF();
+    const timestamp = new Date().toLocaleString();
+    
+    // Add Report Header
+    doc.setFontSize(20);
+    doc.setTextColor(79, 70, 229); // Indigo 600
+    doc.text("Educational Assessment Report", 14, 22);
+    
+    doc.setFontSize(12);
+    doc.setTextColor(100, 116, 139); // Slate 500
+    doc.text(`Title: ${quiz.title}`, 14, 32);
+    doc.text(`Generated: ${timestamp}`, 14, 38);
+    doc.text(`Teacher: ${profile?.name || 'Authorized Instructor'}`, 14, 44);
+
+    // Summary Statistics
+    doc.setDrawColor(226, 232, 240); // Slate 200
+    doc.line(14, 50, 196, 50);
+
+    const statsData = [
+      ["Total Participants", submissions.length.toString()],
+      ["Average Performance", `${stats.avgScore}%`],
+      ["Peak Achievement", `${stats.topScore}%`]
+    ];
+
+    autoTable(doc, {
+      startY: 55,
+      head: [['Metric', 'Value']],
+      body: statsData,
+      theme: 'striped',
+      headStyles: { fillColor: [79, 70, 229] },
+      styles: { fontSize: 10, cellPadding: 4 }
+    });
+
+    // Submissions Table
+    doc.setFontSize(14);
+    doc.setTextColor(30, 41, 59); // Slate 800
+    doc.text("Individual Performance Registry", 14, (doc as any).lastAutoTable.finalY + 15);
+
+    const tableData = submissions.map((s, i) => [
+      i + 1,
+      s.studentName,
+      new Date(s.submittedAt).toLocaleDateString(),
+      `${s.score} / ${s.totalPoints}`,
+      `${Math.round((s.score / s.totalPoints) * 100)}%`
+    ]);
+
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 20,
+      head: [['Rank', 'Participant', 'Date', 'Score', 'Percentage']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [30, 41, 59] },
+      styles: { fontSize: 9, cellPadding: 3 },
+      columnStyles: {
+        0: { cellWidth: 15 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 25 }
+      }
+    });
+
+    // Add Footer with page numbers
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184); // Slate 400
+        doc.text(`Page ${i} of ${pageCount}`, 14, doc.internal.pageSize.height - 10);
+        doc.text("System Authored Performance Report • Confidential", 150, doc.internal.pageSize.height - 10);
+    }
+
+    doc.save(`${quiz.title.replace(/\s+/g, '_')}_analytics.pdf`);
+  };
+
   const filteredSubmissions = submissions.filter(s => 
     s.studentName.toLowerCase().includes(participantSearch.toLowerCase())
   );
@@ -216,13 +295,22 @@ export default function TeacherQuizResults() {
                  className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full sm:w-64"
                />
              </div>
-             <button 
-               onClick={exportToCSV}
-               className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/10 active:scale-95"
-             >
-               <Download className="w-3.5 h-3.5" />
-               Export CSV
-             </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={exportToCSV}
+                className="px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm active:scale-95"
+              >
+                <Download className="w-3.5 h-3.5" />
+                CSV
+              </button>
+              <button 
+                onClick={exportToPDF}
+                className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/10 active:scale-95"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                PDF Export
+              </button>
+            </div>
            </div>
         </div>
 
