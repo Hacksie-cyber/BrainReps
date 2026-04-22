@@ -287,7 +287,7 @@ export default function QuizSession() {
       const { doc, setDoc, collection, addDoc } = await import('firebase/firestore');
       
       let newSessionDocId = sessionDocId;
-      if (newSessionDocId && !isFinal) {
+      if (newSessionDocId) {
         await setDoc(doc(db, 'submissions', newSessionDocId), submissionData, { merge: true });
       } else {
         const docRef = await addDoc(collection(db, 'submissions'), submissionData);
