@@ -108,9 +108,6 @@ function LiveLeaderboard({ quizId, currentStudentId }: { quizId: string, current
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400">{entry.score}</p>
-                    <p className="text-[8px] font-medium text-slate-400 flex items-center justify-end gap-1">
-                      <Timer className="w-2 h-2" /> {Math.floor(entry.timeTaken / 60)}m {entry.timeTaken % 60}s
-                    </p>
                   </div>
                 </div>
               );
@@ -752,26 +749,6 @@ export default function QuizSession() {
            {profile?.role === 'teacher' && (
              <LiveLeaderboard quizId={quiz.id} currentStudentId={profile?.uid || ''} />
            )}
-           
-           <div className="bg-slate-900 rounded-2xl p-6 text-white space-y-4">
-              <div className="flex items-center gap-2">
-                 <Timer className="w-4 h-4 text-indigo-400" />
-                 <h3 className="text-[10px] font-black uppercase tracking-widest">Velocity Metrics</h3>
-              </div>
-              <div>
-                 <p className="text-[8px] font-black uppercase text-slate-400 tracking-tighter mb-1">Time Invested</p>
-                 <p className="text-2xl font-black tracking-tight">{formatTime(timeTaken)}</p>
-              </div>
-              <div className="pt-4 border-t border-slate-800">
-                 <div className="flex items-center justify-between gap-1 text-[8px] font-black uppercase tracking-widest text-slate-500">
-                   <span>Score projection</span>
-                   <span className="text-indigo-400">{calculateCurrentLiveScore()}%</span>
-                 </div>
-                 <div className="h-1 w-full bg-slate-800 rounded-full mt-2 overflow-hidden">
-                    <div className="h-full bg-indigo-500" style={{ width: `${calculateCurrentLiveScore()}%` }} />
-                 </div>
-              </div>
-           </div>
         </aside>
       </div>
 
