@@ -110,9 +110,10 @@ export default function TeacherStudents() {
     fetchStudents();
   }, [profile]);
 
-  const filteredStudents = students.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const totalMatches = students.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).length;
+  const filteredStudents = students
+    .filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .slice(0, searchTerm ? 50 : 10);
 
   const exportToCSV = () => {
     if (!students.length) return;
@@ -308,6 +309,15 @@ export default function TeacherStudents() {
             ))
           )}
         </div>
+
+        {totalMatches > filteredStudents.length && (
+          <div className="mt-8 p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
+            <p className="text-xs font-bold text-slate-400 italic">
+              Showing {filteredStudents.length} of {totalMatches} matching participants. 
+              {searchTerm ? "Refine your search for more specific results." : "Use the search bar above to locate a specific student."}
+            </p>
+          </div>
+        )}
       </section>
 
       <DeleteModal
