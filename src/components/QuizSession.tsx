@@ -229,10 +229,11 @@ export default function QuizSession() {
   const autoSaveSession = async (currentResponses: Record<string, string>, isFinal = false) => {
     if (!quiz || !profile) return { finalScore: 0, totalPoints: 0 };
 
+    let currentScore = 0;
+    let totalPoints = 0;
+    let finalScore = 0;
+
     try {
-      let currentScore = 0;
-      let totalPoints = 0;
-      
       const gradedResponses = quiz.questions.map(q => {
         const studentAnswer = (currentResponses[q.id] || '').trim().toLowerCase();
         const correctAnswer = q.correctAnswer.trim().toLowerCase();
@@ -266,7 +267,7 @@ export default function QuizSession() {
         };
       });
 
-      const finalScore = Math.round(currentScore * 10) / 10;
+      finalScore = Math.round(currentScore * 10) / 10;
       const submissionAt = new Date().toISOString();
       const submissionData = {
         quizId: quiz.id,
@@ -298,8 +299,13 @@ export default function QuizSession() {
       }
       
       return { finalScore, totalPoints, submissionAt };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Auto-save failed:", error);
+      // Fallback: If it's the final submission, we return the score even if the DB write failed, 
+      // but we log the error. This ensures the user doesn't see 0/0.
+      if (isFinal) {
+         return { finalScore, totalPoints, submissionAt: new Date().toISOString() };
+      }
       return { finalScore: 0, totalPoints: 0, submissionAt: new Date().toISOString() };
     }
   };
