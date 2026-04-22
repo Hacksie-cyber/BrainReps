@@ -94,7 +94,10 @@ export default function TeacherDashboard() {
     }
   };
 
-  const activeQuizzes = quizzes.filter(q => !q.isHidden);
+  const activeQuizzes = quizzes.filter(q => {
+    const isExpired = q.deadline ? new Date(q.deadline) < new Date() : false;
+    return !q.isHidden && !isExpired;
+  });
   const activeQuizIds = new Set(activeQuizzes.map(q => q.id));
   const activeSubmissions = submissions.filter(s => activeQuizIds.has(s.quizId));
 
@@ -195,7 +198,9 @@ export default function TeacherDashboard() {
         <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
           <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Active Tests</p>
           <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{activeQuizzes.length}</h3>
-          <p className="text-emerald-600 dark:text-emerald-400 text-[11px] mt-2 flex items-center font-bold italic">{quizzes.length - activeQuizzes.length} Hidden</p>
+          <p className="text-emerald-600 dark:text-emerald-400 text-[11px] mt-2 flex items-center font-bold italic">
+            {quizzes.length - activeQuizzes.length} Inactive / Hidden
+          </p>
         </div>
         <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
           <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Avg. Grade</p>

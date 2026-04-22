@@ -5,8 +5,8 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, BookOpen, Trash2, BarChart3, Settings, MoreVertical, Edit, Eye, EyeOff, ShieldCheck } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { Plus, Search, BookOpen, Trash2, BarChart3, Settings, MoreVertical, Edit, Eye, EyeOff, ShieldCheck, Clock } from 'lucide-react';
+import { cn, formatDeadline } from '../lib/utils';
 import DeleteModal from './DeleteModal';
 
 export default function TeacherAssessments() {
@@ -198,6 +198,15 @@ export default function TeacherAssessments() {
                         <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 border-l border-slate-200 pl-3">
                           Limit: {quiz.retakeLimit === 0 ? 'Unlimited' : `${quiz.retakeLimit} ${quiz.retakeLimit === 1 ? 'Attempt' : 'Attempts'}`}
                         </p>
+                        {quiz.deadline && (
+                          <p className={cn(
+                            "text-[9px] font-black uppercase tracking-tighter flex items-center gap-1 border-l border-slate-200 pl-3",
+                            new Date(quiz.deadline) < new Date() ? "text-red-500" : "text-indigo-500"
+                          )}>
+                            <Clock className="w-2.5 h-2.5" />
+                            {new Date(quiz.deadline) < new Date() ? "Expired" : `Due: ${formatDeadline(quiz.deadline)}`}
+                          </p>
+                        )}
                         {quiz.isHidden && (
                           <span className="text-[9px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100 font-bold uppercase tracking-tighter">Hidden</span>
                         )}
@@ -208,7 +217,7 @@ export default function TeacherAssessments() {
                         ) : (
                           quiz.allowedStudentIds && quiz.allowedStudentIds.length > 0 && (
                             <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 font-bold uppercase tracking-tighter flex items-center gap-1">
-                              <ShieldCheck className="w-2.5 h-2.5" /> {quiz.allowedStudentIds.length} Restricted
+                              <ShieldCheck className="w-2.5 h-2.5" /> {quiz.allowedStudentIds.length} Students
                             </span>
                           )
                         )}
