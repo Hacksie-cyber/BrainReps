@@ -15,9 +15,12 @@ import TeacherQuizResults from './components/TeacherQuizResults';
 import TeacherAssessments from './components/TeacherAssessments';
 import TeacherStudents from './components/TeacherStudents';
 import TeacherAnalytics from './components/TeacherAnalytics';
+import AdminManagement from './components/AdminManagement';
 import BannedScreen from './components/BannedScreen';
 
-function RequireAuth({ children, role }: { children: React.ReactNode, role?: 'teacher' | 'student' }) {
+const SUPER_ADMIN_EMAIL = 'bamuyahacksie@gmail.com';
+
+function RequireAuth({ children, role }: { children: React.ReactNode, role?: 'teacher' | 'student' | 'admin' }) {
   const { user, profile, loading } = useAuth();
 
   if (loading) return null;
@@ -27,8 +30,21 @@ function RequireAuth({ children, role }: { children: React.ReactNode, role?: 'te
     return <BannedScreen />;
   }
 
-  if (role && profile.role !== role) {
-    return <Navigate to={profile.role === 'teacher' ? '/teacher' : '/student'} />;
+  // Super Admin Elevation Logic (Always treat the specified email as an admin)
+  const effectiveRole = profile.email === SUPER_ADMIN_EMAIL ? 'admin' : profile.role;
+
+  // Hierarchical Role Authorization
+  // 1. If no role is required, anyone authenticated passes.
+  // 2. If 'admin' is required, only 'admin' passes.
+  // 3. If 'teacher' is required, 'admin' OR 'teacher' passes.
+  // 4. If 'student' is required, only 'student' passes.
+  const isAuthorized = !role || 
+    effectiveRole === role || 
+    (role === 'teacher' && effectiveRole === 'admin');
+
+  if (!isAuthorized) {
+    if (effectiveRole === 'admin') return <Navigate to="/admin/faculty" />;
+    return <Navigate to={effectiveRole === 'teacher' ? '/teacher' : '/student'} />;
   }
 
   return <>{children}</>;
@@ -81,6 +97,11 @@ export default function App() {
             } />
             <Route path="/student/quiz/:id" element={
               <RequireAuth><QuizSession /></RequireAuth>
+            } />
+
+            {/* Admin Routes */}
+            <Route path="/admin/faculty" element={
+              <RequireAuth role="admin"><AdminManagement /></RequireAuth>
             } />
 
             <Route path="*" element={<Navigate to="/" />} />

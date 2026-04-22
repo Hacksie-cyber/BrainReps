@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
-import { LogOut, BookOpen, User as UserIcon, LayoutDashboard, Database, GraduationCap, BarChart3, Settings, Brain, Menu, X, Sun, Moon, Bell } from 'lucide-react';
+import { LogOut, BookOpen, User as UserIcon, LayoutDashboard, Database, GraduationCap, BarChart3, Settings, Brain, Menu, X, Sun, Moon, Bell, ShieldAlert, Users } from 'lucide-react';
 import { useTheme } from '../lib/ThemeContext';
 import { cn } from '../lib/utils';
 import NotificationCenter from './NotificationCenter';
@@ -22,7 +22,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     navigate('/');
   };
 
-  const menuItems = profile?.role === 'teacher' ? [
+  const SUPER_ADMIN_EMAIL = 'bamuyahacksie@gmail.com';
+  const isAdmin = profile?.email === SUPER_ADMIN_EMAIL || profile?.role === 'admin';
+
+  const menuItems = isAdmin ? [
+    { label: 'Dashboard', icon: LayoutDashboard, path: '/teacher' },
+    { label: 'Assessments', icon: BookOpen, path: '/teacher/assessments' },
+    { label: 'Teachers', icon: Users, path: '/admin/faculty' },
+    { label: 'Students', icon: GraduationCap, path: '/teacher/students' },
+    { label: 'Analytics', icon: BarChart3, path: '/teacher/analytics' },
+  ] : profile?.role === 'teacher' ? [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/teacher' },
     { label: 'Assessments', icon: BookOpen, path: '/teacher/assessments' },
     { label: 'Students', icon: GraduationCap, path: '/teacher/students' },

@@ -31,10 +31,13 @@ export default function TeacherAnalytics() {
         const sList = subSnap.docs
           .map(d => ({ id: d.id, ...d.data() } as QuizSubmission))
           .sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
-        setSubmissions(sList);
+        
+        const validQuizIds = new Set(qList.map(q => q.id));
+        const filteredSubmissions = sList.filter(s => validQuizIds.has(s.quizId));
+        setSubmissions(filteredSubmissions);
 
         // Fetch students instructed by this teacher (distinct studentIds from submissions)
-        const distinctStudents = new Set(sList.map(s => s.studentId));
+        const distinctStudents = new Set(filteredSubmissions.map(s => s.studentId));
         setStudentCount(distinctStudents.size);
       } catch (error) {
         console.error(error);

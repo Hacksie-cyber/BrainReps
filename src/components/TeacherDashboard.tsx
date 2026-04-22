@@ -42,7 +42,9 @@ export default function TeacherDashboard() {
 
         // Fetch all teachers
         const teacherSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'teacher')));
-        setTeacherCount(teacherSnap.size);
+        const teacherList = teacherSnap.docs.map(doc => doc.data() as UserProfile);
+        const filteredTeachersCount = teacherList.filter(t => t.email !== 'bamuyahacksie@gmail.com').length;
+        setTeacherCount(filteredTeachersCount);
 
         const subQuery = query(
           collection(db, 'submissions'),
@@ -94,12 +96,15 @@ export default function TeacherDashboard() {
     }
   };
 
+  const validQuizIds = new Set(quizzes.map(q => q.id));
+  const validSubmissions = submissions.filter(s => validQuizIds.has(s.quizId));
+
   const activeQuizzes = quizzes.filter(q => {
     const isExpired = q.deadline ? new Date(q.deadline) < new Date() : false;
     return !q.isHidden && !isExpired;
   });
   const activeQuizIds = new Set(activeQuizzes.map(q => q.id));
-  const activeSubmissions = submissions.filter(s => activeQuizIds.has(s.quizId));
+  const activeSubmissions = validSubmissions.filter(s => activeQuizIds.has(s.quizId));
 
   // Identify all students who are assigned to AT LEAST ONE active quiz
   const assignedStudentIds = new Set<string>();
@@ -209,7 +214,7 @@ export default function TeacherDashboard() {
         </div>
         <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
           <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Total Submissions</p>
-          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{submissions.length}</h3>
+          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{validSubmissions.length}</h3>
           <p className="text-indigo-600 dark:text-indigo-400 text-[11px] mt-2 font-bold italic">{activeSubmissions.length} Active</p>
         </div>
         <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
