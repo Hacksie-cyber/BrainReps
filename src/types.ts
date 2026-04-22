@@ -55,6 +55,7 @@ export interface QuizSubmission {
   submittedAt: string;
   graded: boolean;
   status?: 'in-progress' | 'completed';
+  timeTaken?: number; // In seconds
 }
 
 export interface Notification {

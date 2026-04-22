@@ -1,12 +1,120 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAlert } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAlert, Trophy, Users, Timer } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
+
+interface LeaderboardEntry {
+  studentId: string;
+  studentName: string;
+  score: number;
+  totalPoints: number;
+  timeTaken: number;
+  status: 'in-progress' | 'completed';
+}
+
+function LiveLeaderboard({ quizId, currentStudentId }: { quizId: string, currentStudentId: string }) {
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'submissions'),
+      where('quizId', '==', quizId)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allSubs = snapshot.docs.map(doc => ({ ...doc.data() } as QuizSubmission));
+      
+      // Get only the latest submission per student
+      const studentMap = new Map<string, QuizSubmission>();
+      allSubs.forEach(sub => {
+        const existing = studentMap.get(sub.studentId);
+        if (!existing || new Date(sub.submittedAt) > new Date(existing.submittedAt)) {
+          studentMap.set(sub.studentId, sub);
+        }
+      });
+
+      const processedEntries = Array.from(studentMap.values()).map(sub => ({
+        studentId: sub.studentId,
+        studentName: sub.studentName,
+        score: sub.score,
+        totalPoints: sub.totalPoints,
+        timeTaken: sub.timeTaken || 0,
+        status: sub.status || 'completed'
+      })).sort((a, b) => {
+        // Higher score first
+        if (b.score !== a.score) return b.score - a.score;
+        // If tied on score, lower time taken first (efficiency)
+        return a.timeTaken - b.timeTaken;
+      });
+
+      setEntries(processedEntries);
+    });
+
+    return () => unsubscribe();
+  }, [quizId]);
+
+  return (
+    <div className="w-full lg:w-64 shrink-0 space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Trophy className="w-4 h-4 text-amber-500" />
+        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">Live Standings</h3>
+      </div>
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {entries.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-[10px] font-medium text-slate-400 italic">Awating initial synchronization...</p>
+            </div>
+          ) : (
+            entries.slice(0, 10).map((entry, i) => (
+              <div 
+                key={entry.studentId}
+                className={cn(
+                  "p-3 flex items-center justify-between gap-3 transition-colors",
+                  entry.studentId === currentStudentId ? "bg-indigo-50/50 dark:bg-indigo-900/20" : ""
+                )}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={cn(
+                    "w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0",
+                    i === 0 ? "bg-amber-100 text-amber-700" : 
+                    i === 1 ? "bg-slate-100 text-slate-700" :
+                    i === 2 ? "bg-orange-100 text-orange-700" : "bg-slate-50 dark:bg-slate-800 text-slate-400"
+                  )}>
+                    {i + 1}
+                  </span>
+                  <div className="truncate">
+                    <p className="text-[10px] font-bold text-slate-800 dark:text-slate-100 truncate">{entry.studentName}</p>
+                    <p className="text-[8px] font-black uppercase tracking-tighter text-slate-400">
+                      {entry.status === 'completed' ? 'Finalized' : 'Drafting'}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400">{entry.score}</p>
+                  <p className="text-[8px] font-medium text-slate-400 flex items-center justify-end gap-1">
+                    <Timer className="w-2 h-2" /> {Math.floor(entry.timeTaken / 60)}m {entry.timeTaken % 60}s
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="p-2 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex justify-center">
+          <div className="flex items-center gap-1">
+            <Users className="w-2.5 h-2.5 text-slate-400" />
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{entries.length} Enrolled</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function QuizSession() {
   const { id } = useParams();
@@ -21,9 +129,19 @@ export default function QuizSession() {
   const [lastScore, setLastScore] = useState<{ score: number, total: number, rank: number, totalParticipants: number } | null>(null);
   const [attemptCount, setAttemptCount] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [timeTaken, setTimeTaken] = useState(0);
   const [isPastDue, setIsPastDue] = useState(false);
   const [isBlurred, setIsBlurred] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  useEffect(() => {
+    // Increment timeTaken every second
+    if (finished || loading || !quiz) return;
+    const interval = setInterval(() => {
+      setTimeTaken(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [finished, loading, quiz]);
 
   useEffect(() => {
     if (!id || !profile) return;
@@ -140,6 +258,7 @@ export default function QuizSession() {
       });
 
       const finalScore = Math.round(currentScore * 10) / 10;
+      const submissionAt = new Date().toISOString();
       const submissionData = {
         quizId: quiz.id,
         quizTitle: quiz.title,
@@ -149,24 +268,29 @@ export default function QuizSession() {
         responses: gradedResponses,
         score: finalScore,
         totalPoints,
-        submittedAt: new Date().toISOString(),
+        submittedAt: submissionAt,
         graded: isFinal, // Record as in-progress until finalized
-        status: isFinal ? 'completed' : 'in-progress'
+        status: isFinal ? 'completed' : 'in-progress',
+        timeTaken: timeTaken // Record duration
       };
 
       const { doc, setDoc, collection, addDoc } = await import('firebase/firestore');
       
-      if (sessionDocId && !isFinal) {
-        await setDoc(doc(db, 'submissions', sessionDocId), submissionData, { merge: true });
+      let newSessionDocId = sessionDocId;
+      if (newSessionDocId && !isFinal) {
+        await setDoc(doc(db, 'submissions', newSessionDocId), submissionData, { merge: true });
       } else {
         const docRef = await addDoc(collection(db, 'submissions'), submissionData);
-        if (!isFinal) setSessionDocId(docRef.id);
+        if (!isFinal) {
+          setSessionDocId(docRef.id);
+          newSessionDocId = docRef.id;
+        }
       }
       
-      return { finalScore, totalPoints };
+      return { finalScore, totalPoints, submissionAt };
     } catch (error) {
       console.error("Auto-save failed:", error);
-      return { finalScore: 0, totalPoints: 0 };
+      return { finalScore: 0, totalPoints: 0, submissionAt: new Date().toISOString() };
     }
   };
 
@@ -183,7 +307,7 @@ export default function QuizSession() {
     setSubmitting(true);
     try {
       // Execute final score recording automatically
-      const { finalScore, totalPoints } = await autoSaveSession(responses, true);
+      const { finalScore, totalPoints, submissionAt } = await autoSaveSession(responses, true);
       
       // Calculate Rank for final results
       try {
@@ -196,6 +320,7 @@ export default function QuizSession() {
         const allSubs = allSubsSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
           .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+        
         const latestSubsMap = new Map<string, QuizSubmission>();
         allSubs.forEach(sub => {
           if (!latestSubsMap.has(sub.studentId)) {
@@ -203,9 +328,11 @@ export default function QuizSession() {
           }
         });
         
-        const sortedSubs = Array.from(latestSubsMap.values()).sort((a, b) => 
-          (b.score / b.totalPoints) - (a.score / a.totalPoints)
-        );
+        const sortedSubs = Array.from(latestSubsMap.values()).sort((a, b) => {
+          // Tie-break pattern: Score (desc) > TimeTaken (asc)
+          if (b.score !== a.score) return b.score - a.score;
+          return (a.timeTaken || 0) - (b.timeTaken || 0);
+        });
         
         const rank = sortedSubs.findIndex(s => s.studentId === profile.uid) + 1;
         
@@ -430,7 +557,7 @@ export default function QuizSession() {
 
   return (
     <div className={cn(
-      "mx-auto max-w-3xl space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 select-none",
+      "mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500 select-none",
       isBlurred && "blur-[100px] opacity-0 transition-none pointer-events-none"
     )}>
       {isBlurred && (
@@ -454,152 +581,184 @@ export default function QuizSession() {
            </div>
         </div>
       )}
-      <header className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-           <div>
-              <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{quiz.title}</h1>
-              <div className="flex items-center gap-3 mt-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Section Component {currentIndex + 1} of {quiz.questions.length}</p>
-                {timeLeft !== null && (
-                   <div className={cn(
-                     "flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-black uppercase tracking-tighter transition-colors",
-                     timeLeft < 60 ? "bg-red-50 text-red-600 border-red-100 animate-pulse" : "bg-indigo-50 text-indigo-700 border-indigo-100"
-                   )}>
-                      <Clock className="w-3 h-3" />
-                      {formatTime(timeLeft)} Remaining
-                   </div>
-                )}
+      
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+        {/* Main Content Viewport */}
+        <div className="flex-1 w-full space-y-8">
+          <header className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+               <div>
+                  <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{quiz.title}</h1>
+                  <div className="flex items-center gap-3 mt-1">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Section Component {currentIndex + 1} of {quiz.questions.length}</p>
+                    {timeLeft !== null && (
+                       <div className={cn(
+                         "flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-black uppercase tracking-tighter transition-colors",
+                         timeLeft < 60 ? "bg-red-50 text-red-600 border-red-100 animate-pulse" : "bg-indigo-50 text-indigo-700 border-indigo-100"
+                       )}>
+                          <Clock className="w-3 h-3" />
+                          {formatTime(timeLeft)} Remaining
+                       </div>
+                    )}
+                  </div>
+               </div>
+               <div className="flex flex-col items-end gap-1.5 min-w-[70px]">
+                  <span className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter whitespace-nowrap">{Math.round(progress)}% Complete</span>
+                  <button
+                    onClick={() => setShowConfirmModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-600 rounded-lg border border-red-100 hover:bg-red-200 transition-all text-[10px] font-black uppercase tracking-widest shadow-sm active:scale-95"
+                  >
+                    <Send className="w-2.5 h-2.5" />
+                    End
+                  </button>
+               </div>
+            </div>
+            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-full bg-indigo-600 transition-all duration-700 ease-out shadow-[0_0_8px_rgba(79,70,229,0.5)]" style={{ width: `${progress}%` }} />
+            </div>
+            {profile?.role === 'teacher' && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-lg animate-in slide-in-from-top-1 duration-500">
+                <CheckCircle2 className="h-4 w-4 text-indigo-600" />
+                <p className="text-[10px] font-black uppercase text-indigo-700 tracking-widest">Review Mode: Your metrics will be recorded as a test submission.</p>
+              </div>
+            )}
+          </header>
+
+          <section className="min-h-[400px]">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentQuestion.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="rounded-xl bg-white p-6 md:p-10 shadow-xl shadow-slate-200/50 border border-slate-200 space-y-8"
+              >
+                {/* Question UI Remains the same */}
+                <div className="space-y-4">
+                  <span className="inline-block rounded-lg bg-slate-50 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-400 border border-slate-100">
+                    {currentQuestion.type.replace('-', ' ')} Assessment Block
+                  </span>
+                  <h2 className="text-xl md:text-2xl font-bold leading-snug text-slate-900 tracking-tight">{currentQuestion.question}</h2>
+                </div>
+
+                <div className="space-y-3">
+                  {currentQuestion.type === 'multiple-choice' && currentQuestion.options && (
+                    <div className="grid gap-3">
+                      {currentQuestion.options.map((option, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleResponse(currentQuestion.id, i.toString())}
+                          className={cn(
+                            "group flex items-center justify-between rounded-xl border-2 p-5 transition-all text-left",
+                            responses[currentQuestion.id] === i.toString()
+                              ? "border-indigo-600 bg-indigo-50/50 text-indigo-700 ring-4 ring-indigo-600/5"
+                              : "border-slate-50 bg-slate-50/30 text-slate-600 hover:border-slate-200 hover:bg-slate-50"
+                          )}
+                        >
+                          <span className="font-bold text-sm tracking-tight">{option}</span>
+                          <div className={cn(
+                            "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all",
+                             responses[currentQuestion.id] === i.toString() ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "border-slate-200 bg-white"
+                          )}>
+                            {responses[currentQuestion.id] === i.toString() && <CheckCircle2 className="h-3 w-3" />}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {currentQuestion.type === 'true-false' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      {['true', 'false'].map((val) => (
+                        <button
+                          key={val}
+                          onClick={() => handleResponse(currentQuestion.id, val)}
+                          className={cn(
+                            "flex flex-col items-center justify-center gap-4 rounded-xl border-2 py-8 md:py-12 transition-all group",
+                            responses[currentQuestion.id] === val
+                              ? "border-indigo-600 bg-indigo-50/50 text-indigo-700 ring-4 ring-indigo-600/5"
+                              : "border-slate-50 bg-slate-50/30 text-slate-400 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-600"
+                          )}
+                        >
+                          <span className="text-base md:text-xl font-black uppercase tracking-[0.2em]">{val}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {currentQuestion.type === 'short-answer' && (
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Strategic Response Input</label>
+                      <textarea
+                        value={responses[currentQuestion.id] || ''}
+                        onBlur={(e) => (e.target.value = e.target.value.trim())}
+                        onChange={(e) => handleResponse(currentQuestion.id, e.target.value)}
+                        placeholder="Formulate your response with precision..."
+                        className="w-full h-40 rounded-xl border border-slate-100 bg-slate-50/50 p-6 text-base font-medium text-slate-700 focus:bg-white focus:border-indigo-600/20 focus:ring-4 focus:ring-indigo-600/5 focus:outline-none transition-all resize-none placeholder:text-slate-300 italic"
+                      />
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </section>
+
+          <footer className="flex items-center justify-between gap-4 pt-6 border-t border-slate-100">
+            <button
+              disabled={currentIndex === 0}
+              onClick={() => setCurrentIndex(currentIndex - 1)}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 md:px-6 py-3 font-bold text-xs text-slate-400 transition-all hover:text-slate-800 hover:bg-slate-50 disabled:opacity-0"
+            >
+              <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Previous Case</span>
+            </button>
+
+            {currentIndex === quiz.questions.length - 1 ? (
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || !responses[currentQuestion.id]}
+                className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 md:px-8 py-3 font-bold text-xs text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+              >
+                {submitting ? 'Transmitting...' : 'Finalize'}
+                <Send className="h-3.5 w-3.5" />
+              </button>
+            ) : (
+              <button
+                disabled={!responses[currentQuestion.id]}
+                onClick={() => setCurrentIndex(currentIndex + 1)}
+                className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 md:px-8 py-3 font-bold text-xs text-white shadow-lg shadow-indigo-600/20 transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
+              >
+                Advance
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </footer>
+        </div>
+
+        {/* Real-time Insights Side-panel */}
+        <aside className="w-full lg:w-72 flex flex-col gap-6">
+           <LiveLeaderboard quizId={quiz.id} currentStudentId={profile?.uid || ''} />
+           
+           <div className="bg-slate-900 rounded-2xl p-6 text-white space-y-4">
+              <div className="flex items-center gap-2">
+                 <Timer className="w-4 h-4 text-indigo-400" />
+                 <h3 className="text-[10px] font-black uppercase tracking-widest">Velocity Metrics</h3>
+              </div>
+              <div>
+                 <p className="text-[8px] font-black uppercase text-slate-400 tracking-tighter mb-1">Time Invested</p>
+                 <p className="text-2xl font-black tracking-tight">{formatTime(timeTaken)}</p>
+              </div>
+              <div className="pt-4 border-t border-slate-800">
+                 <div className="flex items-center justify-between gap-1 text-[8px] font-black uppercase tracking-widest text-slate-500">
+                   <span>Score projection</span>
+                   <span className="text-indigo-400">{calculateCurrentLiveScore()}%</span>
+                 </div>
+                 <div className="h-1 w-full bg-slate-800 rounded-full mt-2 overflow-hidden">
+                    <div className="h-full bg-indigo-500" style={{ width: `${calculateCurrentLiveScore()}%` }} />
+                 </div>
               </div>
            </div>
-           <div className="flex flex-col items-end gap-1.5 min-w-[70px]">
-              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter whitespace-nowrap">{Math.round(progress)}% Complete</span>
-              <button
-                onClick={() => setShowConfirmModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-600 rounded-lg border border-red-100 hover:bg-red-200 transition-all text-[10px] font-black uppercase tracking-widest shadow-sm active:scale-95"
-              >
-                <Send className="w-2.5 h-2.5" />
-                End
-              </button>
-           </div>
-        </div>
-        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-          <div className="h-full bg-indigo-600 transition-all duration-700 ease-out shadow-[0_0_8px_rgba(79,70,229,0.5)]" style={{ width: `${progress}%` }} />
-        </div>
-        {profile?.role === 'teacher' && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-lg animate-in slide-in-from-top-1 duration-500">
-            <CheckCircle2 className="h-4 w-4 text-indigo-600" />
-            <p className="text-[10px] font-black uppercase text-indigo-700 tracking-widest">Review Mode: Your metrics will be recorded as a test submission.</p>
-          </div>
-        )}
-      </header>
-
-      <section className="min-h-[400px]">
-        <AnimatePresence mode="wait">
-        <motion.div
-          key={currentQuestion.id}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.98 }}
-          className="rounded-xl bg-white p-6 md:p-10 shadow-xl shadow-slate-200/50 border border-slate-200 space-y-8"
-        >
-          <div className="space-y-4">
-            <span className="inline-block rounded-lg bg-slate-50 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-400 border border-slate-100">
-              {currentQuestion.type.replace('-', ' ')} Assessment Block
-            </span>
-            <h2 className="text-xl md:text-2xl font-bold leading-snug text-slate-900 tracking-tight">{currentQuestion.question}</h2>
-          </div>
-
-            <div className="space-y-3">
-              {currentQuestion.type === 'multiple-choice' && currentQuestion.options && (
-                <div className="grid gap-3">
-                  {currentQuestion.options.map((option, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleResponse(currentQuestion.id, i.toString())}
-                      className={cn(
-                        "group flex items-center justify-between rounded-xl border-2 p-5 transition-all text-left",
-                        responses[currentQuestion.id] === i.toString()
-                          ? "border-indigo-600 bg-indigo-50/50 text-indigo-700 ring-4 ring-indigo-600/5"
-                          : "border-slate-50 bg-slate-50/30 text-slate-600 hover:border-slate-200 hover:bg-slate-50"
-                      )}
-                    >
-                      <span className="font-bold text-sm tracking-tight">{option}</span>
-                      <div className={cn(
-                        "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all",
-                         responses[currentQuestion.id] === i.toString() ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "border-slate-200 bg-white"
-                      )}>
-                        {responses[currentQuestion.id] === i.toString() && <CheckCircle2 className="h-3 w-3" />}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {currentQuestion.type === 'true-false' && (
-                <div className="grid grid-cols-2 gap-4">
-                  {['true', 'false'].map((val) => (
-                    <button
-                      key={val}
-                      onClick={() => handleResponse(currentQuestion.id, val)}
-                      className={cn(
-                        "flex flex-col items-center justify-center gap-4 rounded-xl border-2 py-8 md:py-12 transition-all group",
-                        responses[currentQuestion.id] === val
-                          ? "border-indigo-600 bg-indigo-50/50 text-indigo-700 ring-4 ring-indigo-600/5"
-                          : "border-slate-50 bg-slate-50/30 text-slate-400 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-600"
-                      )}
-                    >
-                      <span className="text-base md:text-xl font-black uppercase tracking-[0.2em]">{val}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {currentQuestion.type === 'short-answer' && (
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Strategic Response Input</label>
-                  <textarea
-                    value={responses[currentQuestion.id] || ''}
-                    onBlur={(e) => (e.target.value = e.target.value.trim())}
-                    onChange={(e) => handleResponse(currentQuestion.id, e.target.value)}
-                    placeholder="Formulate your response with precision..."
-                    className="w-full h-40 rounded-xl border border-slate-100 bg-slate-50/50 p-6 text-base font-medium text-slate-700 focus:bg-white focus:border-indigo-600/20 focus:ring-4 focus:ring-indigo-600/5 focus:outline-none transition-all resize-none placeholder:text-slate-300 italic"
-                  />
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </AnimatePresence>
-      </section>
-
-      <footer className="flex items-center justify-between gap-4 pt-6 border-t border-slate-100">
-        <button
-          disabled={currentIndex === 0}
-          onClick={() => setCurrentIndex(currentIndex - 1)}
-          className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 md:px-6 py-3 font-bold text-xs text-slate-400 transition-all hover:text-slate-800 hover:bg-slate-50 disabled:opacity-0"
-        >
-          <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Previous Case</span>
-        </button>
-
-        {currentIndex === quiz.questions.length - 1 ? (
-          <button
-            onClick={handleSubmit}
-            disabled={submitting || !responses[currentQuestion.id]}
-            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 md:px-8 py-3 font-bold text-xs text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
-          >
-            {submitting ? 'Transmitting...' : 'Finalize'}
-            <Send className="h-3.5 w-3.5" />
-          </button>
-        ) : (
-          <button
-            disabled={!responses[currentQuestion.id]}
-            onClick={() => setCurrentIndex(currentIndex + 1)}
-            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 md:px-8 py-3 font-bold text-xs text-white shadow-lg shadow-indigo-600/20 transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
-          >
-            Advance
-            <ArrowRight className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </footer>
+        </aside>
+      </div>
 
       {/* Early Submission Confirmation Modal */}
       <AnimatePresence>
