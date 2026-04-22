@@ -233,16 +233,27 @@ export default function TeacherDashboard() {
                 <thead>
                   <tr className="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-widest bg-slate-50/50 dark:bg-slate-800/30">
                     <th className="px-6 py-3 font-bold border-b border-slate-100 dark:border-slate-800">Assessment Title</th>
-                    <th className="px-6 py-3 font-bold border-b border-slate-100 dark:border-slate-800 text-center">Responses</th>
+                    <th className="px-6 py-3 font-bold border-b border-slate-100 dark:border-slate-800 text-center">Submitted</th>
                     <th className="px-6 py-3 font-bold border-b border-slate-100 dark:border-slate-800">Avg Result</th>
                     <th className="px-6 py-3 font-bold border-b border-slate-100 dark:border-slate-800 text-right pr-8">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                   {quizzes.map((quiz) => {
-                    const qSubs = submissions.filter(s => s.quizId === quiz.id);
+                    const qSubsRaw = submissions.filter(s => s.quizId === quiz.id);
+                    
+                    // Filter to only include the LATEST submission per student for this quiz
+                    const studentLatestMap = new Map<string, QuizSubmission>();
+                    qSubsRaw.forEach(s => {
+                      if (!studentLatestMap.has(s.studentId) || new Date(s.submittedAt) > new Date(studentLatestMap.get(s.studentId)!.submittedAt)) {
+                        studentLatestMap.set(s.studentId, s);
+                      }
+                    });
+                    
+                    const qSubs = Array.from(studentLatestMap.values());
+                    
                     const avg = qSubs.length > 0
-                      ? Math.round((qSubs.reduce((acc, curr) => acc + curr.score, 0) / qSubs.reduce((acc, curr) => acc + curr.totalPoints, 0)) * 100)
+                      ? Math.round((qSubs.reduce((acc, curr) => acc + curr.score, 0) / Math.max(qSubs.reduce((acc, curr) => acc + curr.totalPoints, 0), 1)) * 100)
                       : '--';
                     return (
                       <tr key={quiz.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group cursor-pointer" onClick={() => navigate(`/teacher/quiz/${quiz.id}`)}>
@@ -264,7 +275,9 @@ export default function TeacherDashboard() {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-100 dark:border-slate-700/50">{qSubs.length}</span>
+                          <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-100 dark:border-slate-700/50">
+                            {qSubs.length} / {students.length}
+                          </span>
                         </td>
                         <td className="px-6 py-4">
                            <div className="flex items-center gap-3">
@@ -284,7 +297,7 @@ export default function TeacherDashboard() {
                                  e.stopPropagation();
                                  navigate(`/student/quiz/${quiz.id}`);
                                }}
-                               className="p-1.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-100 dark:border-slate-700 rounded-md transition-all opacity-0 group-hover:opacity-100"
+                               className="p-1.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-100 dark:border-slate-700 rounded-md transition-all"
                                title="Review Assessment"
                              >
                                 <BookOpen className="h-3.5 w-3.5" />
@@ -296,7 +309,7 @@ export default function TeacherDashboard() {
                                }}
                                disabled={isDeleting === quiz.id}
                                className={cn(
-                                 "p-1.5 rounded-md transition-all opacity-0 group-hover:opacity-100",
+                                 "p-1.5 rounded-md transition-all",
                                  isDeleting === quiz.id ? "text-slate-200 dark:text-slate-700 animate-pulse" : "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border border-slate-100 dark:border-slate-700"
                                )}
                                title="Remove Module"
