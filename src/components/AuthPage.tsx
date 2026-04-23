@@ -162,11 +162,43 @@ export default function AuthPage() {
           Sign in to get started
         </button>
 
-        <div className="mt-16 flex items-center justify-center gap-8 grayscale opacity-50 dark:opacity-30">
-          <div className="flex items-center gap-2"><div className="w-6 h-6 bg-slate-300 dark:bg-slate-700 rounded" /> <span className="text-sm font-bold tracking-tighter dark:text-slate-100">MCQ Ready</span></div>
-          <div className="flex items-center gap-2"><div className="w-6 h-6 bg-slate-300 dark:bg-slate-700 rounded" /> <span className="text-sm font-bold tracking-tighter dark:text-slate-100">Instant Analysis</span></div>
-          <div className="flex items-center gap-2"><div className="w-6 h-6 bg-slate-300 dark:bg-slate-700 rounded" /> <span className="text-sm font-bold tracking-tighter dark:text-slate-100">Safe & Secure</span></div>
+        {/* Institutional Trust Section */}
+        <div className="mt-20 grid gap-8 md:grid-cols-3 max-w-4xl mx-auto border-t border-slate-100 dark:border-slate-800 pt-16 text-left">
+           <div className="space-y-3">
+              <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                 <div className="w-1.5 h-1.5 rounded-full bg-current" />
+                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em]">Data Privacy</h4>
+              </div>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed">Encrypted student data and secure institutional silos ensure that your cognitive progress remains private and protected at all times.</p>
+           </div>
+           <div className="space-y-3">
+              <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                 <div className="w-1.5 h-1.5 rounded-full bg-current" />
+                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em]">Academic Integrity</h4>
+              </div>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed">Built for educators who value authentic learning. Our platform discourages deceptive practices and focuses on legitimate data-driven growth.</p>
+           </div>
+           <div className="space-y-3">
+              <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                 <div className="w-1.5 h-1.5 rounded-full bg-current" />
+                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em]">Institutional Tool</h4>
+              </div>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed">BrainReps is a dedicated assessment ecosystem serving verified schools and faculties. We do not host malicious software or deceptive content.</p>
+           </div>
         </div>
+
+        {/* Footer with compliance signals */}
+        <footer className="mt-24 pb-8 space-y-6">
+           <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <button className="hover:text-indigo-600 transition-colors">Privacy Policy</button>
+              <button className="hover:text-indigo-600 transition-colors">Terms of Service</button>
+              <button className="hover:text-indigo-600 transition-colors">Support Center</button>
+              <a href="mailto:support@brainreps.edu" className="hover:text-indigo-600 transition-colors">Contact Faculty</a>
+           </div>
+           <div className="flex items-center justify-center gap-2 text-[9px] text-slate-300 dark:text-slate-700 italic font-medium">
+              <span>© {new Date().getFullYear()} BrainReps Institutional Analytics. All rights reserved.</span>
+           </div>
+        </footer>
       </motion.div>
     </div>
   );
