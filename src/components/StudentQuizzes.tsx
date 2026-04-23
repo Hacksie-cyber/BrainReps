@@ -70,7 +70,68 @@ export default function StudentQuizzes() {
     return matchesSearch;
   });
 
-  if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
+  if (loading) {
+    return (
+      <div className="flex h-[80vh] flex-col items-center justify-center text-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md space-y-6"
+        >
+          <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white mx-auto shadow-xl shadow-indigo-600/20 animate-pulse">
+            <BookOpen className="h-8 w-8" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Syncing Curricula...</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed italic">
+              Accessing institutional modules and preparing your learning environment.
+            </p>
+          </div>
+          <div className="flex justify-center gap-1.5">
+             <div className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-bounce" style={{ animationDelay: '0ms' }} />
+             <div className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-bounce" style={{ animationDelay: '150ms' }} />
+             <div className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (quizzes.length === 0) {
+    return (
+      <div className="flex h-[80vh] flex-col items-center justify-center text-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-lg space-y-8"
+        >
+          <div className="relative mx-auto w-24 h-24">
+            <div className="absolute inset-0 bg-indigo-600/10 dark:bg-indigo-400/10 rounded-full animate-ping" />
+            <div className="relative w-24 h-24 bg-white dark:bg-slate-900 rounded-full border-2 border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center shadow-sm">
+               <BookOpen className="h-10 w-10 text-indigo-600 dark:text-indigo-400" />
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+              Institutional <span className="text-indigo-600 dark:text-indigo-400">Curricula</span>
+            </h1>
+            <p className="text-lg text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-sm mx-auto italic">
+              Welcome to the Reps Library! There are currently no active modules assigned to your curriculum roster.
+            </p>
+          </div>
+
+          <Link
+            to="/student"
+            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-indigo-600 px-8 py-4 font-bold text-white transition-all hover:bg-slate-800 dark:hover:bg-indigo-700 shadow-xl shadow-slate-200 dark:shadow-indigo-600/20 active:scale-95 group"
+          >
+            Back to Dashboard
+            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">

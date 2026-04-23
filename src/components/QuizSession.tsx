@@ -48,12 +48,15 @@ function LiveLeaderboard({ quizId, currentStudentId }: { quizId: string, current
         score: sub.score,
         totalPoints: sub.totalPoints,
         timeTaken: sub.timeTaken || 0,
+        submittedAt: sub.submittedAt,
         status: sub.status || 'completed'
       })).sort((a, b) => {
-        // Higher score first
+        // 1. Higher score first
         if (b.score !== a.score) return b.score - a.score;
-        // If tied on score, lower time taken first (efficiency)
-        return a.timeTaken - b.timeTaken;
+        // 2. Efficiency: lower time taken first
+        if (b.timeTaken !== a.timeTaken) return a.timeTaken - b.timeTaken;
+        // 3. Chronology: first one who finished first
+        return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
       });
 
       setEntries(processedEntries);
@@ -374,9 +377,14 @@ export default function QuizSession() {
         });
         
         const sortedSubs = Array.from(latestSubsMap.values()).sort((a, b) => {
-          // Tie-break pattern: Score (desc) > TimeTaken (asc)
+          // 1. Score (Descending)
           if (b.score !== a.score) return b.score - a.score;
-          return (a.timeTaken || 0) - (b.timeTaken || 0);
+          // 2. Efficiency: Time Taken (Ascending)
+          const timeA = a.timeTaken || 0;
+          const timeB = b.timeTaken || 0;
+          if (timeB !== timeA) return timeA - timeB;
+          // 3. Chronology: Submission Date (Ascending - first to finish)
+          return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
         });
         
         const rank = sortedSubs.findIndex(s => s.studentId === profile.uid) + 1;
