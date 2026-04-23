@@ -247,13 +247,22 @@ export default function TeacherStudents() {
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Student Roster</h1>
           <p className="text-sm text-slate-500 font-medium tracking-tight">Participant performance monitoring and engagement tracking.</p>
         </div>
-        <button 
-          onClick={exportToCSV}
-          className="flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-slate-800 shadow-lg shadow-slate-900/10 active:scale-95"
-        >
-          <Download className="h-4 w-4" />
-          Export CSV
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button 
+            onClick={exportToCSV}
+            className="flex items-center justify-center gap-2 rounded-lg bg-white border border-slate-200 px-6 py-2.5 text-sm font-bold text-slate-700 transition-all hover:bg-slate-50 shadow-sm active:scale-95"
+          >
+            <Download className="h-4 w-4" />
+            CSV
+          </button>
+          <button 
+            onClick={exportToPDF}
+            className="flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-slate-800 shadow-lg shadow-slate-900/10 active:scale-95"
+          >
+            <Download className="h-4 w-4 text-indigo-400" />
+            Export PDF
+          </button>
+        </div>
       </header>
 
       <section className="space-y-6">
