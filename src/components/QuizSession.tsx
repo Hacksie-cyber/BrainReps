@@ -5,7 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAlert, Trophy, Users, Timer } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAlert, Trophy, Users, Timer, AlertTriangle } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 
 interface LeaderboardEntry {
@@ -141,9 +141,21 @@ export default function QuizSession() {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState<Record<string, string>>({});
+  const responsesRef = useRef<Record<string, string>>({});
+  
+  useEffect(() => {
+    responsesRef.current = responses;
+  }, [responses]);
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [wasForced, setWasForced] = useState(false);
+  const finishedRef = useRef(false);
+
+  useEffect(() => {
+    finishedRef.current = finished;
+  }, [finished]);
   const [lastScore, setLastScore] = useState<{ score: number, total: number, rank: number, totalParticipants: number } | null>(null);
   const [attemptCount, setAttemptCount] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -231,6 +243,64 @@ export default function QuizSession() {
 
     return () => clearInterval(timer);
   }, [timeLeft, finished]);
+
+  // Consolidated Institutional Security Monitor
+  useEffect(() => {
+    if (finished || loading || !quiz) return;
+
+    const handleIntegrityBreach = () => {
+      if ((document.visibilityState === 'hidden' || !document.hasFocus()) && !finishedRef.current) {
+        if (profile?.role === 'student') {
+          console.warn("Anti-cheating triggered: Integrity breach detected. Auto-submitting...");
+          forceSubmit();
+        } else {
+          // Instructors only get visual deterrent
+          setIsBlurred(true);
+        }
+      }
+    };
+
+    const handleFocus = () => {
+      // Allow instructors to return
+      if (profile?.role !== 'student') setIsBlurred(false);
+    };
+
+    // Deterrents
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key === 'PrintScreen' ||
+        (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'u' || e.key === 'p')) ||
+        (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+        (e.metaKey && (e.key === 'c' || e.key === 'v' || e.key === 'u' || e.key === 'p'))
+      ) {
+        e.preventDefault();
+        if (e.key === 'PrintScreen' && profile?.role === 'student') forceSubmit();
+        else if (e.key === 'PrintScreen') setIsBlurred(true);
+        return false;
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleIntegrityBreach);
+    window.addEventListener('blur', handleIntegrityBreach);
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleIntegrityBreach);
+      window.removeEventListener('blur', handleIntegrityBreach);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [finished, loading, quiz, profile]);
+
+  const forceSubmit = async () => {
+    if (finishedRef.current) return;
+    setWasForced(true);
+    await handleSubmit(responsesRef.current);
+  };
 
   const [sessionDocId, setSessionDocId] = useState<string | null>(null);
   const savingRef = useRef(false);
@@ -349,13 +419,15 @@ export default function QuizSession() {
     autoSaveSession(updatedResponses, false);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (overrideResponses?: Record<string, string>) => {
     if (!quiz || !profile) return;
+    
+    const finalResponses = overrideResponses || responses;
     
     setSubmitting(true);
     try {
       // Execute final score recording automatically
-      const { finalScore, totalPoints, submissionAt } = await autoSaveSession(responses, true);
+      const { finalScore, totalPoints, submissionAt } = await autoSaveSession(finalResponses, true);
       
       // Calculate Rank for final results
       try {
@@ -415,44 +487,7 @@ export default function QuizSession() {
   };
 
   useEffect(() => {
-    // Security deterrences: Blur if focus is lost or visibility changes
-    const handleVisibilityChange = () => {
-      if (document.hidden) setIsBlurred(true);
-    };
-    const handleBlur = () => setIsBlurred(true);
-    const handleFocus = () => setIsBlurred(false);
-
-    window.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
-
-    // Prevent copy, right click, and common inspection shortcuts
-    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Disable PrintScreen (deterrent), Ctrl+C, Ctrl+V, Ctrl+U, Ctrl+Shift+I, Ctrl+P
-      if (
-        e.key === 'PrintScreen' ||
-        (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'u' || e.key === 'p')) ||
-        (e.ctrlKey && e.shiftKey && e.key === 'I') ||
-        (e.metaKey && (e.key === 'c' || e.key === 'v' || e.key === 'u' || e.key === 'p'))
-      ) {
-        e.preventDefault();
-        // Force blur on PrintScreen attempt if possible
-        if (e.key === 'PrintScreen') setIsBlurred(true);
-        return false;
-      }
-    };
-
-    window.addEventListener('contextmenu', handleContextMenu);
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('contextmenu', handleContextMenu);
-      window.removeEventListener('keydown', handleKeyDown);
-    };
+    // Legacy security monitor removed - functionality migrated to the Consolidated Institutional Security Monitor
   }, []);
 
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
@@ -521,11 +556,22 @@ export default function QuizSession() {
   if (finished) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95 duration-500 px-4">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mb-4 w-20 h-20 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-emerald-500/30">
-          <CheckCircle2 className="h-10 w-10" />
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={cn(
+          "mb-4 w-20 h-20 rounded-2xl flex items-center justify-center text-white shadow-2xl transition-all",
+          wasForced ? "bg-amber-500 shadow-amber-500/30" : "bg-emerald-500 shadow-emerald-500/30"
+        )}>
+          {wasForced ? <ShieldAlert className="h-10 w-10" /> : <CheckCircle2 className="h-10 w-10" />}
         </motion.div>
         
-        <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-slate-900">Submission Confirmed</h2>
+        <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-slate-900">
+          {wasForced ? "Security Finalization" : "Submission Confirmed"}
+        </h2>
+        {wasForced && (
+          <p className="mb-6 px-4 py-2 bg-amber-50 text-amber-700 text-xs font-bold rounded-lg border border-amber-100 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Assessment terminated due to window focus loss. Academic integrity protocols enforced.
+          </p>
+        )}
         
         {lastScore && (
           <motion.div 
