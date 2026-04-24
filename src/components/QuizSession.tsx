@@ -422,7 +422,9 @@ export default function QuizSession() {
   const handleSubmit = async (overrideResponses?: Record<string, string>) => {
     if (!quiz || !profile) return;
     
-    const finalResponses = overrideResponses || responses;
+    // Safety: check if overrideResponses is a valid object (not a React event)
+    const isValidOverride = overrideResponses && typeof overrideResponses === 'object' && !('nativeEvent' in overrideResponses);
+    const finalResponses = isValidOverride ? overrideResponses : responses;
     
     setSubmitting(true);
     try {
@@ -813,7 +815,7 @@ export default function QuizSession() {
 
             {currentIndex === quiz.questions.length - 1 ? (
               <button
-                onClick={handleSubmit}
+                onClick={() => handleSubmit()}
                 disabled={submitting || !responses[currentQuestion.id]}
                 className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 md:px-8 py-3 font-bold text-xs text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
               >
