@@ -187,6 +187,16 @@ export default function QuizSession() {
             return;
           }
 
+          // Randomize questions for students to ensure assessment integrity
+          if (profile.role === 'student' && quizData.questions) {
+            const shuffledQuestions = [...quizData.questions];
+            for (let i = shuffledQuestions.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [shuffledQuestions[i], shuffledQuestions[j]] = [shuffledQuestions[j], shuffledQuestions[i]];
+            }
+            quizData.questions = shuffledQuestions;
+          }
+
           // Check for cohort access
           const isAllowed = quizData.isPublic === true || 
                             quizData.allowedStudentIds?.includes(profile.uid);
