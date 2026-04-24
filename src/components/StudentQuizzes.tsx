@@ -4,17 +4,19 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, Search, CheckCircle2, Clock, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { BookOpen, Search, CheckCircle2, Clock, ArrowRight, ShieldAlert, AlertTriangle, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { cn, formatDeadline } from '../lib/utils';
 
 export default function StudentQuizzes() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -281,13 +283,13 @@ export default function StudentQuizzes() {
                           Expired
                         </div>
                       ) : (
-                        <Link
-                          to={`/student/quiz/${quiz.id}`}
+                        <button
+                          onClick={() => setSelectedQuizId(quiz.id)}
                           className="flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-[11px] font-bold uppercase tracking-widest text-white shadow-[0_10px_20px_rgba(79,70,229,0.15)] hover:shadow-[0_15px_30px_rgba(79,70,229,0.3)] hover:bg-indigo-700 transition-all active:scale-95 group/btn"
                         >
                           {isCompleted ? 'Retry Attempt' : 'Launch Module'}
                           <ArrowRight className="h-4 w-4 transform group-hover/btn:translate-x-0.5 transition-transform" />
-                        </Link>
+                        </button>
                       )}
                     </div>
                   </motion.div>
@@ -297,6 +299,88 @@ export default function StudentQuizzes() {
           </AnimatePresence>
         </div>
       </section>
+
+      {/* Institutional Security Advisory Modal */}
+      <AnimatePresence>
+        {selectedQuizId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedQuizId(null)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 space-y-6">
+                <div className="flex items-center gap-4 text-amber-600">
+                  <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center border border-amber-100">
+                    <ShieldAlert className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">Security Advisory</h3>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Anti-Cheating Protocol Active</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 space-y-3">
+                    <p className="text-sm text-slate-600 font-medium leading-relaxed italic">
+                      By launching this assessment, you acknowledge that institutional monitoring protocols are in effect.
+                    </p>
+                    <ul className="space-y-2">
+                       <li className="flex items-start gap-2 text-xs font-bold text-slate-700">
+                         <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                         Window focus is strictly monitored. Switching tabs or opening new apps will terminate the quiz.
+                       </li>
+                       <li className="flex items-start gap-2 text-xs font-bold text-slate-700">
+                         <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                         Focus loss results in an INSTANT, automatic submission of your current progress.
+                       </li>
+                    </ul>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 font-medium text-center">
+                    Please ensure all distractions are disabled and your environment is secure.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                  <button
+                    onClick={() => setSelectedQuizId(null)}
+                    className="flex-1 px-6 py-3 rounded-xl border border-slate-200 text-slate-500 font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      const id = selectedQuizId;
+                      setSelectedQuizId(null);
+                      navigate(`/student/quiz/${id}`);
+                    }}
+                    className="flex-1 px-6 py-3 rounded-xl bg-slate-900 text-white font-bold text-xs uppercase tracking-widest hover:bg-slate-800 shadow-xl shadow-slate-900/10 transition-all flex items-center justify-center gap-2"
+                  >
+                    Acknowledge & Launch
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedQuizId(null)}
+                className="absolute top-4 right-4 p-2 text-slate-300 hover:text-slate-500 transition-colors"
+                title="Decline and close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

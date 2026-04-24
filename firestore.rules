@@ -87,12 +87,18 @@ service cloud.firestore {
              data.teacherId is string;
     }
 
+    function isAuthorizedForQuiz(quizId) {
+      let quiz = get(/databases/$(database)/documents/quizzes/$(quizId)).data;
+      return quiz.teacherId == request.auth.uid ||
+             quiz.get('isPublic', false) == true ||
+             request.auth.uid in quiz.get('allowedStudentIds', []);
+    }
+
     match /submissions/{submissionId} {
       allow read: if isSuperAdmin() || (isSignedIn() && isNotBanned() && (
         resource.data.studentId == request.auth.uid || 
         resource.data.teacherId == request.auth.uid ||
-        (resource.data.get('quizId', '') != '' && 
-         get(/databases/$(database)/documents/quizzes/$(resource.data.quizId)).data.teacherId == request.auth.uid)
+        (resource.data.get('quizId', '') != '' && isAuthorizedForQuiz(resource.data.quizId))
       ));
       
       allow create: if isSignedIn() && isNotBanned() && 

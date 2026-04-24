@@ -3,18 +3,93 @@ import { collection, query, getDocs, orderBy, where, or, onSnapshot } from 'fire
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
-import { Link } from 'react-router-dom';
-import { motion } from 'motion/react';
-import { BookOpen, Trophy, Clock, Search, ArrowRight, CheckCircle2, History } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
+import { BookOpen, Trophy, Clock, Search, ArrowRight, CheckCircle2, History, ShieldAlert, AlertTriangle, X } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
+
+// Ranking Logic Component to avoid global collection listeners and handle permissions correctly
+function QuizRankings({ quizId, currentStudentId }: { quizId: string, currentStudentId: string }) {
+  const [stats, setStats] = useState<{ top1: QuizSubmission | null, myRank: number, total: number }>({ top1: null, myRank: 0, total: 0 });
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'submissions'),
+      where('quizId', '==', quizId)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allSubs = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
+        .filter(s => s.studentRole !== 'teacher' && s.studentRole !== 'admin');
+      
+      const latestSubsMap = new Map<string, QuizSubmission>();
+      allSubs.forEach(s => {
+        const existing = latestSubsMap.get(s.studentId);
+        if (!existing || s.score > existing.score) {
+          latestSubsMap.set(s.studentId, s);
+        }
+      });
+      
+      const sortedSubs = Array.from(latestSubsMap.values()).sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const timeA = a.timeTaken || 0;
+        const timeB = b.timeTaken || 0;
+        if (timeB !== timeA) return timeA - timeB;
+        return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
+      });
+
+      setStats({
+        top1: sortedSubs[0] || null,
+        myRank: sortedSubs.findIndex(s => s.studentId === currentStudentId) + 1,
+        total: sortedSubs.length
+      });
+    }, (error) => {
+      console.warn(`Ranking sync failed for quiz ${quizId}:`, error.message);
+    });
+
+    return () => unsubscribe();
+  }, [quizId, currentStudentId]);
+
+  return (
+    <div className="mb-8 space-y-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800/50 transition-colors group-hover:bg-white dark:group-hover:bg-slate-800">
+       <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+             <Trophy className="h-3.5 w-3.5 text-amber-500" />
+             <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Top Achievement</span>
+          </div>
+          {stats.top1 ? (
+            <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200">{stats.top1.studentName} <span className="text-amber-500 ml-1">({stats.top1.score}pts)</span></p>
+          ) : (
+            <p className="text-[10px] font-medium text-slate-300 italic uppercase">Awaiting results</p>
+          )}
+       </div>
+       
+       <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+             <div className="w-3.5 h-3.5 rounded bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                <span className="text-[8px] font-black text-indigo-600">#</span>
+             </div>
+             <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Institutional Rank</span>
+          </div>
+          {stats.myRank > 0 ? (
+             <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">Rank #{stats.myRank} <span className="text-[8px] text-slate-400 font-bold ml-1">/ {stats.total}</span></p>
+          ) : (
+             <p className="text-[10px] font-medium text-slate-300 italic uppercase">Not Ranked</p>
+          )}
+       </div>
+    </div>
+  );
+}
 
 export default function StudentDashboard() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
-  const [allSubmissions, setAllSubmissions] = useState<QuizSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -50,15 +125,6 @@ export default function StudentDashboard() {
         .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
         .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
       setSubmissions(subList);
-    });
-
-    // 3. Real-time sync for ALL institutional submissions (for Rankings/Top 1)
-    // Note: We fetch all and filter in memory to handle legacy docs without 'studentRole'
-    const unsubAll = onSnapshot(collection(db, 'submissions'), (snapshot) => {
-      const allList = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
-        .filter(s => s.studentRole !== 'teacher' && s.studentRole !== 'admin'); // Be inclusive of old docs
-      setAllSubmissions(allList);
       setLoading(false);
     });
 
@@ -66,7 +132,6 @@ export default function StudentDashboard() {
 
     return () => {
       unsubUser();
-      unsubAll();
     };
   }, [profile]);
 
@@ -267,31 +332,6 @@ export default function StudentDashboard() {
               const isUnlimited = profile?.role === 'teacher' || quiz.retakeLimit === 0;
               const limitReached = !isUnlimited && userSubs.length >= (quiz.retakeLimit || 1);
 
-              // Ranking Logic
-              const quizAllSubs = allSubmissions.filter(s => s.quizId === quiz.id);
-              const latestSubsMap = new Map<string, QuizSubmission>();
-              quizAllSubs.forEach(s => {
-                const existing = latestSubsMap.get(s.studentId);
-                // Use best score for competitive metrics
-                if (!existing || s.score > existing.score) {
-                  latestSubsMap.set(s.studentId, s);
-                }
-              });
-              
-              const sortedSubs = Array.from(latestSubsMap.values()).sort((a, b) => {
-                // 1. Score (Descending)
-                if (b.score !== a.score) return b.score - a.score;
-                // 2. Efficiency: Time Taken (Ascending)
-                const timeA = a.timeTaken || 0;
-                const timeB = b.timeTaken || 0;
-                if (timeB !== timeA) return timeA - timeB;
-                // 3. Chronology: Submission Date (Ascending - first to finish)
-                return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
-              });
-
-              const top1 = sortedSubs[0];
-              const myRank = submission ? sortedSubs.findIndex(s => s.studentId === profile?.uid) + 1 : 0;
-
               return (
                 <motion.div
                   key={quiz.id}
@@ -359,33 +399,7 @@ export default function StudentDashboard() {
                   </p>
                   
                   {/* Competitive Metrics */}
-                  <div className="mb-8 space-y-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800/50 transition-colors group-hover:bg-white dark:group-hover:bg-slate-800">
-                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                           <Trophy className="h-3.5 w-3.5 text-amber-500" />
-                           <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Top Achievement</span>
-                        </div>
-                        {top1 ? (
-                          <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200">{top1.studentName} <span className="text-amber-500 ml-1">({top1.score}pts)</span></p>
-                        ) : (
-                          <p className="text-[10px] font-medium text-slate-300 italic uppercase">Awaiting results</p>
-                        )}
-                     </div>
-                     
-                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                           <div className="w-3.5 h-3.5 rounded bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                              <span className="text-[8px] font-black text-indigo-600">#</span>
-                           </div>
-                           <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Institutional Rank</span>
-                        </div>
-                        {myRank > 0 ? (
-                           <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">Rank #{myRank} <span className="text-[8px] text-slate-400 font-bold ml-1">/ {sortedSubs.length}</span></p>
-                        ) : (
-                           <p className="text-[10px] font-medium text-slate-300 italic uppercase">Not Ranked</p>
-                        )}
-                     </div>
-                  </div>
+                  <QuizRankings quizId={quiz.id} currentStudentId={profile?.uid || ''} />
                   
                   <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     {submission ? (
@@ -413,13 +427,13 @@ export default function StudentDashboard() {
                         Expired
                       </div>
                     ) : (
-                      <Link
-                        to={`/student/quiz/${quiz.id}`}
+                      <button
+                        onClick={() => setSelectedQuizId(quiz.id)}
                         className="flex items-center gap-2 rounded-xl bg-indigo-600 dark:bg-indigo-700 px-6 py-3 text-[11px] font-bold uppercase tracking-widest text-white shadow-[0_10px_20px_rgba(79,70,229,0.15)] hover:shadow-[0_15px_30px_rgba(79,70,229,0.3)] hover:bg-indigo-700 transition-all active:scale-95 group/btn"
                       >
                         {submission ? 'Retry' : 'Access'}
                         <ArrowRight className="h-4 w-4 transform group-hover/btn:translate-x-0.5 transition-transform" />
-                      </Link>
+                      </button>
                     )}
                   </div>
                 </motion.div>
@@ -428,6 +442,88 @@ export default function StudentDashboard() {
           )}
         </div>
       </section>
+
+      {/* Institutional Security Advisory Modal */}
+      <AnimatePresence>
+        {selectedQuizId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedQuizId(null)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 space-y-6">
+                <div className="flex items-center gap-4 text-amber-600">
+                  <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center border border-amber-100">
+                    <ShieldAlert className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">Security Advisory</h3>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Anti-Cheating Protocol Active</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 space-y-3">
+                    <p className="text-sm text-slate-600 font-medium leading-relaxed italic">
+                      By launching this assessment, you acknowledge that institutional monitoring protocols are in effect.
+                    </p>
+                    <ul className="space-y-2">
+                       <li className="flex items-start gap-2 text-xs font-bold text-slate-700">
+                         <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                         Window focus is strictly monitored. Switching tabs or opening new apps will terminate the quiz.
+                       </li>
+                       <li className="flex items-start gap-2 text-xs font-bold text-slate-700">
+                         <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                         Focus loss results in an INSTANT, automatic submission of your current progress.
+                       </li>
+                    </ul>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 font-medium text-center">
+                    Please ensure all distractions are disabled and your environment is secure.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                  <button
+                    onClick={() => setSelectedQuizId(null)}
+                    className="flex-1 px-6 py-3 rounded-xl border border-slate-200 text-slate-500 font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      const id = selectedQuizId;
+                      setSelectedQuizId(null);
+                      navigate(`/student/quiz/${id}`);
+                    }}
+                    className="flex-1 px-6 py-3 rounded-xl bg-slate-900 text-white font-bold text-xs uppercase tracking-widest hover:bg-slate-800 shadow-xl shadow-slate-900/10 transition-all flex items-center justify-center gap-2"
+                  >
+                    Acknowledge & Launch
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedQuizId(null)}
+                className="absolute top-4 right-4 p-2 text-slate-300 hover:text-slate-500 transition-colors"
+                title="Decline and close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* History */}
       {submissions.length > 0 && (
