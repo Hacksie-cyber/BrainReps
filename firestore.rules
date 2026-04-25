@@ -2,11 +2,12 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default deny
+    // 0. Default deny catch-all
     match /{document=**} {
       allow read, write: if false;
     }
 
+    // --- Global Helpers ---
     function isSignedIn() {
       return request.auth != null;
     }
@@ -15,118 +16,148 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function incoming() {
+      return request.resource.data;
     }
 
-    function isNotBanned() {
-      return !isSignedIn() || 
-             !exists(/databases/$(database)/documents/users/$(request.auth.uid)) || 
-             getUserData().get('isBanned', false) == false;
-    }
-
-    function isTeacher() {
-      return isSignedIn() && isNotBanned() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'teacher';
-    }
-
-    function isStudent() {
-      return isSignedIn() && isNotBanned() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'student';
+    function existing() {
+      return resource.data;
     }
 
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    function getUserData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function isNotBanned() {
+      return isSignedIn() && 
+             (!exists(/databases/$(database)/documents/users/$(request.auth.uid)) || 
+              getUserData(request.auth.uid).get('isBanned', false) == false);
+    }
+
+    function isTeacher() {
+      return isSignedIn() && isNotBanned() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getUserData(request.auth.uid).role == 'teacher';
+    }
+
     function isSuperAdmin() {
       return isSignedIn() && request.auth.token.email == 'bamuyahacksie@gmail.com';
     }
 
+    // --- Entity Validations ---
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() <= 128 &&
+             data.name is string && data.name.size() <= 100 &&
+             data.email is string && data.email.size() <= 150 &&
+             data.role in ['student', 'teacher'] &&
+             isValidId(data.uid) &&
+             data.createdAt is string &&
+             (data.get('photoURL', '') == '' || (data.photoURL is string && data.photoURL.size() <= 1000)) &&
+             data.get('isBanned', false) is bool;
+    }
+
     match /users/{uid} {
-      // Allow users to read their own profile no matter what to detect ban status.
-      // For shared student/teacher lookups, we use the isNotBanned check.
-      allow read: if isSuperAdmin() || isSignedIn();
+      allow get: if isSignedIn();
       
-      allow write: if isSuperAdmin() || (isOwner(uid) && (
-        // Case: Initial Profile Creation
-        (!exists(/databases/$(database)/documents/users/$(uid))) ||
-        // Case: Standard Update (Immutability of Role and Ban Status)
-        (exists(/databases/$(database)/documents/users/$(uid)) && 
-         isNotBanned() &&
-         request.resource.data.role == resource.data.role &&
-         request.resource.data.get('isBanned', false) == resource.data.get('isBanned', false))
-      )) || (
-        // Allow teachers to ban/unban students
-        isTeacher() && 
-        resource.data.role == 'student' &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isBanned'])
+      allow list: if isSignedIn() && (
+        isSuperAdmin() ||
+        isTeacher() ||
+        isSignedIn() // Simplified but can be refined later if needed
+      );
+      
+      allow create: if isOwner(uid) && isValidUser(incoming()) && 
+                      incoming().uid == request.auth.uid &&
+                      incoming().role in ['student', 'teacher'] &&
+                      incoming().get('isBanned', false) == false;
+
+      allow update: if isSuperAdmin() || (
+        isOwner(uid) && isValidUser(incoming()) && isNotBanned() &&
+        incoming().role == existing().role &&
+        incoming().uid == existing().uid &&
+        incoming().get('isBanned', false) == existing().get('isBanned', false)
+      ) || (
+        isTeacher() && existing().role == 'student' && 
+        incoming().diff(existing()).affectedKeys().hasOnly(['isBanned']) &&
+        isValidUser(incoming())
       );
 
       allow delete: if isSuperAdmin() || isOwner(uid);
     }
 
+    function isValidQuiz(data) {
+      return data.title is string && data.title.size() <= 200 &&
+             data.teacherId is string && isValidId(data.teacherId) &&
+             data.questions is list && data.questions.size() <= 100 &&
+             data.createdAt is string &&
+             (data.get('deadline', '') == '' || data.deadline is string) &&
+             data.get('isPublic', false) is bool &&
+             data.get('isHidden', false) is bool;
+    }
+
     match /quizzes/{quizId} {
-      allow read: if isSuperAdmin() || (isSignedIn() && isNotBanned() && (
-        resource.data.teacherId == request.auth.uid ||
-        resource.data.get('isPublic', false) == true ||
-        request.auth.uid in resource.data.get('allowedStudentIds', [])
+      allow get: if isSuperAdmin() || (isSignedIn() && isNotBanned() && (
+        existing().teacherId == request.auth.uid ||
+        existing().get('isPublic', false) == true ||
+        request.auth.uid in existing().get('allowedStudentIds', [])
       ));
-      allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
-      allow update, delete: if isSuperAdmin() || (isTeacher() && resource.data.teacherId == request.auth.uid);
+      
+      allow list: if isSignedIn() && isNotBanned();
+
+      allow create: if isTeacher() && isValidQuiz(incoming()) && 
+                      incoming().teacherId == request.auth.uid;
+      
+      allow update: if isSuperAdmin() || (
+        isTeacher() && existing().teacherId == request.auth.uid && 
+        isValidQuiz(incoming()) && incoming().teacherId == existing().teacherId
+      );
+      
+      allow delete: if isSuperAdmin() || (isTeacher() && existing().teacherId == request.auth.uid);
     }
 
     function isValidSubmission(data) {
-      return data.studentId is string &&
-             data.studentRole is string &&
-             data.quizId is string &&
-             data.score is number &&
-             data.totalPoints is number &&
+      return data.studentId is string && isValidId(data.studentId) &&
+             data.quizId is string && isValidId(data.quizId) &&
+             data.score is number && data.totalPoints is number &&
              data.submittedAt is string &&
-             data.graded is bool &&
-             data.teacherId is string &&
-             data.isPublicQuiz is bool &&
-             data.get('allowedStudentIds', []) is list;
-    }
-
-    function isAuthorizedForQuiz(quizId) {
-      let quiz = get(/databases/$(database)/documents/quizzes/$(quizId)).data;
-      return quiz.teacherId == request.auth.uid ||
-             quiz.get('isPublic', false) == true ||
-             request.auth.uid in quiz.get('allowedStudentIds', []);
+             data.get('studentRole', '') is string &&
+             data.get('graded', false) is bool &&
+             data.get('teacherId', '') is string &&
+             data.get('quizTitle', '') is string;
     }
 
     match /submissions/{submissionId} {
-      allow read: if isSuperAdmin() || (isSignedIn() && isNotBanned() && (
-        resource.data.studentId == request.auth.uid || 
-        resource.data.teacherId == request.auth.uid ||
-        resource.data.get('isPublicQuiz', false) == true ||
-        request.auth.uid in resource.data.get('allowedStudentIds', [])
+      allow get: if isSuperAdmin() || (isSignedIn() && isNotBanned() && (
+        existing().studentId == request.auth.uid || 
+        existing().teacherId == request.auth.uid
       ));
+
+      allow list: if isSignedIn() && isNotBanned() && (
+        isSuperAdmin() ||
+        resource.data.studentId == request.auth.uid ||
+        resource.data.teacherId == request.auth.uid
+      );
       
       allow create: if isSignedIn() && isNotBanned() && 
-        isValidSubmission(request.resource.data) &&
-        request.resource.data.studentId == request.auth.uid &&
-        request.resource.data.teacherId == get(/databases/$(database)/documents/quizzes/$(request.resource.data.quizId)).data.teacherId;
+                      isValidSubmission(incoming()) &&
+                      incoming().studentId == request.auth.uid &&
+                      incoming().teacherId == get(/databases/$(database)/documents/quizzes/$(incoming().quizId)).data.teacherId;
       
-      allow update: if isSignedIn() && isNotBanned() &&
-        isOwner(resource.data.studentId) &&
-        isValidSubmission(request.resource.data) &&
-        request.resource.data.studentId == resource.data.studentId &&
-        request.resource.data.quizId == resource.data.quizId;
-      
-      allow delete: if isSuperAdmin() || (isSignedIn() && (
-        resource.data.studentId == request.auth.uid || 
-        resource.data.teacherId == request.auth.uid ||
-        (resource.data.get('quizId', '') != '' && 
-         get(/databases/$(database)/documents/quizzes/$(resource.data.quizId)).data.teacherId == request.auth.uid)
+      allow update, delete: if isSuperAdmin() || (isSignedIn() && (
+        existing().studentId == request.auth.uid || 
+        existing().teacherId == request.auth.uid
       ));
     }
 
     match /notifications/{notificationId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin());
-      allow create: if isTeacher();
-      allow update: if isSignedIn() && isNotBanned() && resource.data.userId == request.auth.uid && 
-                   request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
-      allow delete: if isSignedIn() && isNotBanned() && resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && (existing().userId == request.auth.uid || isSuperAdmin());
+      allow create: if isTeacher() || isSuperAdmin();
+      allow update: if isSignedIn() && isNotBanned() && existing().userId == request.auth.uid && 
+                   incoming().diff(existing()).affectedKeys().hasOnly(['isRead']);
+      allow delete: if isSignedIn() && isNotBanned() && existing().userId == request.auth.uid;
     }
   }
 }

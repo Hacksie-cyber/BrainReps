@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, orderBy } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { UserProfile } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -42,7 +42,13 @@ export default function AdminManagement() {
         collection(db, 'users'),
         where('role', '==', 'teacher')
       );
-      const snap = await getDocs(q);
+      let snap;
+      try {
+        snap = await getDocs(q);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, 'users/teachers');
+        return;
+      }
       const list = snap.docs
         .map(d => ({ uid: d.id, ...d.data() } as UserProfile))
         .filter(t => t.email !== 'bamuyahacksie@gmail.com')

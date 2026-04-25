@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, orderBy, limit, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission, UserProfile } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
@@ -26,22 +26,44 @@ export default function TeacherDashboard() {
 
     const fetchData = async () => {
       try {
-        const quizSnap = await getDocs(query(
+        const qQuiz = query(
           collection(db, 'quizzes'),
           where('teacherId', '==', profile.uid)
-        ));
+        );
+        let quizSnap;
+        try {
+          quizSnap = await getDocs(qQuiz);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, 'quizzes');
+          return; // Should not reach here as error is thrown
+        }
+
         const quizList = quizSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as Quiz))
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setQuizzes(quizList);
 
         // Fetch all students (the roster)
-        const studentSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
+        const qStudents = query(collection(db, 'users'), where('role', '==', 'student'));
+        let studentSnap;
+        try {
+          studentSnap = await getDocs(qStudents);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, 'users/students');
+          return;
+        }
         const studentList = studentSnap.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile));
         setStudents(studentList);
 
         // Fetch all teachers
-        const teacherSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'teacher')));
+        const qTeachers = query(collection(db, 'users'), where('role', '==', 'teacher'));
+        let teacherSnap;
+        try {
+          teacherSnap = await getDocs(qTeachers);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, 'users/teachers');
+          return;
+        }
         const teacherList = teacherSnap.docs.map(doc => doc.data() as UserProfile);
         const filteredTeachersCount = teacherList.filter(t => t.email !== 'bamuyahacksie@gmail.com').length;
         setTeacherCount(filteredTeachersCount);
@@ -50,7 +72,13 @@ export default function TeacherDashboard() {
           collection(db, 'submissions'),
           where('teacherId', '==', profile.uid)
         );
-        const subSnap = await getDocs(subQuery);
+        let subSnap;
+        try {
+          subSnap = await getDocs(subQuery);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, 'submissions');
+          return;
+        }
         const filteredSubs = subSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
           .filter(s => s.studentRole === 'student'); // Exclude educators from statistics

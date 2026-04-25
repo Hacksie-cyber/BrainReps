@@ -2,103 +2,90 @@
   "entities": {
     "User": {
       "title": "User Profile",
-      "description": "User account information and role.",
+      "description": "Core identity document for all participants and facilitators.",
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
         "name": { "type": "string" },
-        "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["teacher", "student"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["student", "teacher"] },
+        "photoURL": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isBanned": { "type": "boolean" }
       },
-      "required": ["uid", "role", "name", "email"]
+      "required": ["uid", "name", "email", "role", "createdAt"]
     },
     "Quiz": {
-      "title": "Quiz",
-      "description": "A questionnaire created by a teacher.",
+      "title": "Knowledge Module",
+      "description": "An instructional assessment created by a teacher.",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
         "title": { "type": "string" },
         "description": { "type": "string" },
         "teacherId": { "type": "string" },
         "teacherName": { "type": "string" },
+        "questions": { "type": "array" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "questions": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "type": { "type": "string", "enum": ["multiple-choice", "true-false", "short-answer"] },
-              "question": { "type": "string" },
-              "options": { "type": "array", "items": { "type": "string" } },
-              "correctAnswer": { "type": "string" },
-              "points": { "type": "number" }
-            },
-            "required": ["id", "type", "question", "correctAnswer", "points"]
-          }
-        }
+        "deadline": { "type": "string", "format": "date-time" },
+        "isPublic": { "type": "boolean" },
+        "allowedStudentIds": { "type": "array", "items": { "type": "string" } },
+        "isHidden": { "type": "boolean" },
+        "accessCode": { "type": "string" }
       },
-      "required": ["id", "title", "teacherId", "questions"]
+      "required": ["title", "teacherId", "questions", "createdAt"]
     },
     "Submission": {
-      "title": "Submission",
-      "description": "A student's attempt at a quiz.",
+      "title": "Assessment Result",
+      "description": "A record of a student's attempt at a quiz.",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
         "quizId": { "type": "string" },
         "quizTitle": { "type": "string" },
-        "teacherId": { "type": "string" },
         "studentId": { "type": "string" },
         "studentName": { "type": "string" },
-        "studentRole": { "type": "string", "enum": ["teacher", "student", "admin"] },
-        "isPublicQuiz": { "type": "boolean" },
-        "allowedStudentIds": { "type": "array", "items": { "type": "string" } },
-        "responses": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "questionId": { "type": "string" },
-              "answer": { "type": "string" },
-              "isCorrect": { "type": "boolean" },
-              "pointsEarned": { "type": "number" },
-              "maxPoints": { "type": "number" }
-            }
-          }
-        },
+        "studentRole": { "type": "string" },
         "score": { "type": "number" },
         "totalPoints": { "type": "number" },
         "submittedAt": { "type": "string", "format": "date-time" },
         "graded": { "type": "boolean" },
-        "status": { "type": "string", "enum": ["in-progress", "completed"] },
-        "timeTaken": { "type": "number" }
+        "answers": { "type": "array" },
+        "teacherId": { "type": "string" },
+        "isPublicQuiz": { "type": "boolean" },
+        "allowedStudentIds": { "type": "array" }
       },
-      "required": ["id", "quizId", "studentId", "responses", "score", "totalPoints", "submittedAt", "teacherId"]
+      "required": ["quizId", "studentId", "score", "totalPoints", "submittedAt"]
     },
     "Notification": {
-      "title": "Notification",
-      "description": "Alerts for students regarding assigned assessments.",
+      "title": "System Notification",
+      "description": "Alerts sent to users regarding assessments or institutional updates.",
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
         "userId": { "type": "string" },
         "title": { "type": "string" },
         "message": { "type": "string" },
-        "type": { "type": "string", "enum": ["assignment", "system"] },
-        "relatedId": { "type": "string" },
+        "type": { "type": "string" },
         "isRead": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "userId", "title", "message", "type", "createdAt", "isRead"]
+      "required": ["userId", "title", "message", "createdAt"]
     }
   },
   "firestore": {
-    "/users/{uid}": { "schema": "User", "description": "Global user profiles" },
-    "/quizzes/{quizId}": { "schema": "Quiz", "description": "Available quizzes" },
-    "/submissions/{submissionId}": { "schema": "Submission", "description": "Student quiz results" },
-    "/notifications/{notificationId}": { "schema": "Notification", "description": "Personalized alerts" }
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Individual user records."
+    },
+    "quizzes/{quizId}": {
+      "schema": "Quiz",
+      "description": "Collection of instructional assessments."
+    },
+    "submissions/{submissionId}": {
+      "schema": "Submission",
+      "description": "Student assessment attempts."
+    },
+    "notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications."
+    }
   }
 }

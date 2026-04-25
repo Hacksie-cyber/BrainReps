@@ -1,11 +1,6 @@
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { useAuth } from '../lib/AuthContext';
-import { Quiz, QuizSubmission } from '../types';
-import { motion } from 'motion/react';
-import { GraduationCap, Mail, Calendar, Target, Search, User, Download, ShieldAlert, UserMinus, UserCheck, Trash2 } from 'lucide-react';
-import { updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
 
@@ -39,10 +34,17 @@ export default function TeacherStudents() {
     const fetchStudents = async () => {
       try {
         // 1. Fetch the institutional student roster (all students)
-        const rostersSnap = await getDocs(query(
+        const qRoster = query(
           collection(db, 'users'),
           where('role', '==', 'student')
-        ));
+        );
+        let rostersSnap;
+        try {
+          rostersSnap = await getDocs(qRoster);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, 'users/students');
+          return;
+        }
         
         const allStudents = rostersSnap.docs.map(d => ({
           uid: d.id,
