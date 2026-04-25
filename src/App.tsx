@@ -17,6 +17,7 @@ import TeacherStudents from './components/TeacherStudents';
 import TeacherAnalytics from './components/TeacherAnalytics';
 import AdminManagement from './components/AdminManagement';
 import BannedScreen from './components/BannedScreen';
+import StudentProfile from './components/StudentProfile';
 
 import { BookOpen } from 'lucide-react';
 import { doc, getDocFromCache, getDocFromServer } from 'firebase/firestore';
@@ -111,6 +112,9 @@ export default function App() {
             } />
             <Route path="/student/roster" element={
               <RequireAuth role="student"><StudentRoster /></RequireAuth>
+            } />
+            <Route path="/student/profile" element={
+              <RequireAuth role="student"><StudentProfile /></RequireAuth>
             } />
             <Route path="/student/quiz/:id" element={
               <RequireAuth><QuizSession /></RequireAuth>
