@@ -349,112 +349,117 @@ export default function AuthPage() {
       </div>
 
       {/* About Section */}
-      <section ref={aboutRef} className="w-full max-w-7xl mx-auto py-24 md:py-32 px-6 space-y-24 scroll-mt-20">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-24 items-center">
-          <div className="space-y-8 animate-in fade-in slide-in-from-left-8 duration-1000">
-            <div className="w-16 h-1.5 bg-indigo-600 rounded-full" />
-            <h2 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-slate-50 tracking-tighter leading-[0.9]">
-              The Next <span className="text-indigo-600">Frontier</span> of Academic Training.
-            </h2>
-            <p className="text-xl md:text-2xl text-slate-500 dark:text-slate-400 font-medium leading-relaxed italic">
-              "BrainReps translates athletic methodology into academic mastery. We don't just teach—we train."
-            </p>
-          </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1">
-            <div className="bg-slate-50 dark:bg-slate-900 rounded-[2rem] p-8 border border-slate-100 dark:border-slate-800 transition-colors">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-600/20 flex items-center justify-center text-white mb-6">
-                <Target className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight mb-3">Our Mission</h3>
-              <p className="text-base text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                To democratize elite learning strategies by providing educators with high-precision assessment tools and students with a data-driven path to academic dominance.
-              </p>
-            </div>
-            <div className="bg-slate-50 dark:bg-slate-900 rounded-[2rem] p-8 border border-slate-100 dark:border-slate-800 transition-colors">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-600/20 flex items-center justify-center text-white mb-6">
-                <Compass className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight mb-3">Our Vision</h3>
-              <p className="text-base text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                To become the global standard for institutional analytics, where every student's cognitive growth is as measurable as an athlete's performance.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Developer Section */}
+      <section ref={aboutRef} className="w-full max-w-7xl mx-auto scroll-mt-20">
         <AnimatePresence>
           {activeSection === 'about' && (
-            <motion.div 
-              initial={{ opacity: 0, y: 50 }}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 30 }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className="relative overflow-hidden bg-slate-900 rounded-[3rem] p-8 md:p-16 lg:p-20 text-white"
+              className="py-24 md:py-32 px-6 space-y-24"
             >
-              <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/20 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
-              
-              <div className="relative flex flex-col lg:flex-row gap-16 lg:items-center">
-                {/* Visual Column */}
-                <div className="flex flex-col items-center lg:items-start shrink-0">
-                  <div className="relative mb-10">
-                    <div className="w-40 h-40 md:w-56 md:h-56 rounded-[2.5rem] bg-gradient-to-br from-indigo-500 to-violet-600 p-[2px] relative overflow-hidden ring-8 ring-white/5 transition-transform hover:scale-105 duration-500">
-                      <div className="w-full h-full rounded-[2.5rem] bg-slate-900 flex items-center justify-center text-5xl md:text-7xl font-black italic">
-                        <span className="relative z-10">D</span>
-                      </div>
-                    </div>
-                    <div className="absolute -bottom-3 -right-3 bg-indigo-600 p-3.5 rounded-2xl shadow-2xl z-20 border-4 border-slate-900">
-                      <Code className="w-6 h-6 text-white" />
-                    </div>
-                  </div>
-                  <div className="text-center lg:text-left space-y-2">
-                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-indigo-400">Lead Architect</span>
-                    <h3 className="text-2xl font-black tracking-tight">The Core Dev</h3>
-                  </div>
+              <div className="grid lg:grid-cols-2 gap-12 lg:gap-24 items-center">
+                <div className="space-y-8">
+                  <div className="w-16 h-1.5 bg-indigo-600 rounded-full" />
+                  <h2 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-slate-50 tracking-tighter leading-[0.9]">
+                    The Next <span className="text-indigo-600">Frontier</span> of Academic Training.
+                  </h2>
+                  <p className="text-xl md:text-2xl text-slate-500 dark:text-slate-400 font-medium leading-relaxed italic">
+                    "BrainReps translates athletic methodology into academic mastery. We don't just teach—we train."
+                  </p>
                 </div>
-
-                {/* Content Column */}
-                <div className="flex-1 space-y-10">
-                  <div className="space-y-4 text-center lg:text-left">
-                    <h4 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.8]">Don Nicole Bamuya</h4>
-                    <p className="text-xl font-bold uppercase tracking-[0.3em] text-indigo-400">Computer Engineer</p>
-                  </div>
-
-                  <div className="relative max-w-3xl">
-                    <div className="absolute -left-8 -top-6 text-8xl font-serif text-indigo-500/10 select-none">"</div>
-                    <p className="text-xl md:text-3xl text-slate-300 font-medium leading-relaxed italic relative z-10 md:pr-12">
-                      Precision engineering meets intuitive design. Building high-performance systems that empower the next generation of scholars.
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1">
+                  <div className="bg-slate-50 dark:bg-slate-900 rounded-[2rem] p-8 border border-slate-100 dark:border-slate-800 transition-colors">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-600/20 flex items-center justify-center text-white mb-6">
+                      <Target className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight mb-3">Our Mission</h3>
+                    <p className="text-base text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                      To democratize elite learning strategies by providing educators with high-precision assessment tools and students with a data-driven path to academic dominance.
                     </p>
                   </div>
+                  <div className="bg-slate-50 dark:bg-slate-900 rounded-[2rem] p-8 border border-slate-100 dark:border-slate-800 transition-colors">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 shadow-lg shadow-indigo-600/20 flex items-center justify-center text-white mb-6">
+                      <Compass className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight mb-3">Our Vision</h3>
+                    <p className="text-base text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                      To become the global standard for institutional analytics, where every student's cognitive growth is as measurable as an athlete's performance.
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-                  <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
-                     <div className="px-6 py-3 rounded-full bg-slate-800/50 border border-slate-700/50 flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">System Architecture</span>
-                     </div>
-                     <div className="px-6 py-3 rounded-full bg-slate-800/50 border border-slate-700/50 flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full-Stack Engineering</span>
-                     </div>
+              {/* Developer Section */}
+              <div 
+                className="relative overflow-hidden bg-slate-900 rounded-[3rem] p-8 md:p-16 lg:p-20 text-white"
+              >
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/20 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
+                
+                <div className="relative flex flex-col lg:flex-row gap-16 lg:items-center">
+                  {/* Visual Column */}
+                  <div className="flex flex-col items-center lg:items-start shrink-0">
+                    <div className="relative mb-10">
+                      <div className="w-40 h-40 md:w-56 md:h-56 rounded-[2.5rem] bg-gradient-to-br from-indigo-500 to-violet-600 p-[2px] relative overflow-hidden ring-8 ring-white/5 transition-transform hover:scale-105 duration-500">
+                        <div className="w-full h-full rounded-[2.5rem] bg-slate-900 flex items-center justify-center text-5xl md:text-7xl font-black italic">
+                          <span className="relative z-10">D</span>
+                        </div>
+                      </div>
+                      <div className="absolute -bottom-3 -right-3 bg-indigo-600 p-3.5 rounded-2xl shadow-2xl z-20 border-4 border-slate-900">
+                        <Code className="w-6 h-6 text-white" />
+                      </div>
+                    </div>
+                    <div className="text-center lg:text-left space-y-2">
+                      <span className="text-[10px] font-black uppercase tracking-[0.5em] text-indigo-400">Lead Architect</span>
+                      <h3 className="text-2xl font-black tracking-tight">The Core Dev</h3>
+                    </div>
                   </div>
 
-                  <div className="pt-10 border-t border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-8">
-                     <div className="flex items-center gap-8">
-                        <div>
-                           <p className="text-3xl font-black">2026</p>
-                           <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Established</p>
-                        </div>
-                        <div className="w-px h-10 bg-slate-800" />
-                        <div>
-                           <p className="text-3xl font-black">v2.4</p>
-                           <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Engine</p>
-                        </div>
-                     </div>
-                     <a 
-                      href="mailto:donnicolebamuya@gmail.com"
-                      className="w-full sm:w-auto px-10 py-5 bg-white text-slate-900 rounded-[1.5rem] font-black text-sm uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95 shadow-2xl shadow-indigo-500/10 text-center"
-                     >
-                       Contact Developer
-                     </a>
+                  {/* Content Column */}
+                  <div className="flex-1 space-y-10">
+                    <div className="space-y-4 text-center lg:text-left">
+                      <h4 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.8]">Don Nicole Bamuya</h4>
+                      <p className="text-xl font-bold uppercase tracking-[0.3em] text-indigo-400">Computer Engineer</p>
+                    </div>
+
+                    <div className="relative max-w-3xl">
+                      <div className="absolute -left-8 -top-6 text-8xl font-serif text-indigo-500/10 select-none">"</div>
+                      <p className="text-xl md:text-3xl text-slate-300 font-medium leading-relaxed italic relative z-10 md:pr-12">
+                        Precision engineering meets intuitive design. Building high-performance systems that empower the next generation of scholars.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
+                       <div className="px-6 py-3 rounded-full bg-slate-800/50 border border-slate-700/50 flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">System Architecture</span>
+                       </div>
+                       <div className="px-6 py-3 rounded-full bg-slate-800/50 border border-slate-700/50 flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full-Stack Engineering</span>
+                       </div>
+                    </div>
+
+                    <div className="pt-10 border-t border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-8">
+                       <div className="flex items-center gap-8">
+                          <div>
+                             <p className="text-3xl font-black">2026</p>
+                             <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Established</p>
+                          </div>
+                          <div className="w-px h-10 bg-slate-800" />
+                          <div>
+                             <p className="text-3xl font-black">v2.4</p>
+                             <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Engine</p>
+                          </div>
+                       </div>
+                       <a 
+                        href="mailto:donnicolebamuya@gmail.com"
+                        className="w-full sm:w-auto px-10 py-5 bg-white text-slate-900 rounded-[1.5rem] font-black text-sm uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95 shadow-2xl shadow-indigo-500/10 text-center"
+                       >
+                         Contact Developer
+                       </a>
+                    </div>
                   </div>
                 </div>
               </div>
