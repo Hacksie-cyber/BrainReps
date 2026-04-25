@@ -198,12 +198,16 @@ export default function AdminManagement() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-sm transition-colors ring-2 ring-transparent group-hover:ring-indigo-500/10",
+                          "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-sm transition-colors ring-2 ring-transparent group-hover:ring-indigo-500/10 overflow-hidden",
                           teacher.isBanned 
                             ? "bg-red-50 dark:bg-red-900/20 text-red-600" 
                             : "bg-slate-50 dark:bg-slate-800 text-slate-400 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/20 group-hover:text-indigo-600"
                         )}>
-                          {teacher.name.charAt(0)}
+                          {teacher.photoURL ? (
+                            <img src={teacher.photoURL} alt={teacher.name} className="w-full h-full object-cover" />
+                          ) : (
+                            teacher.name.charAt(0)
+                          )}
                         </div>
                         <div>
                           <p className="font-bold text-slate-700 dark:text-slate-200 tracking-tight">{teacher.name}</p>

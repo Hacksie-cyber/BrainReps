@@ -81,8 +81,12 @@ export default function StudentRoster() {
                 </div>
                 
                 <div className="mb-6 relative">
-                  <div className="w-24 h-24 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-300 dark:text-slate-600 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 border border-slate-100 dark:border-slate-700 shadow-sm group-hover:shadow-[0_10px_20px_rgba(79,70,229,0.2)]">
-                    <User className="h-10 w-10" />
+                  <div className="w-24 h-24 rounded-2xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-300 dark:text-slate-600 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 border border-slate-100 dark:border-slate-700 shadow-sm group-hover:shadow-[0_10px_20px_rgba(79,70,229,0.2)] overflow-hidden">
+                    {student.photoURL ? (
+                      <img src={student.photoURL} alt={student.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="h-10 w-10" />
+                    )}
                   </div>
                   <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-white dark:bg-slate-900 rounded-xl shadow-lg flex items-center justify-center border border-slate-100 dark:border-slate-800 group-hover:scale-110 transition-transform">
                     <ShieldCheck className="h-4 w-4 text-emerald-500" />

@@ -7,6 +7,7 @@ export interface UserProfile {
   role: UserRole;
   createdAt: string;
   isBanned?: boolean;
+  photoURL?: string;
 }
 
 export type QuestionType = 'multiple-choice' | 'true-false' | 'short-answer';

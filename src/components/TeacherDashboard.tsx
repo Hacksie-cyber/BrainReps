@@ -164,6 +164,7 @@ export default function TeacherDashboard() {
   const rosterInsights = Array.from(studentMap.values())
     .map(s => ({
       ...s,
+      photoURL: students.find(std => std.uid === s.id)?.photoURL,
       percentage: s.total > 0 ? Math.round((s.earned / s.total) * 100) : null
     }))
     // Prioritize students with 0 submissions (Inactive) then low percentage in LATEST quiz
@@ -424,12 +425,20 @@ export default function TeacherDashboard() {
                       : "bg-amber-50/40 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800 hover:bg-amber-100/50 dark:hover:bg-amber-900/20 hover:border-amber-200 shadow-sm hover:shadow-md"
                   )}>
                     <div className={cn(
-                      "w-12 h-12 rounded-xl flex items-center justify-center font-bold text-base transition-all group-hover:scale-110 shadow-sm uppercase font-display",
+                      "w-12 h-12 rounded-xl flex items-center justify-center font-bold text-base transition-all group-hover:scale-110 shadow-sm uppercase font-display overflow-hidden",
                       item.type === 'inactive' 
                         ? "bg-white dark:bg-slate-800 text-slate-400 border border-slate-100 dark:border-slate-700" 
                         : "bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
                     )}>
-                      {item.type === 'inactive' ? <UserX className="w-6 h-6 opacity-60" /> : item.name.charAt(0)}
+                      {item.type === 'inactive' ? (
+                        <UserX className="w-6 h-6 opacity-60" />
+                      ) : (
+                        item.photoURL ? (
+                          <img src={item.photoURL} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          item.name.charAt(0)
+                        )
+                      )}
                     </div>
                     <div className="flex-1 overflow-hidden">
                       <p className={cn(

@@ -17,6 +17,7 @@ export default function TeacherQuizResults() {
   const navigate = useNavigate();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
+  const [students, setStudents] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState<QuizSubmission | null>(null);
   const [participantSearch, setParticipantSearch] = useState('');
@@ -26,18 +27,21 @@ export default function TeacherQuizResults() {
   useEffect(() => {
     if (!id || !profile) return;
     
-    // 1. Fetch Quiz Metadata (Static)
-    const fetchQuiz = async () => {
+    // 1. Fetch Quiz Metadata & Students
+    const fetchData = async () => {
       try {
         const quizSnap = await getDoc(doc(db, 'quizzes', id));
         if (quizSnap.exists()) {
           setQuiz({ id: quizSnap.id, ...quizSnap.data() } as Quiz);
         }
+
+        const studentSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
+        setStudents(studentSnap.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
       } catch (error) {
         console.error(error);
       }
     };
-    fetchQuiz();
+    fetchData();
 
     // 2. Establish Real-time Submission Stream
     const q = query(
@@ -359,8 +363,16 @@ export default function TeacherQuizResults() {
                       </td>
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-400 dark:text-slate-600 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/30 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                            {sub.studentName.charAt(0)}
+                          <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-400 dark:text-slate-600 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/30 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors overflow-hidden">
+                            {students.find(s => s.uid === sub.studentId)?.photoURL ? (
+                              <img 
+                                src={students.find(s => s.uid === sub.studentId)?.photoURL} 
+                                alt={sub.studentName} 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              sub.studentName.charAt(0)
+                            )}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">

@@ -85,7 +85,7 @@ export default function StudentProfile() {
                   {LevelBadge.label}
                 </div>
               </div>
-              <p className="text-slate-500 dark:text-slate-400 font-medium italic">Architectural Core ID: <span className="font-mono text-xs">{profile.uid.slice(0, 8)}...</span></p>
+              <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400 italic">"The curriculum is a gym; the brain is the muscle."</p>
             </div>
           </div>
 
@@ -149,7 +149,7 @@ export default function StudentProfile() {
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">Academic Tenure</p>
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Enrolled Since 2024</p>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Enrolled Since 2026</p>
                 </div>
               </div>
 

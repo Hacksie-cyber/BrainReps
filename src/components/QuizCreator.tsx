@@ -410,10 +410,16 @@ export default function QuizCreator() {
                           >
                             <div className="flex items-center gap-3">
                               <div className={cn(
-                                "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black transition-colors",
+                                "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black transition-colors overflow-hidden",
                                 student.isBanned ? "bg-red-50 dark:bg-red-900/20 text-red-400" : (isSelected ? "bg-indigo-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700")
                               )}>
-                                {student.isBanned ? <ShieldAlert className="w-4 h-4" /> : student.name.charAt(0)}
+                                {student.isBanned ? (
+                                  <ShieldAlert className="w-4 h-4" />
+                                ) : student.photoURL ? (
+                                  <img src={student.photoURL} alt={student.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  student.name.charAt(0)
+                                )}
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">

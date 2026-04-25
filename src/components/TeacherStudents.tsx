@@ -17,6 +17,7 @@ interface StudentMetric {
   avgScore: number;
   lastActive: string;
   isBanned?: boolean;
+  photoURL?: string;
 }
 
 import { jsPDF } from 'jspdf';
@@ -48,6 +49,7 @@ export default function TeacherStudents() {
           name: d.data().name || 'Anonymous Learner',
           email: d.data().email || '',
           isBanned: d.data().isBanned || false,
+          photoURL: d.data().photoURL,
           submissions: [],
           avgScore: 0,
           lastActive: d.data().createdAt || new Date().toISOString()
@@ -294,12 +296,16 @@ export default function TeacherStudents() {
               >
                 <div className="flex items-start gap-4">
                   <div className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center transition-colors",
+                    "w-12 h-12 rounded-full flex items-center justify-center transition-colors overflow-hidden",
                     student.isBanned 
                       ? "bg-red-50 dark:bg-red-900/20 text-red-400" 
                       : "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-600 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/30 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
                   )}>
-                    <User className="h-6 w-6" />
+                    {student.photoURL ? (
+                      <img src={student.photoURL} alt={student.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="h-6 w-6" />
+                    )}
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">

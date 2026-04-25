@@ -115,8 +115,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 profile.role === 'student' ? "hover:opacity-80 transition-opacity" : "cursor-default"
               )}
             >
-              <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-indigo-500/20">
-                {profile.name.charAt(0)}
+              <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-indigo-500/20 overflow-hidden">
+                {profile.photoURL ? (
+                  <img src={profile.photoURL} alt={profile.name} className="w-full h-full object-cover" />
+                ) : (
+                  profile.name.charAt(0)
+                )}
               </div>
               <div className="flex-1 overflow-hidden">
                 <p className="text-xs font-semibold text-white truncate">{profile.name}</p>
