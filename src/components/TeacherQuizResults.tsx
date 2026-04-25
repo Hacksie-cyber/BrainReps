@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
-import { Quiz, QuizSubmission, Question } from '../types';
+import { Quiz, QuizSubmission, Question, UserProfile } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download, FileText } from 'lucide-react';
 import { cn } from '../lib/utils';

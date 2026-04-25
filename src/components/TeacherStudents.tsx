@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, orderBy, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { useAuth } from '../lib/AuthContext';
+import { QuizSubmission } from '../types';
+import { motion } from 'motion/react';
+import { Mail, Calendar, Search, User, Download, ShieldAlert, UserMinus, UserCheck, Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
 

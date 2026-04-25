@@ -206,7 +206,8 @@ export default function TeacherDashboard() {
       name: s.name,
       score: s.percentage,
       quiz: s.recentQuiz,
-      type: s.submissionCount === 0 ? 'inactive' : 'at-risk'
+      type: s.submissionCount === 0 ? 'inactive' : 'at-risk' as const,
+      photoURL: s.photoURL
     }));
 
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
