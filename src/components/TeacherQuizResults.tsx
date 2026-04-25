@@ -239,18 +239,18 @@ export default function TeacherQuizResults() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/teacher')} className="p-2 border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors text-slate-400">
+          <button onClick={() => navigate('/teacher')} className="p-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 dark:text-slate-600">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{quiz.title}</h1>
-            <p className="text-sm text-slate-500 font-medium italic">Analytics Report • Generated {new Date().toLocaleDateString()}</p>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{quiz.title}</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium italic">Analytics Report • Generated {new Date().toLocaleDateString()}</p>
           </div>
         </div>
         <button
           onClick={() => setShowDeleteModal(true)}
           disabled={isDeleting}
-          className="p-2.5 bg-white text-red-500 border border-slate-200 rounded-xl hover:bg-red-50 hover:border-red-200 transition-all shadow-sm flex items-center gap-2 text-xs font-bold disabled:opacity-50"
+          className="p-2.5 bg-white dark:bg-slate-900 text-red-500 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-900 transition-all shadow-sm flex items-center gap-2 text-xs font-bold disabled:opacity-50"
         >
           <Trash2 className="w-4 h-4" />
           {isDeleting ? 'Deleting...' : 'Remove Module'}
@@ -258,11 +258,11 @@ export default function TeacherQuizResults() {
       </header>
 
       <section className="grid gap-6 sm:grid-cols-3">
-        <div className="rounded-xl bg-white p-6 border border-slate-200 shadow-sm space-y-2">
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 border-b border-slate-50 pb-2 mb-2">
+        <div className="rounded-xl bg-white dark:bg-slate-900 p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-slate-50 dark:border-slate-800 pb-2 mb-2">
             <Users className="h-3 w-3" /> Sample size
           </div>
-          <h3 className="text-3xl font-bold text-slate-900">{submissions.length} <span className="text-sm font-medium text-slate-400">Students</span></h3>
+          <h3 className="text-3xl font-bold text-slate-900 dark:text-slate-100">{submissions.length} <span className="text-sm font-medium text-slate-400 dark:text-slate-500">Students</span></h3>
         </div>
         <div className="rounded-xl bg-indigo-600 p-6 text-white shadow-xl shadow-indigo-600/20 space-y-2">
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest opacity-60 border-b border-white/10 pb-2 mb-2">
@@ -270,42 +270,42 @@ export default function TeacherQuizResults() {
           </div>
           <h3 className="text-3xl font-bold">{stats.avgScore}% <span className="text-sm font-medium opacity-60">Average</span></h3>
         </div>
-        <div className="rounded-xl bg-white p-6 border border-slate-200 shadow-sm space-y-2">
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-emerald-500 border-b border-slate-50 pb-2 mb-2">
+        <div className="rounded-xl bg-white dark:bg-slate-900 p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-emerald-500 dark:text-emerald-400 border-b border-slate-50 dark:border-slate-800 pb-2 mb-2">
             <Trophy className="h-3 w-3" /> Peak Result
           </div>
-          <h3 className="text-3xl font-bold text-slate-900">{stats.topScore}% <span className="text-sm font-medium text-slate-400">Score</span></h3>
+          <h3 className="text-3xl font-bold text-slate-900 dark:text-slate-100">{stats.topScore}% <span className="text-sm font-medium text-slate-400 dark:text-slate-500">Score</span></h3>
         </div>
       </section>
 
       <section className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
            <div>
-             <h2 className="text-lg font-bold text-slate-800">Individual Participant Data</h2>
-             <p className="text-xs text-slate-400 font-medium">Detailed tracking of student attempts and achievement levels.</p>
+             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Individual Participant Data</h2>
+             <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Detailed tracking of student attempts and achievement levels.</p>
            </div>
            <div className="flex items-center gap-3">
              <div className="relative group">
-               <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+               <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 transition-colors" />
                <input 
                  type="text"
                  placeholder="Search student..."
                  value={participantSearch}
                  onChange={(e) => setParticipantSearch(e.target.value)}
-                 className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full sm:w-64"
+                 className="pl-9 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full sm:w-64"
                />
              </div>
             <div className="flex items-center gap-2">
               <button 
                 onClick={exportToCSV}
-                className="px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm active:scale-95"
+                className="px-4 py-2 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 shadow-sm active:scale-95"
               >
                 <Download className="w-3.5 h-3.5" />
                 CSV
               </button>
               <button 
                 onClick={exportToPDF}
-                className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/10 active:scale-95"
+                className="px-4 py-2 bg-slate-900 dark:bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-slate-800 dark:hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/10 active:scale-95"
               >
                 <FileText className="w-3.5 h-3.5" />
                 PDF Export
@@ -314,19 +314,19 @@ export default function TeacherQuizResults() {
            </div>
         </div>
 
-        <div className="rounded-xl bg-white border border-slate-200 overflow-hidden shadow-sm">
+        <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50">
-                  <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Rank</th>
-                  <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Participant</th>
-                  <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 text-center">Date</th>
-                  <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Result</th>
-                  <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Percentile</th>
+                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                  <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Rank</th>
+                  <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Participant</th>
+                  <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 text-center">Date</th>
+                  <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Result</th>
+                  <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Percentile</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                 {filteredSubmissions.map((sub, i) => {
                   const rank = submissions.findIndex(s => s.id === sub.id) + 1;
                   return (
@@ -335,62 +335,62 @@ export default function TeacherQuizResults() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: i * 0.05 }}
-                      className="hover:bg-slate-50/50 transition-colors group cursor-pointer"
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors group cursor-pointer"
                       onClick={() => setSelectedSubmission(sub)}
                     >
                       <td className="px-8 py-5">
                         <div className="flex items-center justify-center">
                           {rank === 1 ? (
-                            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 shadow-sm border border-amber-200">
+                            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-sm border border-amber-200 dark:border-amber-800/50">
                               <Trophy className="h-4 w-4" />
                             </div>
                           ) : rank === 2 ? (
-                            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 shadow-sm border border-slate-200">
+                            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 shadow-sm border border-slate-200 dark:border-slate-700">
                               <Medal className="h-4 w-4" />
                             </div>
                           ) : rank === 3 ? (
-                            <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600 shadow-sm border border-orange-100">
+                            <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 shadow-sm border border-orange-100 dark:border-orange-800/50">
                               <Medal className="h-4 w-4" />
                             </div>
                           ) : (
-                            <span className="text-xs font-black text-slate-300">#{rank}</span>
+                            <span className="text-xs font-black text-slate-300 dark:text-slate-700">#{rank}</span>
                           )}
                         </div>
                       </td>
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-[10px] font-black text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                          <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-400 dark:text-slate-600 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/30 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                             {sub.studentName.charAt(0)}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="font-bold text-slate-700 tracking-tight">{sub.studentName}</p>
+                              <p className="font-bold text-slate-700 dark:text-slate-200 tracking-tight">{sub.studentName}</p>
                               {sub.status === 'in-progress' && (
-                                <span className="text-[8px] font-black uppercase text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 animate-pulse">In Progress</span>
+                                <span className="text-[8px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded border border-amber-100 dark:border-amber-900 animate-pulse">In Progress</span>
                               )}
                             </div>
-                            <p className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">View Attempt Breakdown</p>
+                            <p className="text-[9px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-tighter">View Attempt Breakdown</p>
                           </div>
-                          <Info className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <Info className="h-3 w-3 text-slate-300 dark:text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       </td>
                       <td className="px-8 py-5 text-center">
-                        <span className="text-[10px] font-bold text-slate-400">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
                           {new Date(sub.submittedAt).toLocaleDateString()}
                         </span>
                       </td>
                       <td className="px-8 py-5">
-                        <p className="text-sm font-bold text-slate-800">{sub.score} <span className="text-slate-300">/ {sub.totalPoints}</span></p>
+                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{sub.score} <span className="text-slate-300 dark:text-slate-700">/ {sub.totalPoints}</span></p>
                       </td>
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-4">
-                           <div className="w-24 h-1 bg-slate-100 rounded-full overflow-hidden">
+                           <div className="w-24 h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                              <div 
-                              className={cn("h-full transition-all duration-1000", (sub.score/sub.totalPoints) >= 0.7 ? "bg-indigo-600 shadow-[0_0_8px_rgba(79,70,229,0.5)]" : "bg-slate-300")} 
+                              className={cn("h-full transition-all duration-1000", (sub.score/sub.totalPoints) >= 0.7 ? "bg-indigo-600 shadow-[0_0_8px_rgba(79,70,229,0.5)]" : "bg-slate-300 dark:bg-slate-700")} 
                               style={{ width: `${(sub.score/sub.totalPoints) * 100}%` }}
                              />
                            </div>
-                           <span className="text-[10px] font-black text-slate-400">{Math.round((sub.score/sub.totalPoints) * 100)}%</span>
+                           <span className="text-[10px] font-black text-slate-400 dark:text-slate-500">{Math.round((sub.score/sub.totalPoints) * 100)}%</span>
                         </div>
                       </td>
                     </motion.tr>
@@ -398,7 +398,7 @@ export default function TeacherQuizResults() {
                 })}
                 {filteredSubmissions.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-8 py-16 text-center text-slate-300 italic font-medium tracking-tight">
+                    <td colSpan={5} className="px-8 py-16 text-center text-slate-300 dark:text-slate-700 italic font-medium tracking-tight">
                       {participantSearch ? "No students matching your search criteria." : "No submission records detected in the database."}
                     </td>
                   </tr>
@@ -424,22 +424,22 @@ export default function TeacherQuizResults() {
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-100 dark:border-slate-800"
             >
-              <header className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <header className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
                 <div>
-                  <h3 className="text-xl font-bold text-slate-800 tracking-tight">{selectedSubmission.studentName}</h3>
-                  <p className="text-xs text-slate-500 font-medium">Performance Breakdown • {selectedSubmission.score} / {selectedSubmission.totalPoints}</p>
+                  <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{selectedSubmission.studentName}</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Performance Breakdown • {selectedSubmission.score} / {selectedSubmission.totalPoints}</p>
                 </div>
                 <button 
                   onClick={() => setSelectedSubmission(null)}
-                  className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400"
+                  className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 dark:text-slate-500"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </header>
 
-              <div className="p-8 overflow-y-auto space-y-8">
+              <div className="p-8 overflow-y-auto space-y-8 custom-scrollbar">
                 {selectedSubmission.responses.map((res, idx) => {
                   const q = getQuestion(res.questionId);
                   if (!q) return null;
@@ -448,31 +448,31 @@ export default function TeacherQuizResults() {
                     <div key={idx} className="space-y-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="space-y-1">
-                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Question {idx + 1}</span>
-                          <h4 className="font-bold text-slate-800 leading-snug">{q.question}</h4>
+                          <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">Question {idx + 1}</span>
+                          <h4 className="font-bold text-slate-800 dark:text-slate-100 leading-snug">{q.question}</h4>
                         </div>
                         <div className="text-right">
                           <p className={cn(
                             "text-lg font-black",
-                            res.pointsEarned === res.maxPoints ? "text-emerald-500" : res.pointsEarned > 0 ? "text-amber-500" : "text-slate-300"
+                            res.pointsEarned === res.maxPoints ? "text-emerald-500 dark:text-emerald-400" : res.pointsEarned > 0 ? "text-amber-500 dark:text-amber-400" : "text-slate-300 dark:text-slate-700"
                           )}>
-                            {res.pointsEarned} <span className="text-[10px] text-slate-300">/ {res.maxPoints}</span>
+                            {res.pointsEarned} <span className="text-[10px] text-slate-300 dark:text-slate-700">/ {res.maxPoints}</span>
                           </p>
                         </div>
                       </div>
 
-                      <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 space-y-3">
+                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-100 dark:border-slate-800 space-y-3">
                         <div className="space-y-1">
-                          <p className="text-[9px] font-bold uppercase text-slate-400">Student Response</p>
-                          <p className="text-sm font-medium text-slate-700 italic">
+                          <p className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500">Student Response</p>
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 italic">
                             {q.type === 'multiple-choice' && q.options && !isNaN(parseInt(res.answer))
                               ? `"${q.options[parseInt(res.answer)] || res.answer}"`
                               : `"${res.answer || "No response provided"}"`}
                           </p>
                         </div>
                         <div className="space-y-1">
-                          <p className="text-[9px] font-bold uppercase text-slate-400">Correct Answer / Reference</p>
-                          <p className="text-sm font-bold text-indigo-600">
+                          <p className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500">Correct Answer / Reference</p>
+                          <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
                             {q.type === 'multiple-choice' && q.options && !isNaN(parseInt(q.correctAnswer))
                               ? q.options[parseInt(q.correctAnswer)]
                               : q.correctAnswer}

@@ -379,6 +379,8 @@ export default function QuizSession() {
         studentId: profile.uid,
         studentName: profile.name,
         studentRole: profile.role, // Record role for advanced filtering
+        isPublicQuiz: quiz.isPublic || false,
+        allowedStudentIds: quiz.allowedStudentIds || [],
         responses: gradedResponses,
         score: finalScore,
         totalPoints,
@@ -509,11 +511,11 @@ export default function QuizSession() {
   if (isPastDue) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95 duration-500 px-4">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mb-4 w-20 h-20 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 shadow-xl border border-red-100">
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mb-4 w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-center justify-center text-red-500 dark:text-red-400 shadow-xl border border-red-100 dark:border-red-900/50">
           <Clock className="h-10 w-10 text-red-400" />
         </motion.div>
-        <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-slate-900">Assessment Expired</h2>
-        <p className="mb-10 text-lg text-slate-500 font-medium max-w-sm mx-auto leading-relaxed">
+        <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">Assessment Expired</h2>
+        <p className="mb-10 text-lg text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto leading-relaxed">
           The deadline for this module (<b>{formatDeadline(quiz.deadline!)}</b>) has passed. 
           The curriculum is no longer accepting new submissions.
         </p>
@@ -539,11 +541,11 @@ export default function QuizSession() {
   if (profile?.role === 'student' && quiz.retakeLimit !== 0 && attemptCount >= (quiz.retakeLimit || 1)) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95 duration-500 px-4">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mb-4 w-20 h-20 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 shadow-xl border border-slate-200">
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mb-4 w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 dark:text-slate-500 shadow-xl border border-slate-200 dark:border-slate-700">
           <AlertCircle className="h-10 w-10" />
         </motion.div>
-        <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-slate-900">Attempt Limit Reached</h2>
-        <p className="mb-10 text-lg text-slate-500 font-medium max-w-sm mx-auto leading-relaxed">
+        <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">Attempt Limit Reached</h2>
+        <p className="mb-10 text-lg text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto leading-relaxed">
           The teacher has set a maximum of <b>{quiz.retakeLimit === 0 ? 'Unlimited' : `${quiz.retakeLimit} attempt(s)`}</b> for this assessment. 
           Please consult your performance dashboard for detailed results.
         </p>
@@ -575,11 +577,11 @@ export default function QuizSession() {
           {wasForced ? <ShieldAlert className="h-10 w-10" /> : <CheckCircle2 className="h-10 w-10" />}
         </motion.div>
         
-        <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-slate-900">
+        <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
           {wasForced ? "Security Finalization" : "Submission Confirmed"}
         </h2>
         {wasForced && (
-          <p className="mb-6 px-4 py-2 bg-amber-50 text-amber-700 text-xs font-bold rounded-lg border border-amber-100 flex items-center gap-2">
+          <p className="mb-6 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-bold rounded-lg border border-amber-100 dark:border-amber-800/50 flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" />
             Assessment terminated due to window focus loss. Academic integrity protocols enforced.
           </p>
@@ -593,23 +595,23 @@ export default function QuizSession() {
             className="mb-8 space-y-4"
           >
             <div>
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Final Achievement Score</p>
-              <h3 className="text-5xl font-black text-indigo-600">
-                {lastScore.score} <span className="text-xl text-slate-300">/ {lastScore.total}</span>
+              <p className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest mb-1">Final Achievement Score</p>
+              <h3 className="text-5xl font-black text-indigo-600 dark:text-indigo-400">
+                {lastScore.score} <span className="text-xl text-slate-300 dark:text-slate-600">/ {lastScore.total}</span>
               </h3>
             </div>
 
-            <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-50">
+            <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-50 dark:border-slate-800">
                {lastScore.rank > 0 && (
-                 <div className="text-center px-6 py-2 bg-slate-50 rounded-xl border border-slate-100">
-                    <p className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">Leaderboard Standing</p>
-                    <p className="text-xl font-black text-slate-800">Rank #{lastScore.rank}</p>
+                 <div className="text-center px-6 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <p className="text-[8px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-tighter">Leaderboard Standing</p>
+                    <p className="text-xl font-black text-slate-800 dark:text-slate-100">Rank #{lastScore.rank}</p>
                  </div>
                )}
                {lastScore.totalParticipants > 0 && (
-                 <div className="text-center px-6 py-2 bg-slate-50 rounded-xl border border-slate-100">
-                    <p className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">Peer Group Size</p>
-                    <p className="text-xl font-black text-slate-400">{lastScore.totalParticipants} <span className="text-[10px]">Total</span></p>
+                 <div className="text-center px-6 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <p className="text-[8px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-tighter">Peer Group Size</p>
+                    <p className="text-xl font-black text-slate-400 dark:text-slate-600">{lastScore.totalParticipants} <span className="text-[10px]">Total</span></p>
                  </div>
                )}
                {lastScore.rank === 0 && (
@@ -619,7 +621,7 @@ export default function QuizSession() {
           </motion.div>
         )}
 
-        <p className="mb-10 text-lg text-slate-500 font-medium max-w-sm mx-auto leading-relaxed">
+        <p className="mb-10 text-lg text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto leading-relaxed">
           Your metrics have been recorded. You can now review the correct answers and detailed feedback in your performance dashboard.
         </p>
 
@@ -678,8 +680,8 @@ export default function QuizSession() {
                  <ShieldAlert className="w-8 h-8 text-amber-500" />
               </div>
               <div className="space-y-2">
-                 <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Security Protocol Active</h2>
-                 <p className="text-slate-500 text-sm font-medium leading-relaxed">
+                 <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">Security Protocol Active</h2>
+                 <p className="text-slate-500 dark:text-slate-400 text-sm font-medium leading-relaxed">
                     Access to assessment content is restricted while the window is out of focus. This measure ensures curriculum integrity and prevents unauthorized content capture.
                  </p>
               </div>
@@ -699,9 +701,9 @@ export default function QuizSession() {
           <header className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
                <div>
-                  <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{quiz.title}</h1>
+                  <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{quiz.title}</h1>
                   <div className="flex items-center gap-3 mt-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Section Component {currentIndex + 1} of {quiz.questions.length}</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Section Component {currentIndex + 1} of {quiz.questions.length}</p>
                     {timeLeft !== null && (
                        <div className={cn(
                          "flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-black uppercase tracking-tighter transition-colors",
@@ -742,14 +744,14 @@ export default function QuizSession() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98 }}
-                className="rounded-xl bg-white p-6 md:p-10 shadow-xl shadow-slate-200/50 border border-slate-200 space-y-8"
+                className="rounded-xl bg-white dark:bg-slate-900 p-6 md:p-10 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200 dark:border-slate-800 space-y-8"
               >
                 {/* Question UI Remains the same */}
                 <div className="space-y-4">
-                  <span className="inline-block rounded-lg bg-slate-50 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-400 border border-slate-100">
+                  <span className="inline-block rounded-lg bg-slate-50 dark:bg-slate-800 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-800">
                     {currentQuestion.type.replace('-', ' ')} Assessment Block
                   </span>
-                  <h2 className="text-xl md:text-2xl font-bold leading-snug text-slate-900 tracking-tight">{currentQuestion.question}</h2>
+                  <h2 className="text-xl md:text-2xl font-bold leading-snug text-slate-900 dark:text-white tracking-tight">{currentQuestion.question}</h2>
                 </div>
 
                 <div className="space-y-3">
@@ -762,14 +764,14 @@ export default function QuizSession() {
                           className={cn(
                             "group flex items-center justify-between rounded-xl border-2 p-5 transition-all text-left",
                             responses[currentQuestion.id] === i.toString()
-                              ? "border-indigo-600 bg-indigo-50/50 text-indigo-700 ring-4 ring-indigo-600/5"
-                              : "border-slate-50 bg-slate-50/30 text-slate-600 hover:border-slate-200 hover:bg-slate-50"
+                              ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 ring-4 ring-indigo-600/5"
+                              : "border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30 text-slate-600 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
                           )}
                         >
                           <span className="font-bold text-sm tracking-tight">{option}</span>
                           <div className={cn(
                             "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all",
-                             responses[currentQuestion.id] === i.toString() ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "border-slate-200 bg-white"
+                             responses[currentQuestion.id] === i.toString() ? "bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow-lg shadow-indigo-600/20" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                           )}>
                             {responses[currentQuestion.id] === i.toString() && <CheckCircle2 className="h-3 w-3" />}
                           </div>
@@ -787,8 +789,8 @@ export default function QuizSession() {
                           className={cn(
                             "flex flex-col items-center justify-center gap-4 rounded-xl border-2 py-8 md:py-12 transition-all group",
                             responses[currentQuestion.id] === val
-                              ? "border-indigo-600 bg-indigo-50/50 text-indigo-700 ring-4 ring-indigo-600/5"
-                              : "border-slate-50 bg-slate-50/30 text-slate-400 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-600"
+                              ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 ring-4 ring-indigo-600/5"
+                              : "border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300"
                           )}
                         >
                           <span className="text-base md:text-xl font-black uppercase tracking-[0.2em]">{val}</span>

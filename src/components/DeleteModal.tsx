@@ -27,15 +27,15 @@ export default function DeleteModal({ isOpen, onClose, onConfirm, title, message
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100"
+            className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800"
           >
             <div className="p-6 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 mb-4">
-                <Trash2 className="h-6 w-6 text-red-600" />
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 dark:bg-red-900/20 mb-4">
+                <Trash2 className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
               
-              <h3 className="text-xl font-bold text-slate-800 tracking-tight mb-2">{title}</h3>
-              <p className="text-sm text-slate-500 font-medium leading-relaxed italic mb-6">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight mb-2">{title}</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed italic mb-6">
                 {message}
               </p>
 
@@ -50,23 +50,23 @@ export default function DeleteModal({ isOpen, onClose, onConfirm, title, message
                 <button
                   onClick={onClose}
                   disabled={isDeleting}
-                  className="w-full py-3 bg-slate-50 text-slate-500 rounded-xl font-bold text-sm transition-all hover:bg-slate-100 active:scale-[0.98] disabled:opacity-50"
+                  className="w-full py-3 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl font-bold text-sm transition-all hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-[0.98] disabled:opacity-50"
                 >
                   Return to Dashboard
                 </button>
               </div>
             </div>
 
-            <div className="bg-slate-50 p-4 flex items-start gap-3">
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 flex items-start gap-3">
               <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter text-left">
+              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter text-left">
                 Attention: This operation is destructive and cannot be reversed by system administrators once finalized.
               </p>
             </div>
 
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-1 text-slate-300 hover:text-slate-500 rounded-full hover:bg-slate-50 transition-all"
+              className="absolute top-4 right-4 p-1 text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
             >
               <X className="h-4 w-4" />
             </button>

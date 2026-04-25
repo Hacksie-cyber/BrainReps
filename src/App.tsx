@@ -18,7 +18,24 @@ import TeacherAnalytics from './components/TeacherAnalytics';
 import AdminManagement from './components/AdminManagement';
 import BannedScreen from './components/BannedScreen';
 
+import { BookOpen } from 'lucide-react';
+import { doc, getDocFromCache, getDocFromServer } from 'firebase/firestore';
+import { db } from './lib/firebase';
+
 const SUPER_ADMIN_EMAIL = 'bamuyahacksie@gmail.com';
+
+// CRITICAL CONSTRAINT: Test connection to Firestore
+async function testConnection() {
+  try {
+    // Attempting to fetch a random doc from server to verify connectivity and rules
+    await getDocFromServer(doc(db, '_internal', 'connection_test'));
+  } catch (error: any) {
+    if (error?.message?.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration or network.");
+    }
+  }
+}
+testConnection();
 
 function RequireAuth({ children, role }: { children: React.ReactNode, role?: 'teacher' | 'student' | 'admin' }) {
   const { user, profile, loading } = useAuth();

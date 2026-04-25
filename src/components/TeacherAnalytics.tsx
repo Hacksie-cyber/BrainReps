@@ -96,41 +96,48 @@ export default function TeacherAnalytics() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header>
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Executive Analytics</h1>
-        <p className="text-sm text-slate-500 font-medium tracking-tight">Macro-level insights into curriculum effectiveness and participant achievement.</p>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Executive Analytics</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight">Macro-level insights into curriculum effectiveness and participant achievement.</p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-4">
         {[
-          { label: 'Cumulative Avg', value: `${stats.avg}%`, icon: Award, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-          { label: 'Global Submissions', value: stats.total, icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Active Modules', value: stats.activeQuizzes, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Participant Growth', value: stats.growth, icon: TrendingUp, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Cumulative Avg', value: `${stats.avg}%`, icon: Award, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
+          { label: 'Global Submissions', value: stats.total, icon: Activity, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+          { label: 'Active Modules', value: stats.activeQuizzes, icon: FileText, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+          { label: 'Participant Growth', value: stats.growth, icon: TrendingUp, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
         ].map((stat, i) => (
-          <div key={i} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm transition-all hover:border-indigo-100">
+          <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:border-indigo-100 dark:hover:border-indigo-900">
             <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center mb-4", stat.bg)}>
               <stat.icon className={cn("h-5 w-5", stat.color)} />
             </div>
-            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">{stat.label}</p>
-            <h3 className="text-2xl font-bold text-slate-800">{stat.value}</h3>
+            <p className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest mb-1">{stat.label}</p>
+            <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{stat.value}</h3>
           </div>
         ))}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm space-y-6">
-          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-indigo-500" />
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-indigo-500 dark:text-indigo-300" />
             Performance Longitudinal Trend
           </h3>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(241, 245, 249, 0.1)" />
                 <XAxis dataKey="date" hide />
                 <YAxis hide domain={[0, 100]} />
                 <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                  contentStyle={{ 
+                    borderRadius: '12px', 
+                    border: 'none', 
+                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                    backgroundColor: 'var(--tw-slate-900)',
+                    color: '#f8fafc'
+                  }}
+                  itemStyle={{ color: '#f8fafc' }}
                   labelStyle={{ fontWeight: 'bold' }}
                 />
                 <Line type="monotone" dataKey="score" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4, fill: '#4f46e5', strokeWidth: 0 }} activeDot={{ r: 6, strokeWidth: 0 }} />
@@ -139,9 +146,9 @@ export default function TeacherAnalytics() {
           </div>
         </div>
 
-        <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm space-y-6">
-          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-            <Award className="h-4 w-4 text-emerald-500" />
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <Award className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
             Assessment Quality Distribution
           </h3>
           <div className="h-[300px] w-full">
@@ -162,12 +169,19 @@ export default function TeacherAnalytics() {
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                    contentStyle={{ 
+                      borderRadius: '12px', 
+                      border: 'none', 
+                      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                      backgroundColor: 'var(--tw-slate-900)',
+                      color: '#f8fafc'
+                    }}
+                    itemStyle={{ color: '#f8fafc' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-300 italic text-xs gap-2">
+              <div className="h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 italic text-xs gap-2">
                 <Activity className="h-10 w-10 opacity-20" />
                 <p>Establishing behavioral datasets...</p>
               </div>
@@ -177,7 +191,7 @@ export default function TeacherAnalytics() {
             {tierData.map(t => (
               <div key={t.name} className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} />
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{t.name}</span>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">{t.name}</span>
               </div>
             ))}
           </div>

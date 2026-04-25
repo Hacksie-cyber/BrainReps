@@ -26,11 +26,11 @@ service cloud.firestore {
     }
 
     function isTeacher() {
-      return isSignedIn() && isNotBanned() && getUserData().role == 'teacher';
+      return isSignedIn() && isNotBanned() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'teacher';
     }
 
     function isStudent() {
-      return isSignedIn() && isNotBanned() && getUserData().role == 'student';
+      return isSignedIn() && isNotBanned() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'student';
     }
 
     function isValidId(id) {
@@ -38,9 +38,7 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return isSignedIn() && 
-             request.auth.token.email_verified == true && 
-             request.auth.token.email == 'bamuyahacksie@gmail.com';
+      return isSignedIn() && request.auth.token.email == 'bamuyahacksie@gmail.com';
     }
 
     match /users/{uid} {
@@ -84,7 +82,9 @@ service cloud.firestore {
              data.totalPoints is number &&
              data.submittedAt is string &&
              data.graded is bool &&
-             data.teacherId is string;
+             data.teacherId is string &&
+             data.isPublicQuiz is bool &&
+             data.get('allowedStudentIds', []) is list;
     }
 
     function isAuthorizedForQuiz(quizId) {
@@ -98,7 +98,8 @@ service cloud.firestore {
       allow read: if isSuperAdmin() || (isSignedIn() && isNotBanned() && (
         resource.data.studentId == request.auth.uid || 
         resource.data.teacherId == request.auth.uid ||
-        (resource.data.get('quizId', '') != '' && isAuthorizedForQuiz(resource.data.quizId))
+        resource.data.get('isPublicQuiz', false) == true ||
+        request.auth.uid in resource.data.get('allowedStudentIds', [])
       ));
       
       allow create: if isSignedIn() && isNotBanned() && 

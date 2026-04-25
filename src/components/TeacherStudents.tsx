@@ -244,42 +244,42 @@ export default function TeacherStudents() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Student Roster</h1>
-          <p className="text-sm text-slate-500 font-medium tracking-tight">Participant performance monitoring and engagement tracking.</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Student Roster</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight">Participant performance monitoring and engagement tracking.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button 
             onClick={exportToCSV}
-            className="flex items-center justify-center gap-2 rounded-lg bg-white border border-slate-200 px-6 py-2.5 text-sm font-bold text-slate-700 transition-all hover:bg-slate-50 shadow-sm active:scale-95"
+            className="flex items-center justify-center gap-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-6 py-2.5 text-sm font-bold text-slate-700 dark:text-slate-300 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm active:scale-95"
           >
             <Download className="h-4 w-4" />
             CSV
           </button>
           <button 
             onClick={exportToPDF}
-            className="flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-slate-800 shadow-lg shadow-slate-900/10 active:scale-95"
+            className="flex items-center justify-center gap-2 rounded-lg bg-slate-900 dark:bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-slate-800 dark:hover:bg-indigo-700 shadow-lg shadow-slate-900/10 active:scale-95"
           >
-            <Download className="h-4 w-4 text-indigo-400" />
+            <Download className="h-4 w-4 text-indigo-400 dark:text-indigo-200" />
             Export PDF
           </button>
         </div>
       </header>
 
       <section className="space-y-6">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-3 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-3 shadow-sm">
           <Search className="h-5 w-5 text-slate-400" />
           <input
             type="text"
             placeholder="Search roster by participant name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-600 placeholder:text-slate-300 italic"
+            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-600 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 italic"
           />
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
           {filteredStudents.length === 0 ? (
-            <div className="col-span-full py-20 text-center text-slate-300 italic font-medium">
+            <div className="col-span-full py-20 text-center text-slate-300 dark:text-slate-700 italic font-medium">
               <User className="h-12 w-12 mx-auto mb-4 opacity-10" />
               No active participants detected in the assessment logs.
             </div>
@@ -290,29 +290,31 @@ export default function TeacherStudents() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between group hover:border-indigo-200 hover:shadow-md transition-all"
+                className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-start justify-between group hover:border-indigo-200 dark:hover:border-indigo-900 hover:shadow-md transition-all"
               >
                 <div className="flex items-start gap-4">
                   <div className={cn(
                     "w-12 h-12 rounded-full flex items-center justify-center transition-colors",
-                    student.isBanned ? "bg-red-50 text-red-400" : "bg-slate-50 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600"
+                    student.isBanned 
+                      ? "bg-red-50 dark:bg-red-900/20 text-red-400" 
+                      : "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-600 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/30 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
                   )}>
                     <User className="h-6 w-6" />
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-slate-800 tracking-tight">{student.name}</h3>
+                      <h3 className="font-bold text-slate-800 dark:text-slate-100 tracking-tight">{student.name}</h3>
                       {student.isBanned && (
-                        <span className="px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-[8px] font-black uppercase tracking-tighter flex items-center gap-0.5">
+                        <span className="px-1.5 py-0.5 bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 rounded text-[8px] font-black uppercase tracking-tighter flex items-center gap-0.5 border border-red-200 dark:border-red-900">
                           <ShieldAlert className="w-2.5 h-2.5" /> Restricted
                         </span>
                       )}
                     </div>
                     <div className="flex flex-col gap-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
+                      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
                         <Mail className="h-3 w-3" /> {student.email}
                       </p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
+                      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase flex items-center gap-1.5">
                         <Calendar className="h-3 w-3" /> Last Active: {new Date(student.lastActive).toLocaleDateString()}
                       </p>
                     </div>
@@ -323,11 +325,13 @@ export default function TeacherStudents() {
                     <div className="text-right">
                       <p className={cn(
                         "text-2xl font-black",
-                        student.isBanned ? "text-slate-300" : (student.avgScore >= 70 ? "text-indigo-600" : "text-amber-500")
+                        student.isBanned 
+                          ? "text-slate-300 dark:text-slate-700" 
+                          : (student.avgScore >= 70 ? "text-indigo-600 dark:text-indigo-400" : "text-amber-500 dark:text-amber-400")
                       )}>
                         {student.avgScore}%
                       </p>
-                      <p className="text-[9px] font-black uppercase text-slate-300 tracking-tighter">Latest achievement</p>
+                      <p className="text-[9px] font-black uppercase text-slate-300 dark:text-slate-700 tracking-tighter">Latest achievement</p>
                     </div>
                     
                     <div className="flex items-center gap-2">
@@ -335,7 +339,7 @@ export default function TeacherStudents() {
                          <button
                            onClick={() => setStudentToDelete(student)}
                            disabled={!!isDeleting}
-                           className="p-2 bg-red-50 text-red-400 hover:text-red-600 border border-red-100 rounded-lg transition-all hover:bg-red-100"
+                           className="p-2 bg-red-50 dark:bg-red-900/20 text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400 border border-red-100 dark:border-red-900 rounded-lg transition-all hover:bg-red-100 dark:hover:bg-red-900/40"
                            title="Permanently Decommission Participant"
                          >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -346,8 +350,8 @@ export default function TeacherStudents() {
                         className={cn(
                           "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border flex items-center gap-2",
                           student.isBanned 
-                            ? "bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100" 
-                            : "bg-red-50 text-red-600 border-red-100 hover:bg-red-100"
+                            ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900 hover:bg-emerald-100 dark:hover:bg-emerald-900/40" 
+                            : "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900 hover:bg-red-100 dark:hover:bg-red-900/40"
                         )}
                        >
                         {student.isBanned ? (
@@ -364,8 +368,8 @@ export default function TeacherStudents() {
         </div>
 
         {totalMatches > filteredStudents.length && (
-          <div className="mt-8 p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
-            <p className="text-xs font-bold text-slate-400 italic">
+          <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 italic">
               Showing {filteredStudents.length} of {totalMatches} matching participants. 
               {searchTerm ? "Refine your search for more specific results." : "Use the search bar above to locate a specific student."}
             </p>

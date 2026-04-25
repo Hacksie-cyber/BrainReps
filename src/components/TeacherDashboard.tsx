@@ -294,15 +294,17 @@ export default function TeacherDashboard() {
                                 <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[9px] px-1.5 py-0.5 rounded font-black uppercase border border-indigo-100/50">Restricted</span>
                               )}
                             </p>
-                            {quiz.deadline && (
-                              <div className={cn(
-                                "text-[9px] font-black uppercase tracking-tight flex items-center gap-1.5 px-2 py-0.5 rounded border shadow-sm",
-                                new Date(quiz.deadline) < new Date() ? "bg-red-50 text-red-500 border-red-100/50 animate-pulse" : "bg-white text-slate-400 border-slate-100"
-                              )}>
-                                <Clock className="h-3 w-3" />
-                                {new Date(quiz.deadline) < new Date() ? "Expired" : formatDeadline(quiz.deadline)}
-                              </div>
-                            )}
+                              {quiz.deadline && (
+                                <div className={cn(
+                                  "text-[9px] font-black uppercase tracking-tight flex items-center gap-1.5 px-2 py-0.5 rounded border shadow-sm",
+                                  new Date(quiz.deadline) < new Date() 
+                                    ? "bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 border-red-100/50 dark:border-red-900/30 animate-pulse" 
+                                    : "bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-800"
+                                )}>
+                                  <Clock className="h-3 w-3" />
+                                  {new Date(quiz.deadline) < new Date() ? "Expired" : formatDeadline(quiz.deadline)}
+                                </div>
+                              )}
                           </div>
                         </td>
                         <td className="px-8 py-7 text-center">

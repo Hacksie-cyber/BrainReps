@@ -50,25 +50,33 @@
         "id": { "type": "string" },
         "quizId": { "type": "string" },
         "quizTitle": { "type": "string" },
+        "teacherId": { "type": "string" },
         "studentId": { "type": "string" },
         "studentName": { "type": "string" },
         "studentRole": { "type": "string", "enum": ["teacher", "student", "admin"] },
+        "isPublicQuiz": { "type": "boolean" },
+        "allowedStudentIds": { "type": "array", "items": { "type": "string" } },
         "responses": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
               "questionId": { "type": "string" },
-              "answer": { "type": "string" }
+              "answer": { "type": "string" },
+              "isCorrect": { "type": "boolean" },
+              "pointsEarned": { "type": "number" },
+              "maxPoints": { "type": "number" }
             }
           }
         },
         "score": { "type": "number" },
         "totalPoints": { "type": "number" },
         "submittedAt": { "type": "string", "format": "date-time" },
-        "graded": { "type": "boolean" }
+        "graded": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["in-progress", "completed"] },
+        "timeTaken": { "type": "number" }
       },
-      "required": ["id", "quizId", "studentId", "responses", "score", "totalPoints", "submittedAt"]
+      "required": ["id", "quizId", "studentId", "responses", "score", "totalPoints", "submittedAt", "teacherId"]
     },
     "Notification": {
       "title": "Notification",
