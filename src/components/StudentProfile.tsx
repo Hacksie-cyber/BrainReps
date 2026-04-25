@@ -65,8 +65,12 @@ export default function StudentProfile() {
         <div className="relative p-8 pt-16 flex flex-col md:flex-row md:items-end justify-between gap-8">
           <div className="flex flex-col md:flex-row items-center md:items-end gap-6 text-center md:text-left">
             <div className="relative group">
-              <div className="w-32 h-32 rounded-3xl bg-indigo-600 flex items-center justify-center text-white text-4xl font-black shadow-2xl shadow-indigo-600/30 transform group-hover:rotate-3 transition-transform">
-                {profile.name.charAt(0)}
+              <div className="w-32 h-32 rounded-3xl bg-indigo-600 flex items-center justify-center text-white text-4xl font-black shadow-2xl shadow-indigo-600/30 transform group-hover:rotate-3 transition-transform overflow-hidden">
+                {profile.photoURL ? (
+                  <img src={profile.photoURL} alt={profile.name} className="w-full h-full object-cover" />
+                ) : (
+                  profile.name.charAt(0)
+                )}
               </div>
               <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-emerald-500 rounded-xl border-4 border-white dark:border-slate-900 flex items-center justify-center text-white">
                 <Zap className="w-5 h-5 fill-current" />
