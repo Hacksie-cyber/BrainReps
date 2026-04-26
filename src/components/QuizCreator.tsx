@@ -137,12 +137,46 @@ export default function QuizCreator() {
       let finalId = id;
       if (id) {
         await updateDoc(doc(db, 'quizzes', id), quizData);
+        
+        // Notify all students if changed from private to public
+        if (isPublic && !originalIsPublic) {
+          const studentSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
+          const notificationPromises = studentSnap.docs.map(studentDoc => 
+            addDoc(collection(db, 'notifications'), {
+              userId: studentDoc.id,
+              title: 'Module Now Public',
+              message: `Educator ${profile.name} has opened "${title}" for global institutional access.`,
+              type: 'assignment',
+              relatedId: id,
+              isRead: false,
+              createdAt: new Date().toISOString()
+            })
+          );
+          await Promise.all(notificationPromises);
+        }
       } else {
         const docRef = await addDoc(collection(db, 'quizzes'), {
           ...quizData,
           createdAt: new Date().toISOString()
         });
         finalId = docRef.id;
+
+        // Notify all students if it's a new public quiz
+        if (isPublic) {
+          const studentSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
+          const notificationPromises = studentSnap.docs.map(studentDoc => 
+            addDoc(collection(db, 'notifications'), {
+              userId: studentDoc.id,
+              title: 'New Module Published',
+              message: `Educator ${profile.name} has released "${title}" for global enrollment.`,
+              type: 'assignment',
+              relatedId: finalId,
+              isRead: false,
+              createdAt: new Date().toISOString()
+            })
+          );
+          await Promise.all(notificationPromises);
+        }
       }
 
       // 3. ENROLLMENT NOTIFICATION PROTOCOL

@@ -1,17 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Notification } from '../types';
-import { Bell, X, Check, Trash2, MailOpen, AlertCircle, BookOpen } from 'lucide-react';
+import { Bell, X, Check, Trash2, MailOpen, AlertCircle, BookOpen, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatDeadline } from '../lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 export default function NotificationCenter() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+  
+  const prevNotificationIds = useRef<Set<string>>(new Set());
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isFirstLoad = useRef(true);
+
+  useEffect(() => {
+    // Initialize audio
+    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audioRef.current.volume = 0.5;
+  }, []);
 
   useEffect(() => {
     if (!profile) return;
@@ -26,7 +39,18 @@ export default function NotificationCenter() {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
       // Sort client-side to avoid composite index requirement
       data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      // Sound logic
+      if (!isFirstLoad.current && !isMuted) {
+        const newNotifications = data.filter(n => !prevNotificationIds.current.has(n.id) && !n.isRead);
+        if (newNotifications.length > 0 && audioRef.current) {
+          audioRef.current.play().catch(e => console.log('Audio playback blocked or failed:', e));
+        }
+      }
+
       setNotifications(data);
+      prevNotificationIds.current = new Set(data.map(n => n.id));
+      isFirstLoad.current = false;
       setLoading(false);
     }, (error) => {
       console.error("Notification listener error:", error);
@@ -43,6 +67,15 @@ export default function NotificationCenter() {
       await updateDoc(doc(db, 'notifications', id), { isRead: true });
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleNotificationClick = (n: Notification) => {
+    if (!n.isRead) markAsRead(n.id);
+    
+    if (n.type === 'assignment' && profile?.role === 'student') {
+      navigate('/student/quizzes');
+      setIsOpen(false);
     }
   };
 
@@ -115,6 +148,13 @@ export default function NotificationCenter() {
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Monitoring academic synchronization</p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsMuted(!isMuted)}
+                    className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"
+                    title={isMuted ? "Unmute sounds" : "Mute sounds"}
+                  >
+                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  </button>
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllAsRead}
@@ -151,8 +191,9 @@ export default function NotificationCenter() {
                     {notifications.map((n) => (
                       <div 
                         key={n.id} 
+                        onClick={() => handleNotificationClick(n)}
                         className={cn(
-                          "p-4 flex gap-3 transition-colors group",
+                          "p-4 flex gap-3 transition-colors group cursor-pointer",
                           !n.isRead ? "bg-indigo-50/30 dark:bg-indigo-900/10" : "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                         )}
                       >
