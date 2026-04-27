@@ -64,7 +64,11 @@ service cloud.firestore {
     match /users/{uid} {
       allow get: if isSignedIn();
       
-      allow list: if isSignedIn() && isNotBanned();
+      allow list: if isSignedIn() && (
+        isSuperAdmin() || 
+        resource.data.uid == request.auth.uid ||
+        (isTeacher() && resource.data.role == 'student')
+      );
       
       allow create: if isOwner(uid) && isValidUser(incoming()) && 
                       incoming().uid == request.auth.uid &&
@@ -96,7 +100,8 @@ service cloud.firestore {
     }
 
     match /quizzes/{quizId} {
-      allow get, list: if isSignedIn() && isNotBanned();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
 
       allow create: if isTeacher() && isValidQuiz(incoming()) && 
                       incoming().teacherId == request.auth.uid;
@@ -121,7 +126,17 @@ service cloud.firestore {
     }
 
     match /submissions/{submissionId} {
-      allow get, list: if isSignedIn() && isNotBanned();
+      allow get: if isSignedIn() && (
+        resource.data.studentId == request.auth.uid || 
+        resource.data.teacherId == request.auth.uid ||
+        isSuperAdmin()
+      );
+      
+      allow list: if isSignedIn() && (
+        resource.data.studentId == request.auth.uid || 
+        resource.data.teacherId == request.auth.uid ||
+        isSuperAdmin()
+      );
       
       allow create: if isSignedIn() && isNotBanned() && 
                       isValidSubmission(incoming()) &&
