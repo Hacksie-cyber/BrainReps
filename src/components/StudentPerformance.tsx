@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission, Question } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Trophy, Target, TrendingUp, Calendar, ArrowRight, Award, Zap, Info, X, CheckCircle2, BookOpen } from 'lucide-react';
+import { Trophy, Target, TrendingUp, Calendar, ArrowRight, Award, Zap, BookOpen } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 
 export default function StudentPerformance() {
@@ -13,7 +13,6 @@ export default function StudentPerformance() {
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
   const [quizzes, setQuizzes] = useState<Record<string, Quiz>>({});
   const [loading, setLoading] = useState(true);
-  const [selectedSubmission, setSelectedSubmission] = useState<QuizSubmission | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -77,10 +76,6 @@ export default function StudentPerformance() {
     name: s.quizTitle,
     score: Math.round((s.score / s.totalPoints) * 100)
   }));
-
-  const getQuestion = (quizId: string, qId: string): Question | undefined => {
-    return quizzes[quizId]?.questions.find(q => q.id === qId);
-  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -174,12 +169,11 @@ export default function StudentPerformance() {
                   {submissions.map((sub) => (
                     <tr 
                       key={sub.id} 
-                      className="group cursor-pointer hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-colors"
-                      onClick={() => setSelectedSubmission(sub)}
+                      className="group hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-colors"
                     >
                       <td className="px-8 py-6">
                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-300 dark:text-slate-600 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/30 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">
+                            <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-300 dark:text-slate-600 transition-colors">
                                <BookOpen className="h-5 w-5" />
                             </div>
                             <div>
@@ -235,10 +229,9 @@ export default function StudentPerformance() {
            {/* Mobile view */}
            <div className="md:hidden divide-y divide-slate-50 dark:divide-slate-800/50">
               {submissions.map((sub) => (
-                <button
+                <div
                   key={sub.id}
-                  onClick={() => setSelectedSubmission(sub)}
-                  className="w-full p-6 flex flex-col gap-4 text-left hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors"
+                  className="w-full p-6 flex flex-col gap-4 text-left transition-colors"
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div>
@@ -261,93 +254,11 @@ export default function StudentPerformance() {
                       {Math.round((sub.score/sub.totalPoints) * 100)}%
                     </div>
                   </div>
-                </button>
+                </div>
               ))}
            </div>
         </div>
       </section>
-
-      {/* Breakdown Modal */}
-      <AnimatePresence>
-        {selectedSubmission && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 sm:pb-24">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedSubmission(null)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" 
-            />
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col max-h-[85vh]"
-            >
-              <header className="px-8 py-7 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-xl">
-                <div>
-                  <h3 className="text-2xl font-bold font-display text-slate-900 dark:text-white tracking-tight underline decoration-indigo-200 dark:decoration-indigo-900 decoration-4 underline-offset-4">{selectedSubmission.quizTitle}</h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-2">By {quizzes[selectedSubmission.quizId]?.teacherName || "Assigned Faculty"} • Result: {selectedSubmission.score} / {selectedSubmission.totalPoints}</p>
-                </div>
-                <button 
-                  onClick={() => setSelectedSubmission(null)}
-                  className="p-2.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-all text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-700 shadow-sm active:scale-90"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </header>
-
-              <div className="p-8 overflow-y-auto space-y-10 custom-scrollbar">
-                {selectedSubmission.responses.map((res, idx) => {
-                  const q = getQuestion(selectedSubmission.quizId, res.questionId);
-                  if (!q) return null;
-                  
-                  return (
-                    <div key={idx} className="space-y-5">
-                      <div className="flex items-start justify-between gap-6">
-                        <div className="space-y-1.5">
-                          <span className="text-[9px] font-black uppercase text-indigo-400 dark:text-indigo-500 tracking-[0.2em]">Requirement {idx + 1}</span>
-                          <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-tight tracking-tight">{q.question}</h4>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className={cn(
-                            "text-2xl font-black font-display rounded-xl px-3 py-1 border flex flex-col items-center justify-center",
-                            res.pointsEarned === res.maxPoints 
-                              ? "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/50" 
-                              : res.pointsEarned > 0 
-                                ? "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800/50" 
-                                : "text-slate-300 dark:text-slate-700 bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800"
-                          )}>
-                            {res.pointsEarned}
-                            <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase leading-none mt-0.5">Pts</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 space-y-4">
-                        <div className="space-y-2">
-                          <p className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider flex items-center gap-2">
-                             <TrendingUp className="h-3 w-3" />
-                             Student Response
-                          </p>
-                          <p className={cn(
-                            "text-sm font-medium italic leading-relaxed",
-                            res.pointsEarned === res.maxPoints ? "text-emerald-700 dark:text-emerald-300" : "text-slate-700 dark:text-slate-300"
-                          )}>
-                            {q.type === 'multiple-choice' && q.options && !isNaN(parseInt(res.answer)) 
-                              ? `"${q.options[parseInt(res.answer)] || res.answer}"`
-                              : `"${res.answer || "No response provided"}"`}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

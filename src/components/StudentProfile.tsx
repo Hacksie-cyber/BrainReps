@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
@@ -19,6 +19,22 @@ export default function StudentProfile() {
     bio: ''
   });
   const [updating, setUpdating] = useState(false);
+
+  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 1024 * 1024) { // 1MB limit for Firestore document size safety
+      alert('Image too large. Please select a file under 1MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setEditForm(prev => ({ ...prev, photoURL: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     if (!profile) return;
@@ -179,6 +195,32 @@ export default function StudentProfile() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                       <Camera className="w-3 h-3" /> Profile Picture Upload
+                    </label>
+                    <div className="flex gap-4">
+                       <div className="w-20 h-20 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+                          {editForm.photoURL ? (
+                            <img src={editForm.photoURL} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <Camera className="w-6 h-6 text-slate-300" />
+                          )}
+                       </div>
+                       <div className="flex-1 space-y-2">
+                          <label className="block w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-center">
+                             Choose Image File
+                             <input 
+                               type="file" 
+                               accept="image/*" 
+                               onChange={handleImageUpload}
+                               className="hidden" 
+                             />
+                          </label>
+                          <p className="text-[9px] font-medium text-slate-400 italic">Max 1MB. High resolution recommended.</p>
+                       </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                       <User className="w-3 h-3" /> Full Identity Name
                     </label>
                     <input 
@@ -187,18 +229,6 @@ export default function StudentProfile() {
                       onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
                       className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm font-bold"
                       placeholder="Enter legal or creative name..."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                      <Camera className="w-3 h-3" /> Visual Representation URL
-                    </label>
-                    <input 
-                      type="text"
-                      value={editForm.photoURL}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, photoURL: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm font-bold"
-                      placeholder="https://example.com/avatar.jpg"
                     />
                   </div>
                 </div>
