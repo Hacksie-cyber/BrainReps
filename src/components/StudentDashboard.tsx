@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, Trophy, Clock, Search, ArrowRight, CheckCircle2, History, ShieldAlert, AlertTriangle, X } from 'lucide-react';
+import { BookOpen, Trophy, Clock, Search, ArrowRight, CheckCircle2, History, ShieldAlert, AlertTriangle, X, Zap } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 
 // Ranking Logic Component to avoid global collection listeners and handle permissions correctly
@@ -21,7 +21,10 @@ function QuizRankings({ quizId, currentStudentId }: { quizId: string, currentStu
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allSubs = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
-        .filter(s => s.studentRole !== 'teacher' && s.studentRole !== 'admin');
+        .filter(s => {
+          const role = (s.studentRole || 'student').toLowerCase();
+          return role !== 'teacher' && role !== 'admin' && role !== 'educator' && role !== 'faculty';
+        });
       
       const latestSubsMap = new Map<string, QuizSubmission>();
       allSubs.forEach(s => {
@@ -91,6 +94,9 @@ export default function StudentDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
 
+  const [topAchiever, setTopAchiever] = useState<string | null>(null);
+  const [globalRank, setGlobalRank] = useState<{ rank: number; total: number } | null>(null);
+
   useEffect(() => {
     if (!profile) return;
 
@@ -128,10 +134,54 @@ export default function StudentDashboard() {
       setLoading(false);
     });
 
+    // 3. Real-time global rankings data
+    const qAllSubs = query(collection(db, 'submissions'));
+    const unsubAllSubs = onSnapshot(qAllSubs, (snapshot) => {
+      try {
+        const allSubs = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
+          .filter(s => {
+            const role = (s.studentRole || 'student').toLowerCase();
+            return role !== 'teacher' && role !== 'admin' && role !== 'educator' && role !== 'faculty';
+          });
+
+        // Aggregation: Best score per module for each student
+        const studentModuleBest = new Map<string, Map<string, number>>();
+        const studentNames = new Map<string, string>();
+
+        allSubs.forEach(s => {
+          if (!studentModuleBest.has(s.studentId)) {
+            studentModuleBest.set(s.studentId, new Map());
+            studentNames.set(s.studentId, s.studentName);
+          }
+          const userMap = studentModuleBest.get(s.studentId)!;
+          const currentBest = userMap.get(s.quizId) || 0;
+          if (s.score > currentBest) userMap.set(s.quizId, s.score);
+        });
+
+        const rankingList = Array.from(studentModuleBest.entries()).map(([studentId, modules]) => {
+          let total = 0;
+          modules.forEach(score => total += score);
+          return { studentId, name: studentNames.get(studentId) || "Anonymous", total };
+        }).sort((a, b) => b.total - a.total);
+
+        const myRankIndex = rankingList.findIndex(r => r.studentId === profile.uid);
+        if (myRankIndex !== -1) {
+          setGlobalRank({ rank: myRankIndex + 1, total: rankingList.length });
+        }
+        if (rankingList.length > 0) {
+          setTopAchiever(`${rankingList[0].name} (${rankingList[0].total}pts)`);
+        }
+      } catch (error) {
+        console.warn("Global ranking calculation failed:", error);
+      }
+    });
+
     fetchQuizzes();
 
     return () => {
       unsubUser();
+      unsubAllSubs();
     };
   }, [profile]);
 
@@ -263,10 +313,10 @@ export default function StudentDashboard() {
       </header>
 
       {/* Stats Overview */}
-      <section className="grid gap-6 sm:grid-cols-3">
+      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] group">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Curricula Completed</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Modules Mastered</p>
             <CheckCircle2 className="h-4 w-4 text-emerald-500 group-hover:scale-110 transition-transform" />
           </div>
           <div className="flex items-baseline gap-2">
@@ -275,8 +325,8 @@ export default function StudentDashboard() {
           </div>
         </div>
         
-        <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] group">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 mb-3">Academic Score</p>
+        <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_8_px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] group">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 mb-3">Mastery Coefficient</p>
           <div className="flex items-baseline gap-2">
             <h3 className="text-4xl font-bold font-display text-slate-900 dark:text-slate-50 leading-none">{stats.avgScore}%</h3>
           </div>
@@ -284,11 +334,39 @@ export default function StudentDashboard() {
             <div className="bg-indigo-600 h-full transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(79,70,229,0.4)]" style={{ width: `${stats.avgScore}%` }}></div>
           </div>
         </div>
-        
-        <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] group">
+
+        <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_8_px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] group">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Record Achievement</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Institutional Rank</p>
+            <div className="w-5 h-5 rounded bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-[10px]">#</div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-4xl font-bold font-display text-slate-900 dark:text-slate-50 leading-none">
+              {globalRank ? `#${globalRank.rank}` : "---"}
+            </h3>
+            {globalRank && (
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">/ {globalRank.total}</span>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_8_px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] group">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Top Achievement</p>
             <Trophy className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="max-w-full overflow-hidden">
+            <h3 className="text-xl font-black font-display text-slate-900 dark:text-slate-50 leading-tight truncate uppercase">
+              {topAchiever || "---"}
+            </h3>
+            <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mt-1">Institutional Peak</p>
+          </div>
+        </div>
+        
+        <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_8_px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] group">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Record Score</p>
+            <Zap className="h-4 w-4 text-indigo-500 group-hover:scale-110 transition-transform" />
           </div>
           <div className="flex items-baseline gap-2">
             <h3 className="text-4xl font-bold font-display text-slate-900 dark:text-slate-50 leading-none">{stats.topScore}%</h3>

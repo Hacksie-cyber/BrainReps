@@ -339,17 +339,6 @@ export default function StudentPerformance() {
                               : `"${res.answer || "No response provided"}"`}
                           </p>
                         </div>
-                        <div className="space-y-2 pt-4 border-t border-slate-100/50 dark:border-slate-700/50">
-                           <p className="text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider flex items-center gap-2">
-                              <CheckCircle2 className="h-3 w-3 text-indigo-400 dark:text-indigo-500" />
-                              Instructonal Reference
-                           </p>
-                           <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400 tracking-tight">
-                             {q.type === 'multiple-choice' && q.options && !isNaN(parseInt(q.correctAnswer))
-                               ? q.options[parseInt(q.correctAnswer)]
-                               : q.correctAnswer}
-                           </p>
-                        </div>
                       </div>
                     </div>
                   );

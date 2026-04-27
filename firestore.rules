@@ -35,13 +35,14 @@ service cloud.firestore {
     function isNotBanned() {
       return isSignedIn() && 
              (!exists(/databases/$(database)/documents/users/$(request.auth.uid)) || 
-              getUserData(request.auth.uid).get('isBanned', false) == false);
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isBanned', false) == false);
     }
 
     function isTeacher() {
-      return isSignedIn() && isNotBanned() && 
+      return isSignedIn() && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             getUserData(request.auth.uid).role == 'teacher';
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher' &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isBanned', false) == false;
     }
 
     function isSuperAdmin() {
@@ -63,11 +64,7 @@ service cloud.firestore {
     match /users/{uid} {
       allow get: if isSignedIn();
       
-      allow list: if isSignedIn() && (
-        isSuperAdmin() ||
-        isTeacher() ||
-        isSignedIn() // Simplified but can be refined later if needed
-      );
+      allow list: if isSignedIn() && isNotBanned();
       
       allow create: if isOwner(uid) && isValidUser(incoming()) && 
                       incoming().uid == request.auth.uid &&
@@ -85,7 +82,7 @@ service cloud.firestore {
         isValidUser(incoming())
       );
 
-      allow delete: if isSuperAdmin() || isOwner(uid);
+      allow delete: if isSuperAdmin();
     }
 
     function isValidQuiz(data) {
@@ -99,13 +96,7 @@ service cloud.firestore {
     }
 
     match /quizzes/{quizId} {
-      allow get: if isSuperAdmin() || (isSignedIn() && isNotBanned() && (
-        existing().teacherId == request.auth.uid ||
-        existing().get('isPublic', false) == true ||
-        request.auth.uid in existing().get('allowedStudentIds', [])
-      ));
-      
-      allow list: if isSignedIn() && isNotBanned();
+      allow get, list: if isSignedIn() && isNotBanned();
 
       allow create: if isTeacher() && isValidQuiz(incoming()) && 
                       incoming().teacherId == request.auth.uid;
@@ -130,26 +121,18 @@ service cloud.firestore {
     }
 
     match /submissions/{submissionId} {
-      allow get: if isSuperAdmin() || (isSignedIn() && isNotBanned() && (
+      allow get, list: if isSignedIn() && isNotBanned();
+      
+      allow create: if isSignedIn() && isNotBanned() && 
+                      isValidSubmission(incoming()) &&
+                      incoming().studentId == request.auth.uid;
+      
+      allow update: if isSuperAdmin() || (isSignedIn() && (
         existing().studentId == request.auth.uid || 
         existing().teacherId == request.auth.uid
       ));
 
-      allow list: if isSignedIn() && isNotBanned() && (
-        isSuperAdmin() ||
-        resource.data.studentId == request.auth.uid ||
-        resource.data.teacherId == request.auth.uid
-      );
-      
-      allow create: if isSignedIn() && isNotBanned() && 
-                      isValidSubmission(incoming()) &&
-                      incoming().studentId == request.auth.uid &&
-                      incoming().teacherId == get(/databases/$(database)/documents/quizzes/$(incoming().quizId)).data.teacherId;
-      
-      allow update, delete: if isSuperAdmin() || (isSignedIn() && (
-        existing().studentId == request.auth.uid || 
-        existing().teacherId == request.auth.uid
-      ));
+      allow delete: if isSuperAdmin() || (isTeacher() && existing().teacherId == request.auth.uid);
     }
 
     match /notifications/{notificationId} {

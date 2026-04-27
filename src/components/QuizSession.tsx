@@ -5,134 +5,8 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAlert, Trophy, Users, Timer, AlertTriangle } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
-
-interface LeaderboardEntry {
-  studentId: string;
-  studentName: string;
-  studentRole?: string;
-  score: number;
-  totalPoints: number;
-  timeTaken: number;
-  status: 'in-progress' | 'completed';
-}
-
-function LiveLeaderboard({ quizId, currentStudentId }: { quizId: string, currentStudentId: string }) {
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-
-  useEffect(() => {
-    const q = query(
-      collection(db, 'submissions'),
-      where('quizId', '==', quizId)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const allSubs = snapshot.docs
-        .map(doc => ({ ...doc.data() } as any))
-        .filter(sub => sub.studentRole === 'student'); // Exclude educators from statistics
-      
-      // Get only the latest submission per student
-      const studentMap = new Map<string, any>();
-      allSubs.forEach(sub => {
-        const existing = studentMap.get(sub.studentId);
-        if (!existing || new Date(sub.submittedAt) > new Date(existing.submittedAt)) {
-          studentMap.set(sub.studentId, sub);
-        }
-      });
-
-      const processedEntries = Array.from(studentMap.values()).map(sub => ({
-        studentId: sub.studentId,
-        studentName: sub.studentName,
-        studentRole: sub.studentRole,
-        score: sub.score,
-        totalPoints: sub.totalPoints,
-        timeTaken: sub.timeTaken || 0,
-        submittedAt: sub.submittedAt,
-        status: sub.status || 'completed'
-      })).sort((a, b) => {
-        // 1. Higher score first
-        if (b.score !== a.score) return b.score - a.score;
-        // 2. Efficiency: lower time taken first
-        if (b.timeTaken !== a.timeTaken) return a.timeTaken - b.timeTaken;
-        // 3. Chronology: first one who finished first
-        return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
-      });
-
-      setEntries(processedEntries);
-    });
-
-    return () => unsubscribe();
-  }, [quizId]);
-
-  return (
-    <div className="w-full lg:w-64 shrink-0 space-y-4">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <Trophy className="w-4 h-4 text-amber-500" />
-          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">Live Standings</h3>
-        </div>
-        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-100 dark:border-emerald-800/50">
-           <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-           <span className="text-[7px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-tighter">Live Sync</span>
-        </div>
-      </div>
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {entries.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-[10px] font-medium text-slate-400 italic">Awating initial synchronization...</p>
-            </div>
-          ) : (
-            entries.slice(0, 10).map((entry, i) => {
-              const isTeacher = entry.studentRole === 'teacher' || entry.studentRole === 'admin';
-              return (
-                <div 
-                  key={entry.studentId}
-                  className={cn(
-                    "p-3 flex items-center justify-between gap-3 transition-colors",
-                    entry.studentId === currentStudentId ? "bg-indigo-50/50 dark:bg-indigo-900/20" : ""
-                  )}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className={cn(
-                      "w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0",
-                      i === 0 ? "bg-amber-100 text-amber-700" : 
-                      i === 1 ? "bg-slate-100 text-slate-700" :
-                      i === 2 ? "bg-orange-100 text-orange-700" : "bg-slate-50 dark:bg-slate-800 text-slate-400"
-                    )}>
-                      {i + 1}
-                    </span>
-                    <div className="truncate">
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-[10px] font-bold text-slate-800 dark:text-slate-100 truncate">{entry.studentName}</p>
-                        {isTeacher && (
-                          <span className="text-[6px] font-black uppercase text-indigo-600 bg-indigo-50 px-1 rounded-sm border border-indigo-100">Educator</span>
-                        )}
-                      </div>
-                      <p className="text-[8px] font-black uppercase tracking-tighter text-slate-400">
-                        {entry.status === 'completed' ? 'Finalized' : 'Drafting'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400">{entry.score}</p>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-        <div className="p-2 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex justify-center">
-          <div className="flex items-center gap-1">
-            <Users className="w-2.5 h-2.5 text-slate-400" />
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{entries.length} Enrolled</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function QuizSession() {
   const { id } = useParams();
@@ -622,7 +496,7 @@ export default function QuizSession() {
         )}
 
         <p className="mb-10 text-lg text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto leading-relaxed">
-          Your metrics have been recorded. You can now review the correct answers and detailed feedback in your performance dashboard.
+          Your metrics have been recorded. You can now review your score and detailed performance breakdown in your dashboard.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -695,9 +569,9 @@ export default function QuizSession() {
         </div>
       )}
       
-      <div className="flex flex-col lg:flex-row gap-8 items-start">
+      <div className="w-full space-y-8 max-w-4xl mx-auto">
         {/* Main Content Viewport */}
-        <div className="flex-1 w-full space-y-8">
+        <div className="w-full space-y-8">
           <header className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
                <div>
@@ -846,13 +720,6 @@ export default function QuizSession() {
             )}
           </footer>
         </div>
-
-        {/* Real-time Insights Side-panel */}
-        <aside className="w-full lg:w-72 flex flex-col gap-6">
-           {profile?.role === 'student' && (
-             <LiveLeaderboard quizId={quiz.id} currentStudentId={profile?.uid || ''} />
-           )}
-        </aside>
       </div>
 
       {/* Early Submission Confirmation Modal */}
