@@ -132,16 +132,60 @@ export default function StudentDashboard() {
         .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
       setSubmissions(subList);
       setLoading(false);
+    }, (error) => {
+      console.error("User submissions sync failed:", error);
     });
 
-    // 3. Set placeholder for rankings as global fetch is restricted for security/performance
-    setGlobalRank(null);
-    setTopAchiever("Ranking Restricted");
+    // 3. Real-time global rankings data
+    const qAllSubs = query(collection(db, 'submissions'));
+    const unsubAllSubs = onSnapshot(qAllSubs, (snapshot) => {
+      try {
+        const allSubs = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
+          .filter(s => {
+            const role = (s.studentRole || 'student').toLowerCase();
+            return role !== 'teacher' && role !== 'admin' && role !== 'educator' && role !== 'faculty';
+          });
+
+        // Aggregation: Best score per module for each student
+        const studentModuleBest = new Map<string, Map<string, number>>();
+        const studentNames = new Map<string, string>();
+
+        allSubs.forEach(s => {
+          if (!studentModuleBest.has(s.studentId)) {
+            studentModuleBest.set(s.studentId, new Map());
+            studentNames.set(s.studentId, s.studentName);
+          }
+          const userMap = studentModuleBest.get(s.studentId)!;
+          const currentBest = userMap.get(s.quizId) || 0;
+          if (s.score > currentBest) userMap.set(s.quizId, s.score);
+        });
+
+        const rankingList = Array.from(studentModuleBest.entries()).map(([studentId, modules]) => {
+          let total = 0;
+          modules.forEach(score => total += score);
+          return { studentId, name: studentNames.get(studentId) || "Anonymous", total };
+        }).sort((a, b) => b.total - a.total);
+
+        const myRankIndex = rankingList.findIndex(r => r.studentId === profile.uid);
+        if (myRankIndex !== -1) {
+          setGlobalRank({ rank: myRankIndex + 1, total: rankingList.length });
+        }
+        if (rankingList.length > 0) {
+          setTopAchiever(`${rankingList[0].name} (${rankingList[0].total}pts)`);
+        }
+      } catch (error) {
+        console.warn("Global ranking calculation failed:", error);
+      }
+    }, (error) => {
+      console.error("Global submissions sync failed:", error);
+    });
 
     fetchQuizzes();
 
     return () => {
       unsubUser();
+      unsubAllSubs();
     };
   }, [profile]);
 

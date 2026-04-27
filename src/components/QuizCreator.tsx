@@ -204,8 +204,7 @@ export default function QuizCreator() {
       if (!isPublic && finalId) {
         const subSnap = await getDocs(query(
           collection(db, 'submissions'),
-          where('quizId', '==', finalId),
-          where('teacherId', '==', profile.uid)
+          where('quizId', '==', finalId)
         ));
         
         const unauthorizedSubs = subSnap.docs.filter(d => !allowedStudentIds.includes(d.data().studentId));
@@ -219,8 +218,7 @@ export default function QuizCreator() {
       if (id && title !== originalTitle) {
         const subSnap = await getDocs(query(
           collection(db, 'submissions'),
-          where('quizId', '==', id),
-          where('teacherId', '==', profile.uid)
+          where('quizId', '==', id)
         ));
         
         if (!subSnap.empty) {
