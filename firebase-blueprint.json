@@ -10,6 +10,7 @@
         "email": { "type": "string", "format": "email" },
         "role": { "type": "string", "enum": ["student", "teacher"] },
         "photoURL": { "type": "string", "format": "uri" },
+        "bio": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "isBanned": { "type": "boolean" }
       },

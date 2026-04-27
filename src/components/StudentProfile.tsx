@@ -2,19 +2,31 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, doc, updateDoc } from 'firebase/firestore';
 import { QuizSubmission } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Mail, Shield, Calendar, Trophy, Zap, Target, BookOpen, ChevronRight, Award, Star, Activity, Settings, Bell, Palette } from 'lucide-react';
+import { User, Mail, Shield, Calendar, Trophy, Zap, Target, BookOpen, ChevronRight, Award, Star, Activity, Settings, Bell, Palette, X, Camera, Save, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function StudentProfile() {
   const { profile } = useAuth();
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    photoURL: '',
+    bio: ''
+  });
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
+    setEditForm({
+      name: profile.name || '',
+      photoURL: profile.photoURL || '',
+      bio: profile.bio || ''
+    });
 
     const fetchSubmissions = async () => {
       try {
@@ -38,6 +50,25 @@ export default function StudentProfile() {
   }, [profile]);
 
   if (!profile) return null;
+
+  const handleUpdateProfile = async () => {
+    if (!profile) return;
+    setUpdating(true);
+    try {
+      const userRef = doc(db, 'users', profile.uid);
+      await updateDoc(userRef, {
+        name: editForm.name,
+        photoURL: editForm.photoURL,
+        bio: editForm.bio
+      });
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      alert('Failed to update profile. Please check your connection and try again.');
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   const stats = {
     totalAttempts: submissions.length,
@@ -65,7 +96,7 @@ export default function StudentProfile() {
         <div className="relative p-8 pt-16 flex flex-col md:flex-row md:items-end justify-between gap-8">
           <div className="flex flex-col md:flex-row items-center md:items-end gap-6 text-center md:text-left">
             <div className="relative group">
-              <div className="w-32 h-32 rounded-3xl bg-indigo-600 flex items-center justify-center text-white text-4xl font-black shadow-2xl shadow-indigo-600/30 transform group-hover:rotate-3 transition-transform overflow-hidden">
+              <div className="w-32 h-32 rounded-3xl bg-indigo-600 flex items-center justify-center text-white text-4xl font-black shadow-2xl shadow-indigo-600/30 transform group-hover:rotate-3 transition-transform overflow-hidden group-hover:ring-4 ring-indigo-500/20">
                 {profile.photoURL ? (
                   <img src={profile.photoURL} alt={profile.name} className="w-full h-full object-cover" />
                 ) : (
@@ -75,29 +106,118 @@ export default function StudentProfile() {
               <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-emerald-500 rounded-xl border-4 border-white dark:border-slate-900 flex items-center justify-center text-white">
                 <Zap className="w-5 h-5 fill-current" />
               </div>
+              {isEditing && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity">
+                   <Camera className="w-8 h-8 text-white" />
+                </div>
+              )}
             </div>
 
             <div className="space-y-1">
               <div className="flex flex-col md:flex-row md:items-center gap-3">
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{profile.name}</h1>
+                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                  {profile.name}
+                </h1>
                 <div className={cn("px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 mx-auto md:mx-0", LevelBadge.color)}>
                   <LevelBadge.icon className="w-3.5 h-3.5" />
                   {LevelBadge.label}
                 </div>
               </div>
-              <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400 italic">"The curriculum is a gym; the brain is the muscle."</p>
+              <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400 italic">
+                {profile.bio || "The curriculum is a gym; the brain is the muscle."}
+              </p>
             </div>
           </div>
 
           <div className="flex items-center justify-center gap-2">
-            <button className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-2xl border border-slate-200 dark:border-slate-700 hover:text-indigo-600 transition-colors">
-              <Settings className="w-5 h-5" />
-            </button>
-            <button className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95">
-              Edit Curriculum Profile
-            </button>
+            {!isEditing ? (
+              <>
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-2xl border border-slate-200 dark:border-slate-700 hover:text-indigo-600 transition-colors"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95"
+                >
+                  Edit Curriculum Profile
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setIsEditing(false)}
+                  className="px-4 py-3 text-slate-500 font-bold text-sm hover:text-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  disabled={updating}
+                  onClick={handleUpdateProfile}
+                  className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-emerald-600/20 hover:bg-emerald-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Save Changes
+                </button>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Edit Modal / Section Overlay */}
+        <AnimatePresence>
+          {isEditing && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800"
+            >
+              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                      <User className="w-3 h-3" /> Full Identity Name
+                    </label>
+                    <input 
+                      type="text"
+                      value={editForm.name}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm font-bold"
+                      placeholder="Enter legal or creative name..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                      <Camera className="w-3 h-3" /> Visual Representation URL
+                    </label>
+                    <input 
+                      type="text"
+                      value={editForm.photoURL}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, photoURL: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm font-bold"
+                      placeholder="https://example.com/avatar.jpg"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                    <Sparkles className="w-3 h-3" /> Academic Bio / Description
+                  </label>
+                  <textarea 
+                    value={editForm.bio}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, bio: e.target.value }))}
+                    className="w-full h-[124px] px-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm font-medium resize-none"
+                    placeholder="Briefly describe your academic focus or personal philosophy..."
+                  />
+                  <p className="text-[9px] font-bold text-slate-400 text-right">Maximum 500 characters</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="grid grid-cols-1 md:grid-cols-3 border-t border-slate-100 dark:border-slate-800">
            <div className="p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-800 group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">

@@ -8,6 +8,7 @@ export interface UserProfile {
   createdAt: string;
   isBanned?: boolean;
   photoURL?: string;
+  bio?: string;
 }
 
 export type QuestionType = 'multiple-choice' | 'true-false' | 'short-answer';
