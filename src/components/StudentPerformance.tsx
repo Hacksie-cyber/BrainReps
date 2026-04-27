@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission, Question } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Trophy, Target, TrendingUp, Calendar, ArrowRight, Award, Zap, BookOpen } from 'lucide-react';
+import { Trophy, Target, TrendingUp, Calendar, ArrowRight, Award, Zap, BookOpen, Shield } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 
 export default function StudentPerformance() {
@@ -13,6 +13,8 @@ export default function StudentPerformance() {
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
   const [quizzes, setQuizzes] = useState<Record<string, Quiz>>({});
   const [loading, setLoading] = useState(true);
+
+  const [showRestrictionModal, setShowRestrictionModal] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -169,7 +171,8 @@ export default function StudentPerformance() {
                   {submissions.map((sub) => (
                     <tr 
                       key={sub.id} 
-                      className="group hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-colors"
+                      className="group cursor-pointer hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-colors"
+                      onClick={() => setShowRestrictionModal(true)}
                     >
                       <td className="px-8 py-6">
                          <div className="flex items-center gap-4">
@@ -229,9 +232,10 @@ export default function StudentPerformance() {
            {/* Mobile view */}
            <div className="md:hidden divide-y divide-slate-50 dark:divide-slate-800/50">
               {submissions.map((sub) => (
-                <div
+                <button
                   key={sub.id}
-                  className="w-full p-6 flex flex-col gap-4 text-left transition-colors"
+                  onClick={() => setShowRestrictionModal(true)}
+                  className="w-full p-6 flex flex-col gap-4 text-left hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors"
                 >
                   <div className="flex justify-between items-start gap-4">
                     <div>
@@ -254,11 +258,54 @@ export default function StudentPerformance() {
                       {Math.round((sub.score/sub.totalPoints) * 100)}%
                     </div>
                   </div>
-                </div>
-              ))}
+                </button>
+            ))}
            </div>
         </div>
       </section>
+
+      {/* Restriction Notice Modal */}
+      <AnimatePresence>
+        {showRestrictionModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowRestrictionModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800"
+            >
+              <div className="p-8 text-center space-y-6">
+                <div className="w-16 h-16 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto ring-8 ring-amber-500/10">
+                  <Shield className="h-8 w-8 text-amber-500" />
+                </div>
+                
+                <div className="space-y-3">
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Access Restricted</h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 font-bold leading-relaxed">
+                    Due to answer key leakage, Educators decided to not to show answer key and responses anymore. Contact your educators for clarification.
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <button 
+                    onClick={() => setShowRestrictionModal(false)}
+                    className="w-full py-4 bg-indigo-600 hover:bg-slate-900 dark:hover:bg-white dark:hover:text-slate-900 text-white rounded-2xl font-bold tracking-tight transition-all active:scale-95 shadow-xl shadow-indigo-600/20"
+                  >
+                    Acknowledged
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
