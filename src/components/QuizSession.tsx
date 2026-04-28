@@ -37,6 +37,10 @@ export default function QuizSession() {
   const [isPastDue, setIsPastDue] = useState(false);
   const [isBlurred, setIsBlurred] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [breachCount, setBreachCount] = useState(0);
+  const [showBreachWarning, setShowBreachWarning] = useState(false);
+  const lastBreachTimeRef = useRef<number>(0);
+  const COOLDOWN_MS = 5000; // 5 second gap between breach triggers
 
   useEffect(() => {
     // Increment timeTaken every second
@@ -132,11 +136,53 @@ export default function QuizSession() {
   useEffect(() => {
     if (finished || loading || !quiz) return;
 
+    const triggerFullBreach = (message: string) => {
+      console.warn("Anti-cheating triggered: Integrity breach detected. Auto-submitting...");
+      
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const alert = new SpeechSynthesisUtterance(message);
+        alert.rate = 1.0;
+        alert.volume = 1.0;
+        window.speechSynthesis.speak(alert);
+      }
+
+      try {
+        const sfx = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-security-lock-soft-beep-1077.mp3');
+        sfx.volume = 0.5;
+        sfx.play().catch(() => {});
+      } catch (e) {}
+      
+      forceSubmit();
+    };
+
+    const triggerWarning = (message: string) => {
+      setShowBreachWarning(true);
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const alert = new SpeechSynthesisUtterance(message);
+        alert.rate = 1.0;
+        window.speechSynthesis.speak(alert);
+      }
+    };
+
     const handleIntegrityBreach = () => {
+      // Cooldown check to prevent continuous triggers
+      const now = Date.now();
+      if (now - lastBreachTimeRef.current < COOLDOWN_MS) return;
+
       if ((document.visibilityState === 'hidden' || !document.hasFocus()) && !finishedRef.current) {
         if (profile?.role === 'student') {
-          console.warn("Anti-cheating triggered: Integrity breach detected. Auto-submitting...");
-          forceSubmit();
+          lastBreachTimeRef.current = now;
+          setBreachCount(prev => {
+            const nextCount = prev + 1;
+            if (nextCount === 1) {
+              triggerWarning("Academic integrity breach detected. This is your first warning. Any further unauthorized activity will result in immediate termination of this assessment.");
+            } else if (nextCount >= 2) {
+              triggerFullBreach("Academic Integrity Breach Detected. Academic protocol activated. Assessment auto-submitting for review.");
+            }
+            return nextCount;
+          });
         } else {
           // Instructors only get visual deterrent
           setIsBlurred(true);
@@ -159,7 +205,21 @@ export default function QuizSession() {
         (e.metaKey && (e.key === 'c' || e.key === 'v' || e.key === 'u' || e.key === 'p'))
       ) {
         e.preventDefault();
-        if (e.key === 'PrintScreen' && profile?.role === 'student') forceSubmit();
+        const now = Date.now();
+        if (now - lastBreachTimeRef.current < COOLDOWN_MS) return false;
+
+        if (e.key === 'PrintScreen' && profile?.role === 'student') {
+          lastBreachTimeRef.current = now;
+          setBreachCount(prev => {
+            const nextCount = prev + 1;
+            if (nextCount === 1) {
+              triggerWarning("Unauthorized screen capture attempt detected. This is your first warning. Any further attempts will result in immediate termination.");
+            } else if (nextCount >= 2) {
+              triggerFullBreach("Unauthorized screen capture detected. Protocol activated. Terminating session.");
+            }
+            return nextCount;
+          });
+        }
         else if (e.key === 'PrintScreen') setIsBlurred(true);
         return false;
       }
@@ -768,6 +828,77 @@ export default function QuizSession() {
                 >
                   Continue Assessment
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Breach Warning Modal */}
+      <AnimatePresence>
+        {showBreachWarning && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[2rem] shadow-[0_0_50px_rgba(239,68,68,0.2)] p-10 border border-red-100 dark:border-red-900/30 overflow-hidden"
+            >
+              {/* Security Background Pattern */}
+              <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
+                <div className="absolute inset-0" style={{ 
+                  backgroundImage: 'radial-gradient(circle at 2px 2px, #ef4444 1px, transparent 0)',
+                  backgroundSize: '16px 16px'
+                }} />
+              </div>
+
+              <div className="relative flex flex-col items-center text-center space-y-8">
+                <div className="relative">
+                  <motion.div 
+                    animate={{ 
+                      scale: [1, 1.1, 1],
+                      rotate: [0, 5, -5, 0]
+                    }}
+                    transition={{ duration: 0.5, repeat: 3 }}
+                    className="w-24 h-24 bg-red-50 dark:bg-red-900/20 rounded-3xl flex items-center justify-center border-2 border-red-100 dark:border-red-900/50"
+                  >
+                    <ShieldAlert className="w-12 h-12 text-red-500" />
+                  </motion.div>
+                  <div className="absolute -top-2 -right-2 px-3 py-1 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg">
+                    Warning 01
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Integrity Alert</h3>
+                  <div className="h-1 w-20 bg-red-500 mx-auto rounded-full" />
+                  <p className="text-slate-500 dark:text-slate-400 font-bold leading-relaxed text-sm">
+                    Our institutional security monitor has detected an unauthorized deviation from the assessment environment. 
+                  </p>
+                  <p className="px-6 py-4 bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-400 text-sm font-black rounded-2xl border border-red-100 dark:border-red-900/20 italic">
+                    "This is your FINAL WARNING. Any further breach will trigger immediate session termination and auto-submission."
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowBreachWarning(false)}
+                  className="group relative w-full overflow-hidden rounded-2xl bg-slate-900 dark:bg-white px-8 py-5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <div className="absolute inset-0 bg-red-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                  <span className="relative font-black text-xs uppercase tracking-[0.3em] text-white dark:text-slate-900 group-hover:text-white">
+                    I Acknowledge & Resume
+                  </span>
+                </button>
+                
+                <p className="text-[10px] text-slate-400 dark:text-slate-600 font-black uppercase tracking-widest">
+                  Protocol: BR-SEC-ATTEMPT-01
+                </p>
               </div>
             </motion.div>
           </div>
