@@ -117,7 +117,8 @@ service cloud.firestore {
              data.get('studentRole', '') is string &&
              data.get('graded', false) is bool &&
              data.get('teacherId', '') is string &&
-             data.get('quizTitle', '') is string;
+             data.get('quizTitle', '') is string &&
+             (data.get('serverTimestamp', null) == null || data.serverTimestamp is timestamp);
     }
 
     match /submissions/{submissionId} {
@@ -133,10 +134,14 @@ service cloud.firestore {
                       isValidSubmission(incoming()) &&
                       incoming().studentId == request.auth.uid;
       
-      allow update: if isSuperAdmin() || (isSignedIn() && (
-        existing().studentId == request.auth.uid || 
-        existing().teacherId == request.auth.uid
-      ));
+      allow update: if isSuperAdmin() || (
+        isSignedIn() && isNotBanned() && isValidSubmission(incoming()) && (
+          // Student can only update their own in-progress submission
+          (existing().studentId == request.auth.uid && existing().get('graded', false) == false) ||
+          // Teacher can update (e.g., for manual grading overrides)
+          (existing().teacherId == request.auth.uid)
+        )
+      );
 
       allow delete: if isSuperAdmin() || (isTeacher() && existing().teacherId == request.auth.uid);
     }

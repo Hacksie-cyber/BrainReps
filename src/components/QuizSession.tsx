@@ -324,13 +324,19 @@ export default function QuizSession() {
         timeTaken: timeTaken // Record duration
       };
 
-      const { doc, setDoc, collection, addDoc } = await import('firebase/firestore');
+      const { doc, setDoc, collection, addDoc, serverTimestamp } = await import('firebase/firestore');
       
       let currentDocId = sessionDocIdRef.current;
       if (currentDocId) {
-        await setDoc(doc(db, 'submissions', currentDocId), submissionData, { merge: true });
+        await setDoc(doc(db, 'submissions', currentDocId), {
+          ...submissionData,
+          serverTimestamp: serverTimestamp()
+        }, { merge: true });
       } else {
-        const docRef = await addDoc(collection(db, 'submissions'), submissionData);
+        const docRef = await addDoc(collection(db, 'submissions'), {
+          ...submissionData,
+          serverTimestamp: serverTimestamp()
+        });
         if (!isFinal) {
           setSessionDocId(docRef.id);
           currentDocId = docRef.id;
@@ -348,12 +354,15 @@ export default function QuizSession() {
       return { finalScore, totalPoints, submissionAt };
     } catch (error: any) {
       savingRef.current = false;
-      console.error("Auto-save failed:", error);
-      // Fallback: If it's the final submission, we return the score even if the DB write failed, 
-      // but we log the error. This ensures the user doesn't see 0/0.
+      console.error("Submission/Auto-save failed:", error);
+      
+      // FOR FINAL SUBMISSION: Do NOT return fallback successfully.
+      // This ensures handleSubmit knows it failed for real.
       if (isFinal) {
-         return { finalScore, totalPoints, submissionAt: new Date().toISOString() };
+         throw error;
       }
+      
+      // For background auto-saves, we can silently fail or handle gracefully
       return { finalScore: 0, totalPoints: 0, submissionAt: new Date().toISOString() };
     }
   };
@@ -426,9 +435,14 @@ export default function QuizSession() {
         });
       }
       setFinished(true);
-    } catch (error) {
-      console.error(error);
-      alert("Failed to submit quiz");
+    } catch (error: any) {
+      console.error("Final Submission Error:", error);
+      const isPermissionError = error.message?.includes('permission') || error.code === 'permission-denied';
+      const errorMessage = isPermissionError 
+        ? "Access Denied: You do not have permission to submit to this repository. Please check your credentials."
+        : "Critical Transmission Failure: Your results could not be synchronized with the central repository. Please check your network and try again.";
+      
+      alert(errorMessage);
     } finally {
       setSubmitting(false);
     }
