@@ -16,8 +16,6 @@ export default function StudentPerformance() {
 
   const [showRestrictionModal, setShowRestrictionModal] = useState(false);
 
-  const [ranks, setRanks] = useState<Record<string, { rank: number; total: number }>>({});
-
   useEffect(() => {
     if (!profile) return;
 
@@ -50,35 +48,6 @@ export default function StudentPerformance() {
           }));
           setQuizzes(quizMap);
         }
-
-        // Calculate Ranks for each unique quiz submission
-        const newRanks: Record<string, { rank: number; total: number }> = {};
-        const { getDocs } = await import('firebase/firestore');
-
-        await Promise.all(quizIds.map(async (qId) => {
-          const allSubsQuery = query(
-            collection(db, 'submissions'),
-            where('quizId', '==', qId),
-            where('graded', '==', true)
-          );
-          const allSubsSnap = await getDocs(allSubsQuery);
-          const allSubs = allSubsSnap.docs.map(d => d.data() as QuizSubmission);
-          
-          // Rank logic: High score first, then low timeTaken
-          const sorted = allSubs.sort((a, b) => {
-            if (b.score !== a.score) return b.score - a.score;
-            return (a.timeTaken || 0) - (b.timeTaken || 0);
-          });
-
-          // Find student's best rank for this quiz (or specific submission ID rank)
-          subList.filter(s => s.quizId === qId).forEach(s => {
-             const studentRank = sorted.findIndex(item => 
-               item.studentId === profile.uid && item.score === s.score && item.timeTaken === s.timeTaken
-             ) + 1;
-             newRanks[s.id] = { rank: studentRank > 0 ? studentRank : 1, total: sorted.length || 1 };
-          });
-        }));
-        setRanks(newRanks);
       } catch (error) {
         console.error("Error processing submissions:", error);
       } finally {
@@ -205,7 +174,6 @@ export default function StudentPerformance() {
                     <th className="px-8 py-5">Assessment Title</th>
                     <th className="px-8 py-5">Submited Date</th>
                     <th className="px-8 py-5 text-center">Reference Deadline</th>
-                    <th className="px-8 py-5 text-center">Ranking</th>
                     <th className="px-8 py-5 text-right">Metric</th>
                   </tr>
                 </thead>
@@ -252,20 +220,6 @@ export default function StudentPerformance() {
                             <span className="text-[9px] text-slate-300 dark:text-slate-700 uppercase font-bold tracking-widest italic">Open Access</span>
                          )}
                       </td>
-                      <td className="px-8 py-6 text-center">
-                         {ranks[sub.id] ? (
-                            <div className="inline-flex flex-col items-center">
-                               <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 font-display">
-                                  #{ranks[sub.id].rank}
-                               </span>
-                               <span className="text-[7px] font-bold uppercase text-slate-400 tracking-widest">
-                                  Out of {ranks[sub.id].total}
-                               </span>
-                            </div>
-                         ) : (
-                            <div className="h-4 w-4 border border-slate-200 dark:border-slate-700 border-t-indigo-500 animate-spin rounded-full mx-auto" />
-                         )}
-                      </td>
                       <td className="px-8 py-6 text-right">
                          <div className="flex flex-col items-end">
                            <span className={cn(
@@ -305,17 +259,10 @@ export default function StudentPerformance() {
                       {sub.score}
                     </span>
                   </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-800">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(sub.submittedAt).toLocaleDateString()}
-                      </div>
-                      {ranks[sub.id] && (
-                        <div className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
-                          Current Rank: #{ranks[sub.id].rank} / {ranks[sub.id].total}
-                        </div>
-                      )}
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-slate-800">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(sub.submittedAt).toLocaleDateString()}
                     </div>
                     <div className="text-[10px] font-black text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
                       {Math.round((sub.score/sub.totalPoints) * 100)}%
