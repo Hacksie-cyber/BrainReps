@@ -270,7 +270,7 @@ export default function QuizSession() {
 
   // Auto-save function to record progress "automatically" as they take the assessment
   const autoSaveSession = async (currentResponses: Record<string, string>, isFinal = false) => {
-    if (!quiz || !profile || finishedRef.current) return { finalScore: 0, totalPoints: 0 };
+    if (!quiz || !profile || finishedRef.current || (submittingRef.current && !isFinal)) return { finalScore: 0, totalPoints: 0 };
 
     if (savingRef.current && !isFinal) {
       pendingSaveRef.current = currentResponses;
