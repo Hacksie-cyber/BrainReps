@@ -259,9 +259,19 @@ export default function QuizSession() {
   const autoSaveSession = async (currentResponses: Record<string, string>, isFinal = false) => {
     if (!quiz || !profile) return { finalScore: 0, totalPoints: 0 };
 
+    // If final, we must proceed even if a save is in progress, 
+    // or wait for the current save to finish. For simplicity, 
+    // if it's final we'll just bypass the early return but still use the lock.
     if (savingRef.current && !isFinal) {
       pendingSaveRef.current = currentResponses;
       return { finalScore: 0, totalPoints: 0 };
+    }
+
+    // If already saving and isFinal, wait a brief moment for the lock or just proceed
+    // The setDoc with merge: true makes concurrent writes relatively safe
+    if (savingRef.current && isFinal) {
+      // Small delay to let in-flight auto-save settle
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     savingRef.current = true;

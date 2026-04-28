@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { collection, query, getDocs, orderBy, where, doc, getDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
-import { Quiz, QuizSubmission, Question } from '../types';
+import { Quiz, QuizSubmission } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Trophy, Target, TrendingUp, Calendar, ArrowRight, Award, Zap, BookOpen, Shield } from 'lucide-react';
+import { Trophy, Target, TrendingUp, Calendar, BookOpen, Shield, Zap, Award } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 
 export default function StudentPerformance() {
@@ -19,37 +19,47 @@ export default function StudentPerformance() {
   useEffect(() => {
     if (!profile) return;
 
-    const fetchData = async () => {
+    // Use onSnapshot for real-time updates to ensure the latest submissions appear instantly
+    const q = query(
+      collection(db, 'submissions'),
+      where('studentId', '==', profile.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, async (subSnap) => {
       try {
-        const subSnap = await getDocs(query(
-          collection(db, 'submissions'),
-          where('studentId', '==', profile.uid)
-        ));
         const subList = subSnap.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
+          // Sort by submittedAt string or serverTimestamp if available
           .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+        
         setSubmissions(subList);
 
-        // Fetch related quizzes to show question texts in breakdown
+        // Fetch related quizzes to show question texts and teacher names
         const quizIds = Array.from(new Set(subList.map(s => s.quizId)));
-        const quizMap: Record<string, Quiz> = {};
+        const newQuizIds = quizIds.filter(id => !quizzes[id]);
         
-        await Promise.all(quizIds.map(async (qId) => {
-          const qSnap = await getDoc(doc(db, 'quizzes', qId));
-          if (qSnap.exists()) {
-            quizMap[qId] = { id: qSnap.id, ...qSnap.data() } as Quiz;
-          }
-        }));
-        setQuizzes(quizMap);
+        if (newQuizIds.length > 0) {
+          const quizMap: Record<string, Quiz> = { ...quizzes };
+          await Promise.all(newQuizIds.map(async (qId) => {
+            const qSnap = await getDoc(doc(db, 'quizzes', qId));
+            if (qSnap.exists()) {
+              quizMap[qId] = { id: qSnap.id, ...qSnap.data() } as Quiz;
+            }
+          }));
+          setQuizzes(quizMap);
+        }
       } catch (error) {
-        console.error(error);
+        console.error("Error processing submissions:", error);
       } finally {
         setLoading(false);
       }
-    };
+    }, (error) => {
+      console.error("Listener failed:", error);
+      setLoading(false);
+    });
 
-    fetchData();
-  }, [profile]);
+    return () => unsubscribe();
+  }, [profile?.uid]);
 
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;
 
