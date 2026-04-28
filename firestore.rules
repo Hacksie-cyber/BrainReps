@@ -110,9 +110,10 @@ service cloud.firestore {
     }
 
     function isValidSubmission(data) {
-      return data.studentId is string && isValidId(data.studentId) &&
-             data.quizId is string && isValidId(data.quizId) &&
-             data.score is number && data.totalPoints is number &&
+      return data.studentId is string &&
+             data.quizId is string &&
+             data.score is number && 
+             data.totalPoints is number &&
              data.submittedAt is string &&
              data.get('studentName', '') is string &&
              data.get('studentRole', '') is string &&
@@ -134,14 +135,14 @@ service cloud.firestore {
       allow list: if isSignedIn(); 
       
       allow create: if isSignedIn() && isNotBanned() && 
-                      isValidSubmission(incoming()) &&
-                      incoming().studentId == request.auth.uid;
+                      incoming().studentId == request.auth.uid &&
+                      isValidSubmission(incoming());
       
       allow update: if isSuperAdmin() || (
-        isSignedIn() && isNotBanned() && isValidSubmission(incoming()) && (
-          // Student can only update their own in-progress submission
-          (existing().studentId == request.auth.uid && existing().get('graded', false) == false) ||
-          // Teacher can update (e.g., for manual grading overrides)
+        isSignedIn() && isNotBanned() && (
+          // Student can update their own submission if it wasn't already finalized
+          (existing().studentId == request.auth.uid && existing().get('graded', false) == false && isValidSubmission(incoming())) ||
+          // Teacher can update for manual grading
           (existing().teacherId == request.auth.uid)
         )
       );

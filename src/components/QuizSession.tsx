@@ -257,13 +257,20 @@ export default function QuizSession() {
     await handleSubmit(responsesRef.current);
   };
 
-  const [sessionDocId] = useState(() => crypto.randomUUID());
+  const [sessionDocId] = useState(() => {
+    try {
+      return crypto.randomUUID();
+    } catch (e) {
+      return Math.random().toString(36).substring(2) + Date.now().toString(36);
+    }
+  });
+
   const savingRef = useRef(false);
   const pendingSaveRef = useRef<Record<string, string> | null>(null);
 
   // Auto-save function to record progress "automatically" as they take the assessment
   const autoSaveSession = async (currentResponses: Record<string, string>, isFinal = false) => {
-    if (!quiz || !profile) return { finalScore: 0, totalPoints: 0 };
+    if (!quiz || !profile || finishedRef.current) return { finalScore: 0, totalPoints: 0 };
 
     if (savingRef.current && !isFinal) {
       pendingSaveRef.current = currentResponses;
