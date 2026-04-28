@@ -33,7 +33,7 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
   useEffect(() => {
     if (!isInitiated) return;
 
-    // Play sound based on step
+    // Play SFX based on step
     const currentAudio = audioRefs.current[step];
     if (currentAudio) {
       currentAudio.volume = step === 3 ? 0.5 : 0.3;
@@ -41,23 +41,61 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
       currentAudio.play().catch(e => console.log('Playback blocked or failed:', e));
     }
 
+    // Voice Narration for each step
+    if ('speechSynthesis' in window) {
+      const announce = (text: string, rate = 1.05, pitch = 1.0) => {
+        const announcement = new SpeechSynthesisUtterance(text);
+        const voices = window.speechSynthesis.getVoices();
+        
+        // Priority: Samantha (Siri-like), Google UK English Female, then other Natural/Premium voices
+        const preferredVoice = voices.find(v => v.name.includes('Samantha')) || 
+                              voices.find(v => v.name.includes('Google UK English Female')) ||
+                              voices.find(v => (v.name.includes('Natural') || v.name.includes('Premium')) && v.lang.startsWith('en')) ||
+                              voices.find(v => v.lang.startsWith('en'));
+
+        if (preferredVoice) {
+          announcement.voice = preferredVoice;
+        }
+
+        announcement.rate = rate; // Faster, crisper delivery
+        announcement.pitch = pitch; // Neutral to slightly higher
+        announcement.volume = 0.9;
+        window.speechSynthesis.speak(announcement);
+      };
+
+      const stepAnnouncements = [
+        "Initializing core systems and cognitive environment.",
+        `Accessing repository. Authenticating secure ${userRole} profile and verifying network credentials.`,
+        "Mapping neural pathways and synchronizing interface patterns for optimal performance.",
+        `Access Granted. Welcome back to BrainReps Academy, ${userName}. Your personalized sanctuary for cognitive excellence and advanced mental performance. Systems are fully synchronized and ready for training.`
+      ];
+
+      // Handle async voices load
+      if (window.speechSynthesis.getVoices().length === 0) {
+        window.speechSynthesis.onvoiceschanged = () => announce(stepAnnouncements[step]);
+      } else {
+        setTimeout(() => announce(stepAnnouncements[step]), 100);
+      }
+    }
+
+    const durations = [2800, 4200, 4200, 11000]; // Re-paced for a crisper delivery
     const timer = setTimeout(() => {
       if (step < 3) {
         setStep(s => s + 1);
       } else {
         onComplete();
       }
-    }, 2000);
+    }, durations[step]);
 
     const progressInterval = setInterval(() => {
-      setProgress(p => Math.min(p + 1, 100));
-    }, 75);
+      setProgress(p => Math.min(p + 0.25, 100)); // Slightly faster progress bar to match speed
+    }, 15);
 
     return () => {
       clearTimeout(timer);
       clearInterval(progressInterval);
     };
-  }, [step, onComplete, isInitiated]);
+  }, [step, onComplete, isInitiated, userRole, userName]);
 
   const messages = [
     "Initializing Cognitive Environment...",
