@@ -172,6 +172,7 @@ export default function StudentPerformance() {
                 <thead>
                   <tr className="bg-slate-50/50 dark:bg-slate-800/30 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800">
                     <th className="px-8 py-5">Assessment Title</th>
+                    <th className="px-8 py-5 text-center">Standing</th>
                     <th className="px-8 py-5">Submited Date</th>
                     <th className="px-8 py-5 text-center">Reference Deadline</th>
                     <th className="px-8 py-5 text-right">Metric</th>
@@ -199,6 +200,16 @@ export default function StudentPerformance() {
                                </div>
                             </div>
                          </div>
+                      </td>
+                      <td className="px-8 py-6 text-center">
+                         {(sub as any).rank ? (
+                            <div className="inline-flex flex-col items-center">
+                               <span className="text-sm font-black text-slate-900 dark:text-white">Rank #{(sub as any).rank}</span>
+                               <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">out of {(sub as any).totalParticipants || "?"}</span>
+                            </div>
+                         ) : (
+                            <span className="text-[9px] font-bold text-slate-300 italic">No Rank</span>
+                         )}
                       </td>
                       <td className="px-8 py-6">
                          <div className="flex items-center gap-2 text-xs font-bold text-slate-400 dark:text-slate-500">
@@ -251,6 +262,12 @@ export default function StudentPerformance() {
                     <div>
                       <p className="font-bold text-slate-900 dark:text-slate-200 tracking-tight text-base leading-tight">{sub.quizTitle}</p>
                       <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mt-1">Educator: {quizzes[sub.quizId]?.teacherName || "Assigned Faculty"}</p>
+                      {(sub as any).rank && (
+                        <div className="flex items-center gap-1.5 mt-2 px-2 py-0.5 bg-slate-50 dark:bg-slate-800 rounded border border-slate-100 dark:border-slate-700 w-fit">
+                          <Trophy className="w-2.5 h-2.5 text-amber-500" />
+                          <span className="text-[9px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Rank #{(sub as any).rank}</span>
+                        </div>
+                      )}
                     </div>
                     <span className={cn(
                       "text-xl font-black font-display shrink-0",

@@ -15,7 +15,8 @@ function QuizRankings({ quizId, currentStudentId }: { quizId: string, currentStu
   useEffect(() => {
     const q = query(
       collection(db, 'submissions'),
-      where('quizId', '==', quizId)
+      where('quizId', '==', quizId),
+      where('status', '==', 'completed')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -136,8 +137,11 @@ export default function StudentDashboard() {
       console.error("User submissions sync failed:", error);
     });
 
-    // 3. Real-time global rankings data
-    const qAllSubs = query(collection(db, 'submissions'));
+    // 3. Real-time global rankings data targeting completed modules
+    const qAllSubs = query(
+      collection(db, 'submissions'),
+      where('status', '==', 'completed')
+    );
     const unsubAllSubs = onSnapshot(qAllSubs, (snapshot) => {
       try {
         const allSubs = snapshot.docs

@@ -5,7 +5,8 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAlert, AlertTriangle } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAlert, AlertTriangle, Trophy, Medal, Star } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 
 export default function QuizSession() {
@@ -32,6 +33,7 @@ export default function QuizSession() {
     finishedRef.current = finished;
   }, [finished]);
   const [lastScore, setLastScore] = useState<{ score: number, total: number, rank: number, totalParticipants: number } | null>(null);
+  const [rankStatus, setRankStatus] = useState<'idle' | 'calculating' | 'success' | 'error'>('idle');
   const [attemptCount, setAttemptCount] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [timeTaken, setTimeTaken] = useState(0);
@@ -40,6 +42,7 @@ export default function QuizSession() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [breachCount, setBreachCount] = useState(0);
   const [showBreachWarning, setShowBreachWarning] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
   const lastBreachTimeRef = useRef<number>(0);
   const COOLDOWN_MS = 5000; // 5 second gap between breach triggers
 
@@ -106,12 +109,13 @@ export default function QuizSession() {
           const subQuery = query(
             collection(db, 'submissions'),
             where('quizId', '==', id),
-            where('studentId', '==', profile.uid),
-            orderBy('submittedAt', 'desc')
+            where('studentId', '==', profile.uid)
           );
           const subSnap = await getDocs(subQuery);
           
-          const allSubs = subSnap.docs.map(d => ({ id: d.id, ...d.data() } as QuizSubmission));
+          const allSubs = subSnap.docs
+            .map(d => ({ id: d.id, ...d.data() } as QuizSubmission))
+            .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
           setAttemptCount(allSubs.length);
 
           // Look for an in-progress session to resume
@@ -130,11 +134,13 @@ export default function QuizSession() {
               setTimeLeft(Math.max(0, remaining));
             }
           } else {
-            // New session ID
-            try {
-              setSessionDocId(crypto.randomUUID());
-            } catch (e) {
-              setSessionDocId(Math.random().toString(36).substring(2) + Date.now().toString(36));
+            // New session ID - generate early to prevent race conditions
+            if (!sessionDocId) {
+              try {
+                setSessionDocId(crypto.randomUUID());
+              } catch (e) {
+                setSessionDocId(Math.random().toString(36).substring(2) + Date.now().toString(36));
+              }
             }
           }
         }
@@ -291,7 +297,7 @@ export default function QuizSession() {
 
   // Auto-save function to record progress "automatically" as they take the assessment
   const autoSaveSession = async (currentResponses: Record<string, string>, isFinal = false) => {
-    if (!quiz || !profile || !sessionDocId || finishedRef.current || (submittingRef.current && !isFinal)) return { finalScore: 0, totalPoints: 0 };
+    if (!quiz || !profile || !sessionDocId || (finishedRef.current && !isFinal) || (submittingRef.current && !isFinal)) return { finalScore: 0, totalPoints: 0 };
 
     if (savingRef.current && !isFinal) {
       pendingSaveRef.current = currentResponses;
@@ -400,58 +406,86 @@ export default function QuizSession() {
     
     submittingRef.current = true;
     setSubmitting(true);
+    setRankStatus('calculating');
+    
     try {
       // Execute final score recording automatically
       const result = await autoSaveSession(finalResponses, true);
-      const { finalScore, totalPoints, submissionAt } = result;
+      const { finalScore, totalPoints: resultTotal } = result;
+      
+      // Safety: Always calculate real total from questions if result total is invalid
+      const quizTotal = quiz.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+      const actualTotal = resultTotal > 0 ? resultTotal : quizTotal;
       
       // Calculate Rank for final results
       try {
         const { getDocs, query, where, collection } = await import('firebase/firestore');
-        const allSubsSnap = await getDocs(query(
+        const q = query(
           collection(db, 'submissions'),
-          where('quizId', '==', quiz.id)
-        ));
+          where('quizId', '==', quiz.id),
+          where('status', '==', 'completed')
+        );
+        const allSubsSnap = await getDocs(q);
         
         const allSubs = allSubsSnap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
-          .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+          .map(doc => ({ ...doc.data(), studentId: doc.data().studentId } as any))
+          .sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
+          });
         
-        const latestSubsMap = new Map<string, QuizSubmission>();
-        allSubs.forEach(sub => {
-          if (!latestSubsMap.has(sub.studentId)) {
-            latestSubsMap.set(sub.studentId, sub);
+        // De-duplicate to keep only top score for each student
+        const studentBestScores = new Map<string, number>();
+        allSubs.forEach(s => {
+          if (!studentBestScores.has(s.studentId) || s.score > (studentBestScores.get(s.studentId) || 0)) {
+            studentBestScores.set(s.studentId, s.score);
           }
         });
-        
-        const sortedSubs = Array.from(latestSubsMap.values()).sort((a, b) => {
-          // 1. Score (Descending)
-          if (b.score !== a.score) return b.score - a.score;
-          // 2. Efficiency: Time Taken (Ascending)
-          const timeA = a.timeTaken || 0;
-          const timeB = b.timeTaken || 0;
-          if (timeB !== timeA) return timeA - timeB;
-          // 3. Chronology: Submission Date (Ascending - first to finish)
-          return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
-        });
-        
-        const rank = sortedSubs.findIndex(s => s.studentId === profile.uid) + 1;
+
+        const sortedScores = Array.from(studentBestScores.values()).sort((a, b) => b - a);
+        const rank = sortedScores.indexOf(finalScore) + 1 || sortedScores.length + 1;
         
         setLastScore({ 
           score: finalScore, 
-          total: totalPoints, 
+          total: actualTotal, 
           rank, 
-          totalParticipants: sortedSubs.length 
+          totalParticipants: sortedScores.length 
         });
+        setRankStatus('success');
+
+        // Permanently record rank metrics into the submission document
+        const { doc, setDoc } = await import('firebase/firestore');
+        try {
+          await setDoc(doc(db, 'submissions', sessionDocId!), {
+            rank,
+            totalParticipants: sortedScores.length
+          }, { merge: true });
+        } catch (syncErr) {
+          console.warn("Rank persistence failed but state updated locally:", syncErr);
+        }
+
+        // Trigger celebration
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#4f46e5', '#10b981', '#f59e0b']
+        });
+      setShowResultModal(true);
       } catch (rankError: any) {
         console.error("Rank calculation skipped:", rankError);
-        // Fallback: show score without rank if query fails (e.g. index building)
+        setRankStatus('error');
         setLastScore({ 
           score: finalScore, 
-          total: totalPoints, 
+          total: actualTotal, 
           rank: 0, 
           totalParticipants: 0 
         });
+        
+        // Report specific permission error details to help debugging
+        if (rankError.message?.includes('permission')) {
+          console.error("DEBUG: Firebase Permission Error during rank calculation. Check rules for 'submissions' collection list/read access.");
+        }
       }
       setFinished(true);
       finishedRef.current = true;
@@ -555,39 +589,49 @@ export default function QuizSession() {
           </p>
         )}
         
-        {lastScore && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mb-8 space-y-4"
-          >
+      {!lastScore && (
+        <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse">
+           <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Processing Achievement Metrics...</p>
+           <div className="h-10 w-32 bg-slate-200 dark:bg-slate-700 rounded-lg mx-auto" />
+        </div>
+      )}
+
+      {lastScore && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mb-8 space-y-4"
+        >
             <div>
               <p className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest mb-1">Final Achievement Score</p>
               <h3 className="text-5xl font-black text-indigo-600 dark:text-indigo-400">
-                {lastScore.score} <span className="text-xl text-slate-300 dark:text-slate-600">/ {lastScore.total}</span>
+                {lastScore?.score || 0} <span className="text-xl text-slate-300 dark:text-slate-600">/ {lastScore?.total || quiz.questions.reduce((sum, q) => sum + (q.points || 0), 0)}</span>
               </h3>
             </div>
 
-            <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-50 dark:border-slate-800">
-               {lastScore.rank > 0 && (
+          <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-50 dark:border-slate-800">
+             {rankStatus === 'success' && lastScore.rank > 0 ? (
+               <>
                  <div className="text-center px-6 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                     <p className="text-[8px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-tighter">Leaderboard Standing</p>
                     <p className="text-xl font-black text-slate-800 dark:text-slate-100">Rank #{lastScore.rank}</p>
                  </div>
-               )}
-               {lastScore.totalParticipants > 0 && (
                  <div className="text-center px-6 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                     <p className="text-[8px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-tighter">Peer Group Size</p>
                     <p className="text-xl font-black text-slate-400 dark:text-slate-600">{lastScore.totalParticipants} <span className="text-[10px]">Total</span></p>
                  </div>
-               )}
-               {lastScore.rank === 0 && (
-                 <p className="text-[9px] font-bold text-slate-400 italic">Leaderboard syncing in progress...</p>
-               )}
-            </div>
-          </motion.div>
-        )}
+               </>
+             ) : rankStatus === 'calculating' ? (
+               <p className="text-[9px] font-bold text-slate-400 italic animate-pulse">Leaderboard syncing in progress...</p>
+             ) : (
+               <div className="px-6 py-2 bg-slate-50 dark:bg-slate-800/30 rounded-lg border border-dashed border-slate-200 dark:border-slate-700">
+                  <p className="text-[9px] font-bold text-slate-400 italic">Global standing computation queued</p>
+               </div>
+             )}
+          </div>
+        </motion.div>
+      )}
 
         <p className="mb-10 text-lg text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto leading-relaxed">
           Your metrics have been recorded. You can now review your score and detailed performance breakdown in your dashboard.
@@ -607,6 +651,109 @@ export default function QuizSession() {
             Return to Hub
           </button>
         </div>
+
+        {/* Result Modal - Integrated for immediate feedback */}
+        <AnimatePresence>
+          {showResultModal && lastScore && (
+            <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-slate-950/80 backdrop-blur-xl"
+              />
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 30 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 30 }}
+                className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] p-12 border border-slate-200 dark:border-slate-800 text-center space-y-10 overflow-visible"
+              >
+                {/* Decorative Rank Elements */}
+                {lastScore.rank === 1 && (
+                  <div className="absolute -top-12 left-1/2 -translate-x-1/2">
+                    <motion.div 
+                      animate={{ rotate: 360 }} 
+                      transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                      className="absolute inset-0 scale-150 opacity-20 bg-indigo-500 blur-3xl rounded-full" 
+                    />
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", bounce: 0.6 }}
+                      className="relative w-24 h-24 bg-gradient-to-br from-amber-300 via-amber-500 to-amber-700 rounded-3xl flex items-center justify-center shadow-2xl shadow-amber-500/50"
+                    >
+                      <Trophy className="w-12 h-12 text-white" />
+                    </motion.div>
+                  </div>
+                )}
+                
+                {lastScore.rank > 1 && lastScore.rank <= 3 && (
+                  <div className="absolute -top-12 left-1/2 -translate-x-1/2">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", bounce: 0.6 }}
+                      className="relative w-20 h-20 bg-gradient-to-br from-slate-200 via-slate-400 to-slate-600 rounded-3xl flex items-center justify-center shadow-2xl"
+                    >
+                      <Medal className="w-10 h-10 text-white" />
+                    </motion.div>
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <motion.span 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="inline-block px-4 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-[0.3em] rounded-full mb-6 border border-indigo-100 dark:border-indigo-800"
+                  >
+                    Assessment Finalized
+                  </motion.span>
+                  <h3 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Mastery Achieved</h3>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800">
+                      <p className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest mb-2">Efficiency Score</p>
+                      <p className="text-4xl font-black text-indigo-600 dark:text-indigo-400">{lastScore.score}<span className="text-lg text-slate-300 dark:text-slate-600">/{lastScore.total}</span></p>
+                  </div>
+                  <div className="p-6 bg-slate-900 dark:bg-white rounded-3xl border border-slate-800 dark:border-slate-100 shadow-xl">
+                      <p className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest mb-2">Global Standing</p>
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-2">
+                          <p className="text-4xl font-black text-white dark:text-slate-900">#{lastScore.rank}</p>
+                          {lastScore.rank === 1 && <Star className="w-5 h-5 text-amber-400 fill-amber-400 animate-pulse" />}
+                        </div>
+                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-tighter opacity-80">out of {lastScore.totalParticipants}</p>
+                      </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-slate-500 dark:text-slate-400 text-sm font-medium leading-relaxed max-w-xs mx-auto">
+                    Your academic session has been successfully synchronized. Performance metrics are now available for institutional review.
+                  </p>
+                  <div className="h-px w-20 bg-slate-100 dark:bg-slate-800 mx-auto" />
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  <button
+                    onClick={() => navigate('/student/performance')}
+                    className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-indigo-600/30 hover:bg-indigo-700 hover:-translate-y-0.5 active:translate-y-0 transition-all"
+                  >
+                    View Full Analytics
+                  </button>
+                  <button
+                    onClick={() => setShowResultModal(false)}
+                    className="w-full py-4 bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                  >
+                    Dismiss Report
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }

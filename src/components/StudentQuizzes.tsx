@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { collection, query, getDocs, orderBy, where, or } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, where, or, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, Search, CheckCircle2, Clock, ArrowRight, ShieldAlert, AlertTriangle, X } from 'lucide-react';
+import { BookOpen, Search, CheckCircle2, Clock, ArrowRight, ShieldAlert, AlertTriangle, X, Trophy, Star } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn, formatDeadline } from '../lib/utils';
 
@@ -53,6 +53,60 @@ export default function StudentQuizzes() {
 
     fetchData();
   }, [profile]);
+
+  const [topAchievers, setTopAchievers] = useState<Record<string, { name: string, score: number, total: number }>>({});
+  const [loadingTop, setLoadingTop] = useState(false);
+
+  useEffect(() => {
+    if (!profile || quizzes.length === 0) return;
+
+    const fetchTopAchievers = async () => {
+      setLoadingTop(true);
+      const achievers: Record<string, any> = {};
+      
+      try {
+        const fetchPromises = quizzes.map(async (quiz) => {
+          try {
+            const q = query(
+              collection(db, 'submissions'),
+              where('quizId', '==', quiz.id),
+              where('status', '==', 'completed'),
+              orderBy('score', 'desc'),
+              limit(1)
+            );
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+              const data = snap.docs[0].data();
+              return { quizId: quiz.id, data: {
+                name: data.studentName,
+                score: data.score,
+                total: data.totalPoints
+              }};
+            }
+          } catch (err: any) {
+            // Silently handle index errors or permission errors for individual cards
+            if (err.message?.includes('index')) {
+              console.warn(`Ranking index missing for quiz ${quiz.id}`);
+            }
+            return null;
+          }
+          return null;
+        });
+
+        const results = await Promise.all(fetchPromises);
+        results.forEach(res => {
+          if (res) achievers[res.quizId] = res.data;
+        });
+        setTopAchievers(achievers);
+      } catch (err) {
+        console.error("Global top achievers sync failed:", err);
+      } finally {
+        setLoadingTop(false);
+      }
+    };
+
+    fetchTopAchievers();
+  }, [profile, quizzes]);
 
   const filteredQuizzes = quizzes.filter(quiz => {
     // Only show non-hidden quizzes to students (teachers see all in StudentQuizzes too if they navigate there, but primarily for students)
@@ -253,9 +307,30 @@ export default function StudentQuizzes() {
                       </div>
                     </div>
                     
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 font-medium leading-relaxed italic line-clamp-2">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 font-medium leading-relaxed italic line-clamp-2">
                        {quiz.description || "Instructional module for structural logic evaluation."}
                     </p>
+
+                    {topAchievers[quiz.id] && (
+                       <div className="mb-6 p-4 bg-amber-50/30 dark:bg-amber-900/10 rounded-xl border border-amber-100/50 dark:border-amber-900/20 flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                             <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-amber-600 dark:text-amber-500 tracking-widest">
+                                <Trophy className="h-2.5 w-2.5" />
+                                Top Achiever
+                             </div>
+                             <div className="flex items-center gap-1 text-[10px] font-black text-amber-700 dark:text-amber-400">
+                                <Star className="h-3 w-3 fill-amber-400" />
+                                {topAchievers[quiz.id].score} pts
+                             </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                             <div className="flex-1 overflow-hidden">
+                                <p className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{topAchievers[quiz.id].name}</p>
+                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Institutional Record</p>
+                             </div>
+                          </div>
+                       </div>
+                    )}
                     
                     <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                       {isCompleted && latestSubmission ? (
