@@ -113,6 +113,25 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
           <>
             {/* Central Pulsing Icon */}
             <div className="flex justify-center relative">
+              <div className="absolute inset-0 flex items-center justify-center">
+                {/* Glowing Aura Layers */}
+                <motion.div 
+                  animate={{ 
+                    scale: [1, 1.4, 1],
+                    opacity: [0.1, 0.3, 0.1]
+                  }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute w-40 h-40 bg-indigo-500 rounded-full blur-3xl"
+                />
+                <motion.div 
+                  animate={{ 
+                    scale: [1, 1.2, 1],
+                    opacity: [0.2, 0.4, 0.2]
+                  }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                  className="absolute w-32 h-32 bg-indigo-400 rounded-full blur-2xl"
+                />
+              </div>
               <motion.div 
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
