@@ -23,6 +23,8 @@ import { BookOpen } from 'lucide-react';
 import { doc, getDocFromCache, getDocFromServer } from 'firebase/firestore';
 import { db } from './lib/firebase';
 
+import IntroScreen from './components/IntroScreen';
+
 const SUPER_ADMIN_EMAIL = 'bamuyahacksie@gmail.com';
 
 // CRITICAL CONSTRAINT: Test connection to Firestore
@@ -40,9 +42,33 @@ testConnection();
 
 function RequireAuth({ children, role }: { children: React.ReactNode, role?: 'teacher' | 'student' | 'admin' }) {
   const { user, profile, loading } = useAuth();
+  const [showIntro, setShowIntro] = React.useState(false);
+  const [introStepCompleted, setIntroStepCompleted] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!loading && user && profile && !introStepCompleted) {
+      setShowIntro(true);
+    }
+  }, [loading, user, profile, introStepCompleted]);
 
   if (loading) return null;
   if (!user || !profile) return <Navigate to="/" />;
+
+  if (showIntro) {
+    const effectiveRole = profile.email === SUPER_ADMIN_EMAIL ? 'admin' : profile.role as 'student' | 'teacher' | 'admin';
+    return (
+      <IntroScreen 
+        userRole={effectiveRole} 
+        userName={profile.name} 
+        onComplete={() => {
+          setShowIntro(false);
+          setIntroStepCompleted(true);
+        }} 
+      />
+    );
+  }
+
+  if (!introStepCompleted) return null;
   
   if (profile.isBanned) {
     return <BannedScreen />;
