@@ -53,7 +53,7 @@ export default function TeacherQuizResults() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allSubs = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
-        .filter(sub => (sub as any).studentRole === 'student') // Exclude educators from results
+        .filter(sub => (sub as any).studentRole === 'student' || sub.studentId === profile.uid) // Include students or the teacher's own testing submissions
         .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
       
       // De-duplicate: Keep only the latest attempt for each student

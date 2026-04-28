@@ -115,13 +115,8 @@ service cloud.firestore {
              data.score is number && 
              data.totalPoints is number &&
              data.submittedAt is string &&
-             data.get('studentName', '') is string &&
-             data.get('studentRole', '') is string &&
              data.get('graded', false) is bool &&
-             data.get('teacherId', '') is string &&
-             data.get('quizTitle', '') is string &&
-             data.get('status', '') is string &&
-             (data.get('timeTaken', 0) is number || data.get('timeTaken', 0) is int) &&
+             data.get('status', 'in-progress') in ['in-progress', 'completed'] &&
              (data.get('serverTimestamp', null) == null || data.serverTimestamp is timestamp);
     }
 
@@ -132,7 +127,11 @@ service cloud.firestore {
         isSuperAdmin()
       );
       
-      allow list: if isSignedIn(); 
+      allow list: if isSignedIn() && (
+        isSuperAdmin() ||
+        resource.data.teacherId == request.auth.uid || 
+        resource.data.studentId == request.auth.uid
+      );
       
       allow create: if isSignedIn() && isNotBanned() && 
                       incoming().studentId == request.auth.uid &&

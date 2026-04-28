@@ -52,6 +52,8 @@ export default function QuizSession() {
     return () => clearInterval(interval);
   }, [finished, loading, quiz]);
 
+  const [sessionDocId, setSessionDocId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!id || !profile) return;
     const fetchData = async () => {
@@ -99,15 +101,42 @@ export default function QuizSession() {
             setTimeLeft(quizData.timeLimit * 60);
           }
 
-          // Check previous submissions
-          const { query, collection, where, getDocs } = await import('firebase/firestore');
+          // Check previous submissions AND current in-progress session
+          const { query, collection, where, getDocs, orderBy } = await import('firebase/firestore');
           const subQuery = query(
             collection(db, 'submissions'),
             where('quizId', '==', id),
-            where('studentId', '==', profile.uid)
+            where('studentId', '==', profile.uid),
+            orderBy('submittedAt', 'desc')
           );
           const subSnap = await getDocs(subQuery);
-          setAttemptCount(subSnap.docs.length);
+          
+          const allSubs = subSnap.docs.map(d => ({ id: d.id, ...d.data() } as QuizSubmission));
+          setAttemptCount(allSubs.length);
+
+          // Look for an in-progress session to resume
+          const activeSession = allSubs.find(s => s.status === 'in-progress');
+          if (activeSession) {
+            setSessionDocId(activeSession.id);
+            // Re-map responses
+            const restoredResponses: Record<string, string> = {};
+            activeSession.responses.forEach(r => {
+              restoredResponses[r.questionId] = r.answer;
+            });
+            setResponses(restoredResponses);
+            if (activeSession.timeTaken) setTimeTaken(activeSession.timeTaken);
+            if (quizData.timeLimit) {
+              const remaining = (quizData.timeLimit * 60) - (activeSession.timeTaken || 0);
+              setTimeLeft(Math.max(0, remaining));
+            }
+          } else {
+            // New session ID
+            try {
+              setSessionDocId(crypto.randomUUID());
+            } catch (e) {
+              setSessionDocId(Math.random().toString(36).substring(2) + Date.now().toString(36));
+            }
+          }
         }
       } catch (error) {
         console.error(error);
@@ -257,20 +286,12 @@ export default function QuizSession() {
     await handleSubmit(responsesRef.current);
   };
 
-  const [sessionDocId] = useState(() => {
-    try {
-      return crypto.randomUUID();
-    } catch (e) {
-      return Math.random().toString(36).substring(2) + Date.now().toString(36);
-    }
-  });
-
   const savingRef = useRef(false);
   const pendingSaveRef = useRef<Record<string, string> | null>(null);
 
   // Auto-save function to record progress "automatically" as they take the assessment
   const autoSaveSession = async (currentResponses: Record<string, string>, isFinal = false) => {
-    if (!quiz || !profile || finishedRef.current || (submittingRef.current && !isFinal)) return { finalScore: 0, totalPoints: 0 };
+    if (!quiz || !profile || !sessionDocId || finishedRef.current || (submittingRef.current && !isFinal)) return { finalScore: 0, totalPoints: 0 };
 
     if (savingRef.current && !isFinal) {
       pendingSaveRef.current = currentResponses;
