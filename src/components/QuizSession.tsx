@@ -23,6 +23,7 @@ export default function QuizSession() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [finished, setFinished] = useState(false);
   const [wasForced, setWasForced] = useState(false);
   const finishedRef = useRef(false);
@@ -126,7 +127,17 @@ export default function QuizSession() {
     }
 
     const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev !== null ? prev - 1 : null));
+      setTimeLeft((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          clearInterval(timer);
+          if (!submittingRef.current && !finishedRef.current) {
+            handleSubmit();
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     return () => clearInterval(timer);
@@ -241,37 +252,22 @@ export default function QuizSession() {
   }, [finished, loading, quiz, profile]);
 
   const forceSubmit = async () => {
-    if (finishedRef.current) return;
+    if (finishedRef.current || submittingRef.current) return;
     setWasForced(true);
     await handleSubmit(responsesRef.current);
   };
 
-  const [sessionDocId, setSessionDocId] = useState<string | null>(null);
+  const [sessionDocId] = useState(() => crypto.randomUUID());
   const savingRef = useRef(false);
   const pendingSaveRef = useRef<Record<string, string> | null>(null);
-  const sessionDocIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    sessionDocIdRef.current = sessionDocId;
-  }, [sessionDocId]);
 
   // Auto-save function to record progress "automatically" as they take the assessment
   const autoSaveSession = async (currentResponses: Record<string, string>, isFinal = false) => {
     if (!quiz || !profile) return { finalScore: 0, totalPoints: 0 };
 
-    // If final, we must proceed even if a save is in progress, 
-    // or wait for the current save to finish. For simplicity, 
-    // if it's final we'll just bypass the early return but still use the lock.
     if (savingRef.current && !isFinal) {
       pendingSaveRef.current = currentResponses;
       return { finalScore: 0, totalPoints: 0 };
-    }
-
-    // If already saving and isFinal, wait a brief moment for the lock or just proceed
-    // The setDoc with merge: true makes concurrent writes relatively safe
-    if (savingRef.current && isFinal) {
-      // Small delay to let in-flight auto-save settle
-      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     savingRef.current = true;
@@ -321,40 +317,26 @@ export default function QuizSession() {
         quizTitle: quiz.title,
         teacherId: quiz.teacherId,
         studentId: profile.uid,
-        studentName: profile.name,
-        studentRole: profile.role, // Record role for advanced filtering
-        isPublicQuiz: quiz.isPublic || false,
-        allowedStudentIds: quiz.allowedStudentIds || [],
+        studentName: profile.name || 'Anonymous Student',
+        studentRole: profile.role || 'student',
         responses: gradedResponses,
         score: finalScore,
         totalPoints,
         submittedAt: submissionAt,
-        graded: isFinal, // Record as in-progress until finalized
+        graded: isFinal,
         status: isFinal ? 'completed' : 'in-progress',
-        timeTaken: timeTaken // Record duration
+        timeTaken: timeTaken
       };
 
-      const { doc, setDoc, collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+      const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
       
-      let currentDocId = sessionDocIdRef.current;
-      if (currentDocId) {
-        await setDoc(doc(db, 'submissions', currentDocId), {
-          ...submissionData,
-          serverTimestamp: serverTimestamp()
-        }, { merge: true });
-      } else {
-        const docRef = await addDoc(collection(db, 'submissions'), {
-          ...submissionData,
-          serverTimestamp: serverTimestamp()
-        });
-        if (!isFinal) {
-          setSessionDocId(docRef.id);
-          currentDocId = docRef.id;
-        }
-      }
+      await setDoc(doc(db, 'submissions', sessionDocId), {
+        ...submissionData,
+        serverTimestamp: serverTimestamp()
+      }, { merge: true });
       
       savingRef.current = false;
-      // Handle any saves that were requested during the write
+      // Handle completion of any save requested while this one was in fly
       if (pendingSaveRef.current && !isFinal) {
         const nextSave = pendingSaveRef.current;
         pendingSaveRef.current = null;
@@ -364,15 +346,12 @@ export default function QuizSession() {
       return { finalScore, totalPoints, submissionAt };
     } catch (error: any) {
       savingRef.current = false;
-      console.error("Submission/Auto-save failed:", error);
+      console.error("Submission/Auto-save operation failed:", error);
       
-      // FOR FINAL SUBMISSION: Do NOT return fallback successfully.
-      // This ensures handleSubmit knows it failed for real.
       if (isFinal) {
          throw error;
       }
       
-      // For background auto-saves, we can silently fail or handle gracefully
       return { finalScore: 0, totalPoints: 0, submissionAt: new Date().toISOString() };
     }
   };
@@ -385,20 +364,22 @@ export default function QuizSession() {
   };
 
   const handleSubmit = async (overrideResponses?: Record<string, string>) => {
-    if (!quiz || !profile) return;
+    if (!quiz || !profile || finishedRef.current || submittingRef.current) return;
     
     // Safety: check if overrideResponses is a valid object (not a React event)
     const isValidOverride = overrideResponses && typeof overrideResponses === 'object' && !('nativeEvent' in overrideResponses);
     const finalResponses = isValidOverride ? overrideResponses : responses;
     
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       // Execute final score recording automatically
-      const { finalScore, totalPoints, submissionAt } = await autoSaveSession(finalResponses, true);
+      const result = await autoSaveSession(finalResponses, true);
+      const { finalScore, totalPoints, submissionAt } = result;
       
       // Calculate Rank for final results
       try {
-        const { getDocs, query, where, orderBy } = await import('firebase/firestore');
+        const { getDocs, query, where, collection } = await import('firebase/firestore');
         const allSubsSnap = await getDocs(query(
           collection(db, 'submissions'),
           where('quizId', '==', quiz.id)
@@ -445,7 +426,10 @@ export default function QuizSession() {
         });
       }
       setFinished(true);
+      finishedRef.current = true;
     } catch (error: any) {
+      submittingRef.current = false;
+      setSubmitting(false);
       console.error("Final Submission Error:", error);
       const isPermissionError = error.message?.includes('permission') || error.code === 'permission-denied';
       const errorMessage = isPermissionError 
@@ -453,8 +437,6 @@ export default function QuizSession() {
         : "Critical Transmission Failure: Your results could not be synchronized with the central repository. Please check your network and try again.";
       
       alert(errorMessage);
-    } finally {
-      setSubmitting(false);
     }
   };
 
