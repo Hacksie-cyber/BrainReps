@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Brain, Zap, Shield, Target, Sparkles, Loader2, Fingerprint } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 interface IntroScreenProps {
   onComplete: () => void;
@@ -12,7 +13,48 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
   const [isInitiated, setIsInitiated] = useState(false);
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [isHolding, setIsHolding] = useState(false);
   const audioRefs = React.useRef<Record<number, HTMLAudioElement>>({});
+  const holdTimerRef = React.useRef<number | null>(null);
+
+  // Handle biometric hold logic
+  useEffect(() => {
+    if (isHolding && !isInitiated) {
+      const startTime = Date.now();
+      const duration = 3000; // 3 seconds
+
+      const updateHold = () => {
+        const elapsed = Date.now() - startTime;
+        const newProgress = Math.min((elapsed / duration) * 100, 100);
+        setHoldProgress(newProgress);
+
+        if (newProgress < 100) {
+          holdTimerRef.current = requestAnimationFrame(updateHold);
+        } else {
+          setIsInitiated(true);
+          setIsHolding(false);
+        }
+      };
+
+      holdTimerRef.current = requestAnimationFrame(updateHold);
+    } else {
+      if (holdTimerRef.current) cancelAnimationFrame(holdTimerRef.current);
+      // Fast reset when let go
+      const reset = () => {
+        setHoldProgress(prev => {
+          if (prev <= 0) return 0;
+          return prev - 5;
+        });
+        if (holdProgress > 0) requestAnimationFrame(reset);
+      };
+      if (!isInitiated) reset();
+    }
+
+    return () => {
+      if (holdTimerRef.current) cancelAnimationFrame(holdTimerRef.current);
+    };
+  }, [isHolding, isInitiated]);
 
   useEffect(() => {
     // Preload sounds
@@ -141,53 +183,127 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Synchronize neural interface to proceed</p>
             </div>
             <div className="flex flex-col items-center gap-6">
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsInitiated(true)}
-                className="group relative w-32 h-32 flex items-center justify-center"
+              <motion.div 
+                className="relative w-36 h-36 flex items-center justify-center"
               >
-                {/* Scanner Outer Rings */}
-                <motion.div 
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 border-2 border-indigo-500/20 rounded-full border-dashed"
-                />
-                <motion.div 
-                  animate={{ rotate: -360 }}
-                  transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-2 border border-indigo-400/10 rounded-full"
-                />
-                
-                {/* Fingerprint Main Button */}
-                <div className="absolute inset-4 bg-indigo-950/50 rounded-full flex items-center justify-center border border-indigo-500/30 group-hover:border-indigo-400 group-hover:bg-indigo-900/50 transition-all shadow-[0_0_20px_rgba(79,70,229,0.2)] group-hover:shadow-[0_0_30px_rgba(79,70,229,0.4)] overflow-hidden">
-                  <Fingerprint className="w-12 h-12 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
-                  
-                  {/* Scanning Laser Line Effect */}
-                  <motion.div 
-                    animate={{ 
-                      top: ["-10%", "110%", "-10%"]
-                    }}
-                    transition={{ 
-                      duration: 3, 
-                      repeat: Infinity, 
-                      ease: "easeInOut" 
-                    }}
-                    className="absolute left-0 right-0 h-0.5 bg-indigo-400 shadow-[0_0_10px_rgba(129,140,248,0.8)] opacity-50"
+                {/* Circular Progress SVG */}
+                <svg className="absolute inset-0 w-full h-full -rotate-90 transform">
+                  <circle
+                    cx="72"
+                    cy="72"
+                    r="68"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="text-indigo-500/10"
                   />
-                </div>
+                  <motion.circle
+                    cx="72"
+                    cy="72"
+                    r="68"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray={427}
+                    animate={{ strokeDashoffset: 427 - (427 * holdProgress) / 100 }}
+                    transition={{ duration: 0.1 }}
+                    className={cn(
+                      "transition-all duration-100",
+                      holdProgress > 0 ? "text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.8)]" : "text-transparent"
+                    )}
+                  />
+                </svg>
 
-                {/* Touch Feedback Aura */}
-                <div className="absolute -inset-2 bg-indigo-500/10 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-              </motion.button>
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onPointerDown={() => setIsHolding(true)}
+                  onPointerUp={() => setIsHolding(false)}
+                  onPointerLeave={() => setIsHolding(false)}
+                  className="group relative w-28 h-28 flex items-center justify-center rounded-full z-10"
+                >
+                  {/* Scanner Outer Rings */}
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-0 border border-indigo-500/20 rounded-full border-dashed"
+                  />
+                  
+                  {/* Fingerprint Main Button */}
+                  <div className={cn(
+                    "absolute inset-2 rounded-full flex items-center justify-center border transition-all duration-300 overflow-hidden",
+                    isHolding 
+                      ? "bg-indigo-600/30 border-indigo-400 shadow-[0_0_40px_rgba(79,70,229,0.5)]" 
+                      : "bg-indigo-950/50 border-indigo-500/30 shadow-[0_0_20px_rgba(79,70,229,0.2)]"
+                  )}>
+                    <Fingerprint className={cn(
+                      "w-12 h-12 transition-all duration-500",
+                      isHolding ? "text-white scale-110" : "text-indigo-400"
+                    )} />
+                    
+                    {/* Scanning Laser Line Effect - faster when holding */}
+                    <motion.div 
+                      animate={{ 
+                        top: ["-10%", "110%", "-10%"]
+                      }}
+                      transition={{ 
+                        duration: isHolding ? 1.5 : 3, 
+                        repeat: Infinity, 
+                        ease: "linear" 
+                      }}
+                      className={cn(
+                        "absolute left-0 right-0 h-1 bg-indigo-400 shadow-[0_0_15px_rgba(129,140,248,1)] opacity-70",
+                        !isHolding && "opacity-30"
+                      )}
+                    />
+                  </div>
+
+                  {/* Pulsing Aura when holding */}
+                  <AnimatePresence>
+                    {isHolding && (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1.2 }}
+                        exit={{ opacity: 0, scale: 1.5 }}
+                        transition={{ duration: 0.5, repeat: Infinity }}
+                        className="absolute inset-0 bg-indigo-500/20 rounded-full blur-xl"
+                      />
+                    )}
+                  </AnimatePresence>
+                </motion.button>
+              </motion.div>
               
               <motion.div 
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity }}
+                animate={{ opacity: isHolding ? 1 : 0.6 }}
                 className="flex flex-col items-center gap-1"
               >
-                <p className="text-[10px] font-black uppercase text-indigo-400 tracking-[0.3em] font-mono">Hold to scan biometric data</p>
-                <p className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">Interface Authorization Required</p>
+                <div className="h-6 flex items-center">
+                  <AnimatePresence mode="wait">
+                    {isHolding ? (
+                      <motion.p 
+                        key="scanning"
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        className="text-[10px] font-black uppercase text-white tracking-[0.2em] font-mono"
+                      >
+                        Analyzing Biometrics... {Math.round(holdProgress)}%
+                      </motion.p>
+                    ) : (
+                      <motion.p 
+                        key="ready"
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        className="text-[10px] font-black uppercase text-indigo-400 tracking-[0.3em] font-mono"
+                      >
+                        Hold to scan biometric data
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <p className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">Neural Link Authorization Required</p>
               </motion.div>
             </div>
           </motion.div>
