@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Brain, Zap, Shield, Target, Sparkles, Loader2 } from 'lucide-react';
+import { Brain, Zap, Shield, Target, Sparkles, Loader2, Fingerprint } from 'lucide-react';
 
 interface IntroScreenProps {
   onComplete: () => void;
@@ -140,12 +140,56 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
               <h1 className="text-xl font-black text-white tracking-tight uppercase">User Identity Confirmed</h1>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Synchronize neural interface to proceed</p>
             </div>
-            <button 
-              onClick={() => setIsInitiated(true)}
-              className="px-10 py-5 bg-indigo-600 hover:bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs border border-indigo-500/50 shadow-[0_0_30px_rgba(79,70,229,0.4)] transition-all hover:scale-105 active:scale-95"
-            >
-              Initiate Load Sequence
-            </button>
+            <div className="flex flex-col items-center gap-6">
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsInitiated(true)}
+                className="group relative w-32 h-32 flex items-center justify-center"
+              >
+                {/* Scanner Outer Rings */}
+                <motion.div 
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 border-2 border-indigo-500/20 rounded-full border-dashed"
+                />
+                <motion.div 
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-2 border border-indigo-400/10 rounded-full"
+                />
+                
+                {/* Fingerprint Main Button */}
+                <div className="absolute inset-4 bg-indigo-950/50 rounded-full flex items-center justify-center border border-indigo-500/30 group-hover:border-indigo-400 group-hover:bg-indigo-900/50 transition-all shadow-[0_0_20px_rgba(79,70,229,0.2)] group-hover:shadow-[0_0_30px_rgba(79,70,229,0.4)] overflow-hidden">
+                  <Fingerprint className="w-12 h-12 text-indigo-400 group-hover:text-indigo-300 transition-colors" />
+                  
+                  {/* Scanning Laser Line Effect */}
+                  <motion.div 
+                    animate={{ 
+                      top: ["-10%", "110%", "-10%"]
+                    }}
+                    transition={{ 
+                      duration: 3, 
+                      repeat: Infinity, 
+                      ease: "easeInOut" 
+                    }}
+                    className="absolute left-0 right-0 h-0.5 bg-indigo-400 shadow-[0_0_10px_rgba(129,140,248,0.8)] opacity-50"
+                  />
+                </div>
+
+                {/* Touch Feedback Aura */}
+                <div className="absolute -inset-2 bg-indigo-500/10 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+              </motion.button>
+              
+              <motion.div 
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="flex flex-col items-center gap-1"
+              >
+                <p className="text-[10px] font-black uppercase text-indigo-400 tracking-[0.3em] font-mono">Hold to scan biometric data</p>
+                <p className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">Interface Authorization Required</p>
+              </motion.div>
+            </div>
           </motion.div>
         ) : (
           <>
