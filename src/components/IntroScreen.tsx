@@ -15,12 +15,48 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
   const [progress, setProgress] = useState(0);
   const [holdProgress, setHoldProgress] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
-  const audioRefs = React.useRef<Record<number, HTMLAudioElement>>({});
+  const [hasAnnouncedScan, setHasAnnouncedScan] = useState(false);
+  const audioRefs = React.useRef<Record<string, HTMLAudioElement>>({});
+  const scanLoopRef = React.useRef<HTMLAudioElement | null>(null);
   const holdTimerRef = React.useRef<number | null>(null);
+
+  // Helper for voice narration
+  const announce = (text: string, rate = 1.05, pitch = 1.0) => {
+    if (!('speechSynthesis' in window)) return;
+    
+    // Cancel any ongoing speech to prevent overlap
+    window.speechSynthesis.cancel();
+    
+    const announcement = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    
+    const preferredVoice = voices.find(v => v.name.includes('Samantha')) || 
+                          voices.find(v => v.name.includes('Google UK English Female')) ||
+                          voices.find(v => (v.name.includes('Natural') || v.name.includes('Premium')) && v.lang.startsWith('en')) ||
+                          voices.find(v => v.lang.startsWith('en'));
+
+    if (preferredVoice) announcement.voice = preferredVoice;
+    announcement.rate = rate;
+    announcement.pitch = pitch;
+    announcement.volume = 0.8;
+    window.speechSynthesis.speak(announcement);
+  };
 
   // Handle biometric hold logic
   useEffect(() => {
     if (isHolding && !isInitiated) {
+      if (!hasAnnouncedScan) {
+        announce("Biometric scanning initiated. Please maintain contact for interface synchronization.");
+        setHasAnnouncedScan(true);
+      }
+
+      // Start scanning SFX loop
+      if (scanLoopRef.current) {
+        scanLoopRef.current.loop = true;
+        scanLoopRef.current.volume = 0.2;
+        scanLoopRef.current.play().catch(() => {});
+      }
+
       const startTime = Date.now();
       const duration = 3000; // 3 seconds
 
@@ -32,6 +68,14 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
         if (newProgress < 100) {
           holdTimerRef.current = requestAnimationFrame(updateHold);
         } else {
+          // Success!
+          if (scanLoopRef.current) scanLoopRef.current.pause();
+          const chime = audioRefs.current['success'];
+          if (chime) {
+            chime.volume = 0.5;
+            chime.play().catch(() => {});
+          }
+          announce("Authentication successful. Security protocols bypassed. Initializing neural link.");
           setIsInitiated(true);
           setIsHolding(false);
         }
@@ -40,6 +84,11 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
       holdTimerRef.current = requestAnimationFrame(updateHold);
     } else {
       if (holdTimerRef.current) cancelAnimationFrame(holdTimerRef.current);
+      if (scanLoopRef.current) {
+        scanLoopRef.current.pause();
+        scanLoopRef.current.currentTime = 0;
+      }
+      
       // Fast reset when let go
       const reset = () => {
         setHoldProgress(prev => {
@@ -54,21 +103,24 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
     return () => {
       if (holdTimerRef.current) cancelAnimationFrame(holdTimerRef.current);
     };
-  }, [isHolding, isInitiated]);
+  }, [isHolding, isInitiated, hasAnnouncedScan]);
 
   useEffect(() => {
     // Preload sounds
-    const sounds = [
-      'https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3',
-      'https://assets.mixkit.co/sfx/preview/mixkit-modern-technology-select-3124.mp3',
-      'https://assets.mixkit.co/sfx/preview/mixkit-modern-technology-select-3124.mp3',
-      'https://assets.mixkit.co/sfx/preview/mixkit-interface-hint-notification-911.mp3'
-    ];
+    const sfxBase = {
+      0: 'https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3',
+      1: 'https://assets.mixkit.co/sfx/preview/mixkit-modern-technology-select-3124.mp3',
+      2: 'https://assets.mixkit.co/sfx/preview/mixkit-modern-technology-select-3124.mp3',
+      3: 'https://assets.mixkit.co/sfx/preview/mixkit-interface-hint-notification-911.mp3',
+      success: 'https://assets.mixkit.co/sfx/preview/mixkit-electronic-future-interface-notification-952.mp3',
+      scan: 'https://assets.mixkit.co/sfx/preview/mixkit-data-processing-screen-2101.mp3'
+    };
 
-    sounds.forEach((url, index) => {
+    Object.entries(sfxBase).forEach(([key, url]) => {
       const audio = new Audio(url);
       audio.load();
-      audioRefs.current[index] = audio;
+      audioRefs.current[key] = audio;
+      if (key === 'scan') scanLoopRef.current = audio;
     });
   }, []);
 
@@ -78,49 +130,24 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
     // Play SFX based on step
     const currentAudio = audioRefs.current[step];
     if (currentAudio) {
-      currentAudio.volume = step === 3 ? 0.5 : 0.3;
+      currentAudio.volume = step === 3 ? 0.4 : 0.2;
       currentAudio.currentTime = 0;
       currentAudio.play().catch(e => console.log('Playback blocked or failed:', e));
     }
 
-    // Voice Narration for each step
-    if ('speechSynthesis' in window) {
-      const announce = (text: string, rate = 1.05, pitch = 1.0) => {
-        const announcement = new SpeechSynthesisUtterance(text);
-        const voices = window.speechSynthesis.getVoices();
-        
-        // Priority: Samantha (Siri-like), Google UK English Female, then other Natural/Premium voices
-        const preferredVoice = voices.find(v => v.name.includes('Samantha')) || 
-                              voices.find(v => v.name.includes('Google UK English Female')) ||
-                              voices.find(v => (v.name.includes('Natural') || v.name.includes('Premium')) && v.lang.startsWith('en')) ||
-                              voices.find(v => v.lang.startsWith('en'));
+    const stepAnnouncements = [
+      "Initializing core systems and cognitive environment.",
+      `Accessing repository. Authenticating secure ${userRole} profile and verifying network credentials.`,
+      "Mapping neural pathways and synchronizing interface patterns for optimal performance.",
+      `Welcome back to BrainReps Academy, ${userName}. Your personalized sanctuary for cognitive excellence is fully synchronized.`
+    ];
 
-        if (preferredVoice) {
-          announcement.voice = preferredVoice;
-        }
+    // Delayed start for step narration to give previous announcements time to breathe
+    const narrationTimer = setTimeout(() => {
+      announce(stepAnnouncements[step], 1.1, 1.0);
+    }, 800);
 
-        announcement.rate = rate; // Faster, crisper delivery
-        announcement.pitch = pitch; // Neutral to slightly higher
-        announcement.volume = 0.9;
-        window.speechSynthesis.speak(announcement);
-      };
-
-      const stepAnnouncements = [
-        "Initializing core systems and cognitive environment.",
-        `Accessing repository. Authenticating secure ${userRole} profile and verifying network credentials.`,
-        "Mapping neural pathways and synchronizing interface patterns for optimal performance.",
-        `Access Granted. Welcome back to BrainReps Academy, ${userName}. Your personalized sanctuary for cognitive excellence and advanced mental performance. Systems are fully synchronized and ready for training.`
-      ];
-
-      // Handle async voices load
-      if (window.speechSynthesis.getVoices().length === 0) {
-        window.speechSynthesis.onvoiceschanged = () => announce(stepAnnouncements[step]);
-      } else {
-        setTimeout(() => announce(stepAnnouncements[step]), 100);
-      }
-    }
-
-    const durations = [2800, 4200, 4200, 11000]; // Re-paced for a crisper delivery
+    const durations = [3200, 4800, 4800, 11000];
     const timer = setTimeout(() => {
       if (step < 3) {
         setStep(s => s + 1);
@@ -130,11 +157,12 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
     }, durations[step]);
 
     const progressInterval = setInterval(() => {
-      setProgress(p => Math.min(p + 0.25, 100)); // Slightly faster progress bar to match speed
-    }, 15);
+      setProgress(p => Math.min(p + 0.2, 100));
+    }, 20);
 
     return () => {
       clearTimeout(timer);
+      clearTimeout(narrationTimer);
       clearInterval(progressInterval);
     };
   }, [step, onComplete, isInitiated, userRole, userName]);
