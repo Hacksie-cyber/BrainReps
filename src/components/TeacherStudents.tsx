@@ -162,41 +162,89 @@ export default function TeacherStudents() {
     if (!students.length) return;
 
     const doc = new jsPDF();
-    const timestamp = new Date().toLocaleString();
     
-    doc.setFontSize(20);
+    // Logo / Brand
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
     doc.setTextColor(79, 70, 229);
-    doc.text("Institutional Student Roster", 14, 22);
+    doc.text("BRAINREPS", 14, 25);
     
+    doc.setDrawColor(79, 70, 229);
+    doc.setLineWidth(0.5);
+    doc.line(14, 28, 60, 28);
+    
+    // Right Header
     doc.setFontSize(10);
-    doc.setTextColor(148, 163, 184);
-    doc.text(`Generated: ${timestamp}`, 14, 30);
-    doc.text(`Educator: ${profile?.name || 'Authorized Instructor'}`, 14, 35);
+    doc.setTextColor(100, 116, 139);
+    doc.setFont("helvetica", "bold");
+    doc.text("USER REPOSITORY ROSTER", 196, 18, { align: 'right' });
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text(`REF: ${new Date().getTime()}`, 196, 23, { align: 'right' });
+
+    // Info Section
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.1);
+    doc.line(14, 35, 196, 35);
+
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    
+    doc.text("Admin/Instructor:", 14, 42);
+    doc.setTextColor(30, 41, 59);
+    doc.text(profile?.name || 'Authorized User', 42, 42);
+
+    doc.setTextColor(100, 116, 139);
+    doc.text("Active Users:", 100, 42);
+    doc.setTextColor(30, 41, 59);
+    doc.text(students.length.toString(), 120, 42);
+
+    doc.setTextColor(100, 116, 139);
+    doc.text("Export Date:", 150, 42);
+    doc.setTextColor(30, 41, 59);
+    doc.text(new Date().toLocaleDateString(), 170, 42);
+
+    doc.line(14, 48, 196, 48);
 
     const tableData = students
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((s, i) => [
         i + 1,
+        s.uid.substring(0, 8).toUpperCase(),
         s.name,
-        s.email,
         `${s.avgScore}%`,
         s.isBanned ? 'Restricted' : 'Active'
       ]);
 
     autoTable(doc, {
-      startY: 45,
-      head: [['#', 'Full Name', 'Email Identifier', 'Academic Score', 'Status']],
+      startY: 55,
+      head: [['#', 'User ID', 'Full Name', 'Performance', 'Access Status']],
       body: tableData,
       theme: 'grid',
-      headStyles: { fillColor: [79, 70, 229], fontSize: 9 },
-      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { 
+        fillColor: [30, 41, 59], 
+        textColor: [255, 255, 255], 
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      styles: { 
+        fontSize: 9, 
+        cellPadding: 3,
+        textColor: [30, 41, 59],
+        lineColor: [226, 232, 240],
+        lineWidth: 0.1,
+        font: 'helvetica'
+      },
       columnStyles: {
-        4: { fontStyle: 'bold' }
+        0: { halign: 'center', cellWidth: 10 },
+        1: { halign: 'center', cellWidth: 30 },
+        2: { halign: 'left' },
+        3: { halign: 'center', cellWidth: 30 },
+        4: { halign: 'center', cellWidth: 30 }
       }
     });
 
-    const fileName = `student_roster_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
+    doc.save(`BrainReps_User_Roster_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const toggleBan = async (student: StudentMetric) => {

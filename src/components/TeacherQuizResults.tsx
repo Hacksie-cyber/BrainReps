@@ -162,77 +162,92 @@ export default function TeacherQuizResults() {
     if (!submissions.length || !quiz) return;
 
     const doc = new jsPDF();
-    const timestamp = new Date().toLocaleString();
     
-    // Add Report Header
-    doc.setFontSize(20);
-    doc.setTextColor(79, 70, 229); // Indigo 600
-    doc.text("Educational Assessment Report", 14, 22);
+    // Logo / Brand
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.setTextColor(79, 70, 229); // Indigo
+    doc.text("BRAINREPS", 14, 25);
     
-    doc.setFontSize(12);
-    doc.setTextColor(100, 116, 139); // Slate 500
-    doc.text(`Title: ${quiz.title}`, 14, 32);
-    doc.text(`Generated: ${timestamp}`, 14, 38);
-    doc.text(`Teacher: ${profile?.name || 'Authorized Instructor'}`, 14, 44);
-
-    // Summary Statistics
-    doc.setDrawColor(226, 232, 240); // Slate 200
-    doc.line(14, 50, 196, 50);
-
-    const statsData = [
-      ["Total Participants", submissions.length.toString()],
-      ["Average Performance", `${stats.avgScore}%`],
-      ["Peak Achievement", `${stats.topScore}%`]
-    ];
-
-    autoTable(doc, {
-      startY: 55,
-      head: [['Metric', 'Value']],
-      body: statsData,
-      theme: 'striped',
-      headStyles: { fillColor: [79, 70, 229] },
-      styles: { fontSize: 10, cellPadding: 4 }
-    });
-
-    // Submissions Table
+    doc.setDrawColor(79, 70, 229);
+    doc.setLineWidth(0.5);
+    doc.line(14, 28, 60, 28);
+    
+    // Right Header - Module Info
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.setFont("helvetica", "normal");
+    doc.text("PERFORMANCE ANALYTICS REPORT", 196, 18, { align: 'right' });
     doc.setFontSize(14);
-    doc.setTextColor(30, 41, 59); // Slate 800
-    doc.text("Individual Performance Registry", 14, (doc as any).lastAutoTable.finalY + 15);
+    doc.setTextColor(30, 41, 59);
+    doc.setFont("helvetica", "bold");
+    doc.text(quiz.title.toUpperCase(), 196, 25, { align: 'right' });
 
-    const tableData = submissions.map((s, i) => [
+    // Info Section
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.1);
+    doc.line(14, 35, 196, 35);
+
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.setFont("helvetica", "normal");
+    
+    doc.text("Instructor:", 14, 42);
+    doc.setTextColor(30, 41, 59);
+    doc.text(profile?.name || 'Administrator', 32, 42);
+
+    doc.setTextColor(100, 116, 139);
+    doc.text("Date Generated:", 80, 42);
+    doc.setTextColor(30, 41, 59);
+    doc.text(new Date().toLocaleDateString(), 105, 42);
+
+    doc.setTextColor(100, 116, 139);
+    doc.text("Total Participants:", 150, 42);
+    doc.setTextColor(30, 41, 59);
+    doc.text(submissions.length.toString(), 180, 42);
+
+    doc.line(14, 48, 196, 48);
+
+    // Results Table
+    const alphabetSubs = [...submissions].sort((a, b) => a.studentName.localeCompare(b.studentName));
+
+    const tableData = alphabetSubs.map((s, i) => [
       i + 1,
+      s.studentId.substring(0, 8).toUpperCase(),
       s.studentName,
-      new Date(s.submittedAt).toLocaleDateString(),
-      `${s.score} / ${s.totalPoints}`,
+      s.score,
       `${Math.round((s.score / s.totalPoints) * 100)}%`
     ]);
 
     autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 20,
-      head: [['Rank', 'Participant', 'Date', 'Score', 'Percentage']],
+      startY: 55,
+      head: [['#', 'User ID', 'Name', 'Score', 'Percentage']],
       body: tableData,
       theme: 'grid',
-      headStyles: { fillColor: [30, 41, 59] },
-      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { 
+        fillColor: [30, 41, 59], 
+        textColor: [255, 255, 255], 
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      styles: { 
+        fontSize: 9, 
+        cellPadding: 3,
+        textColor: [30, 41, 59],
+        lineColor: [226, 232, 240],
+        lineWidth: 0.1,
+        font: 'helvetica'
+      },
       columnStyles: {
-        0: { cellWidth: 15 },
-        2: { cellWidth: 30 },
-        3: { cellWidth: 25 },
-        4: { cellWidth: 25 }
+        0: { halign: 'center', cellWidth: 10 },
+        1: { halign: 'center', cellWidth: 30 },
+        2: { halign: 'left' },
+        3: { halign: 'center', cellWidth: 30 },
+        4: { halign: 'center', cellWidth: 30 }
       }
     });
 
-    // Add Footer with page numbers
-    const pageCount = (doc as any).internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(148, 163, 184); // Slate 400
-        doc.text(`Page ${i} of ${pageCount}`, 14, doc.internal.pageSize.height - 10);
-        doc.text("System Authored Performance Report • Confidential", 150, doc.internal.pageSize.height - 10);
-    }
-
-    doc.save(`${quiz.title.replace(/\s+/g, '_')}_analytics.pdf`);
+    doc.save(`${quiz.title.replace(/\s+/g, '_')}_BrainReps_Report.pdf`);
   };
 
   const filteredSubmissions = submissions.filter(s => 
