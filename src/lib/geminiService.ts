@@ -1,8 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ 
-  apiKey: process.env.GEMINI_API_KEY || '' 
-});
+let genAI: GoogleGenAI | null = null;
 
 export interface HandoutMessage {
   role: 'user' | 'model';
@@ -21,8 +19,13 @@ export async function askHandoutAssistant(
   sources: ContextSource[],
   history: HandoutMessage[] = []
 ) {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("Missing Gemini API Key. Please configure it in the platform settings.");
+  const apiKey = process.env.BRAIN_REPS_API_KEY || process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Missing AI API Key. Please verify you have added BRAIN_REPS_API_KEY to the 'Secrets' panel in the Settings menu.");
+  }
+
+  if (!genAI) {
+    genAI = new GoogleGenAI({ apiKey });
   }
 
   const model = "gemini-3-flash-preview";
@@ -56,7 +59,7 @@ export async function askHandoutAssistant(
   ];
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await genAI.models.generateContent({
       model,
       contents,
       config: {
