@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { collection, getDocs, query, orderBy, doc, getDoc, setDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
-import { askHandoutAssistant, HandoutMessage } from '../lib/geminiService';
+import { askHandoutAssistant, HandoutMessage, ContextSource } from '../lib/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, User, Bot, Sparkles, Brain, Info, History, Database, AlertCircle } from 'lucide-react';
+import { Send, User, Bot, Sparkles, Brain, Info, History, Database, AlertCircle, Filter, CheckCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import ReactMarkdown from 'react-markdown';
 
@@ -13,21 +13,64 @@ export default function NeuralAssistant() {
   const [messages, setMessages] = useState<HandoutMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [handouts, setHandouts] = useState<{ title: string; content: string }[]>([]);
-  const [fetchingHandouts, setFetchingHandouts] = useState(true);
+  const [sources, setSources] = useState<ContextSource[]>([]);
+  const [activeSources, setActiveSources] = useState<('handout' | 'quiz')[]>(['handout', 'quiz']);
+  const [selectedSubject, setSelectedSubject] = useState<string>('All');
+  const [fetching, setFetching] = useState(true);
   const [dailyUsage, setDailyUsage] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const DAILY_LIMIT = 20;
   const today = new Date().toISOString().split('T')[0];
-  const usageId = `${profile?.uid}_${today}`;
 
   useEffect(() => {
-    fetchHandouts();
-    if (profile) fetchUsage();
-  }, [profile]);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, loading]);
+
+  useEffect(() => {
+    fetchData();
+    if (profile?.uid) fetchUsage();
+  }, [profile?.uid]);
+
+  const fetchData = async () => {
+    setFetching(true);
+    try {
+      const handoutSnap = await getDocs(collection(db, 'handouts'));
+      const quizSnap = await getDocs(collection(db, 'quizzes'));
+
+      const hData: ContextSource[] = handoutSnap.docs.map(d => {
+        const data = d.data();
+        return {
+          title: data.title,
+          content: data.content,
+          subject: data.subject || data.title.split(' ')[0] || 'General',
+          type: 'handout'
+        };
+      });
+
+      const qData: ContextSource[] = quizSnap.docs.map(d => {
+        const data = d.data();
+        return {
+          title: data.title,
+          content: `${data.description}. Questions: ${data.questions?.map((q: any) => q.question).join(', ')}`,
+          subject: data.subject || data.title.split(' ')[0] || 'General',
+          type: 'quiz'
+        };
+      });
+
+      setSources([...hData, ...qData]);
+    } catch (error) {
+      console.error("Failed to sync neural materials:", error);
+    } finally {
+      setFetching(false);
+    }
+  };
 
   const fetchUsage = async () => {
+    if (!profile?.uid) return;
+    const usageId = `${profile.uid}_${today}`;
     try {
       const uDoc = await getDoc(doc(db, 'usage', usageId));
       if (uDoc.exists()) {
@@ -39,11 +82,13 @@ export default function NeuralAssistant() {
   };
 
   const updateUsage = async () => {
+    if (!profile?.uid) return;
+    const usageId = `${profile.uid}_${today}`;
     try {
       const uRef = doc(db, 'usage', usageId);
       const uDoc = await getDoc(uRef);
       if (!uDoc.exists()) {
-        await setDoc(uRef, { userId: profile?.uid, date: today, count: 1 });
+        await setDoc(uRef, { userId: profile.uid, date: today, count: 1 });
         setDailyUsage(1);
       } else {
         await updateDoc(uRef, { count: increment(1) });
@@ -54,30 +99,13 @@ export default function NeuralAssistant() {
     }
   };
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, loading]);
+  const filteredSources = sources.filter(s => {
+    const matchesType = activeSources.includes(s.type);
+    const matchesSubject = selectedSubject === 'All' || s.subject === selectedSubject;
+    return matchesType && matchesSubject;
+  });
 
-  const fetchHandouts = async () => {
-    try {
-      const q = query(collection(db, 'handouts'));
-      const snap = await getDocs(q);
-      const data = snap.docs.map(d => ({ 
-        title: d.data().title, 
-        content: d.data().content,
-        createdAt: d.data().createdAt
-      }));
-      // Sort manually to keep repository order consistent without requiring an index
-      data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setHandouts(data);
-    } catch (error) {
-      console.error("Failed to sync neural materials:", error);
-    } finally {
-      setFetchingHandouts(false);
-    }
-  };
+  const subjects = ['All', ...new Set(sources.map(s => s.subject || 'General'))];
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +127,7 @@ export default function NeuralAssistant() {
     setLoading(true);
 
     try {
-      const response = await askHandoutAssistant(userMsg.content, handouts, messages);
+      const response = await askHandoutAssistant(userMsg.content, filteredSources, messages);
       await updateUsage();
       setMessages(prev => [...prev, { role: 'model', content: response }]);
     } catch (error: any) {
@@ -130,7 +158,7 @@ export default function NeuralAssistant() {
           <div className="flex items-center gap-3 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
             <Database className="h-4 w-4 text-indigo-500" />
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-              {fetchingHandouts ? 'Syncing...' : `${handouts.length} Vectors Loaded`}
+              {fetching ? 'Syncing...' : `${filteredSources.length} Nodes Filtered`}
             </span>
           </div>
           <div className={cn(
@@ -250,26 +278,74 @@ export default function NeuralAssistant() {
         {/* Sidebar Info */}
         <div className="hidden lg:block lg:col-span-4 space-y-6">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-8 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-50 mb-4 flex items-center gap-2">
-              <Info className="h-4 w-4 text-indigo-500" />
-              Neural Architecture
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-50 mb-6 flex items-center gap-2">
+              <Filter className="h-4 w-4 text-indigo-500" />
+              Focus Configuration
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium italic">
-              BrainReps uses a synthesized vector repository containing {handouts.length} instructional modules. 
-              Queries are cross-referenced with your educators' provided handouts to ensure high-fidelity responses.
-            </p>
+            
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Source Material</label>
+                <div className="grid grid-cols-1 gap-2">
+                  <button 
+                    onClick={() => setActiveSources(prev => prev.includes('handout') ? prev.filter(p => p !== 'handout') : [...prev, 'handout'])}
+                    className={cn(
+                      "flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all border",
+                      activeSources.includes('handout') 
+                        ? "bg-indigo-50 border-indigo-200 text-indigo-700" 
+                        : "bg-slate-50 border-slate-100 text-slate-400"
+                    )}
+                  >
+                    <span>Handouts</span>
+                    {activeSources.includes('handout') && <CheckCircle2 className="h-4 w-4" />}
+                  </button>
+                  <button 
+                    onClick={() => setActiveSources(prev => prev.includes('quiz') ? prev.filter(p => p !== 'quiz') : [...prev, 'quiz'])}
+                    className={cn(
+                      "flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all border",
+                      activeSources.includes('quiz') 
+                        ? "bg-indigo-50 border-indigo-200 text-indigo-700" 
+                        : "bg-slate-50 border-slate-100 text-slate-400"
+                    )}
+                  >
+                    <span>Assessments</span>
+                    {activeSources.includes('quiz') && <CheckCircle2 className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Topic Focus</label>
+                <div className="flex flex-wrap gap-2">
+                  {subjects.map(s => (
+                    <button 
+                      key={s}
+                      onClick={() => setSelectedSubject(s)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                        selectedSubject === s 
+                          ? "bg-indigo-600 text-white" 
+                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                      )}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="bg-indigo-600 rounded-3xl p-8 text-white shadow-xl shadow-indigo-600/20 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl group-hover:scale-150 transition-transform duration-700" />
-            <h3 className="text-lg font-bold font-display mb-3">Sync Progress</h3>
+            <h3 className="text-lg font-bold font-display mb-3">Neural Status</h3>
             <p className="text-sm text-indigo-100 mb-6 leading-relaxed">
-              Your cognitive growth is mapped through interaction. Each query sharpens the neural model.
+              Grounded in {filteredSources.length} active nodes. 
             </p>
             <div className="space-y-4">
               <div className="bg-white/10 rounded-xl p-3 flex items-center gap-3">
                 <History className="h-4 w-4 text-indigo-200" />
-                <span className="text-xs font-black uppercase tracking-widest">{messages.length} Interactions</span>
+                <span className="text-xs font-black uppercase tracking-widest">{messages.length} Synchronizations</span>
               </div>
               <div className="bg-white/10 rounded-xl p-3 flex items-center gap-3">
                 <div className={cn(
@@ -282,7 +358,7 @@ export default function NeuralAssistant() {
                 </div>
               </div>
               <p className="text-[10px] text-indigo-200 font-bold uppercase tracking-widest text-center">
-                {DAILY_LIMIT - dailyUsage} Neural syncs remaining today
+                {DAILY_LIMIT - dailyUsage} Syncs available
               </p>
             </div>
           </div>

@@ -176,12 +176,12 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || (isTeacher() && existing().teacherId == request.auth.uid);
     }
 
-    match /usage/{usageId} {
-      allow get: if isSignedIn() && (usageId.startsWith(request.auth.uid) || isSuperAdmin());
-      allow create: if isSignedIn() && usageId.startsWith(request.auth.uid) && 
+    match /usage/{uId} {
+      allow get: if isSignedIn() && (uId.split('_')[0] == request.auth.uid || isSuperAdmin());
+      allow create: if isSignedIn() && isNotBanned() && uId.split('_')[0] == request.auth.uid && 
                       incoming().userId == request.auth.uid && 
                       incoming().count == 1;
-      allow update: if isSignedIn() && usageId.startsWith(request.auth.uid) && 
+      allow update: if isSignedIn() && isNotBanned() && uId.split('_')[0] == request.auth.uid && 
                       incoming().count == existing().count + 1 &&
                       incoming().count <= 20;
     }

@@ -56,6 +56,7 @@ export default function HandoutManager() {
       await addDoc(collection(db, 'handouts'), {
         title,
         content,
+        subject: title.split(' ')[0] || 'General', // Fallback or extracted
         teacherId: profile.uid,
         teacherName: profile.name,
         createdAt: new Date().toISOString()

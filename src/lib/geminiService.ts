@@ -9,9 +9,16 @@ export interface HandoutMessage {
   content: string;
 }
 
+export interface ContextSource {
+  title: string;
+  content: string;
+  type: 'handout' | 'quiz';
+  subject?: string;
+}
+
 export async function askHandoutAssistant(
   query: string,
-  handouts: { title: string; content: string }[],
+  sources: ContextSource[],
   history: HandoutMessage[] = []
 ) {
   if (!process.env.GEMINI_API_KEY) {
@@ -20,20 +27,21 @@ export async function askHandoutAssistant(
 
   const model = "gemini-3-flash-preview";
   
-  // Format context from handouts
-  const context = handouts.map(h => `[${h.title}]: ${h.content}`).join('\n');
+  // Format context from sources
+  const context = sources.map(s => `[${s.type.toUpperCase()}: ${s.title}]: ${s.content}`).join('\n');
 
   const systemInstruction = `
     You are the BrainReps Neural Assistant. 
     
-    CONTEXT:
+    CONTEXT (Filtered Knowledge Sources):
     ${context}
     
     STRICT GUIDELINES:
     1. Be highly concise. Answer in 1-3 sentences maximum.
     2. Only elaborate if the student explicitly asks to "explain in detail" or "elaborate".
-    3. Prioritize data from CONTEXT. 
-    4. Format: Use bold for key terms. Avoid long intros or outros.
+    3. Use the provided CONTEXT as your primary source of truth.
+    4. If the question is about specific quiz questions or handouts in the context, refer to them explicitly.
+    5. Format: Use bold for key terms. Avoid long intros or outros.
   `;
 
   const contents = [
