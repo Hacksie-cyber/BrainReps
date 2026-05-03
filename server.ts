@@ -17,14 +17,23 @@ async function startServer() {
 
   // API routes
   app.post("/api/ai/ask", async (req, res) => {
+    console.log(`[Neural Server] POST /api/ai/ask - Payload Size: ${JSON.stringify(req.body).length} bytes`);
     try {
       const { query, sources, history } = req.body;
+      if (!query) throw new Error("Query is required");
+      
       const response = await askHandoutAssistant(query, sources, history);
       res.json({ text: response });
     } catch (error: any) {
-      console.error("AI Request Failed:", error);
+      console.error("[Neural Server] AI Request Failed:", error);
       res.status(500).json({ error: error.message || "Internal server error" });
     }
+  });
+
+  // Catch-all for API errors (prevents 405 falling through to SPA)
+  app.all("/api/*", (req, res) => {
+    console.warn(`[Neural Server] Unhandled ${req.method} request to ${req.url}`);
+    res.status(404).json({ error: "API route not found or method not allowed" });
   });
 
   app.get("/api/health", (req, res) => {

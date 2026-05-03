@@ -37,18 +37,18 @@ export async function askHandoutAssistant(
   }
 
   // Server-side execution: Direct call to Gemini
-  const apiKey = process.env.BRAIN_REPS_API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = process.env.BRAIN_REPS_API_KEY;
   if (!apiKey) {
-    throw new Error("Missing AI API Key on server. Please verify BRAIN_REPS_API_KEY is in the platform secrets.");
+    console.error("[Neural Core] CRITICAL: BRAIN_REPS_API_KEY is missing in server environment.");
+    throw new Error("Missing AI API Key on server. Please verify BRAIN_REPS_API_KEY is added to the Secrets panel in Settings.");
   }
 
   if (!genAI) {
+    console.log("[Neural Core] Initializing Generative AI with BRAIN_REPS_API_KEY.");
     genAI = new GoogleGenAI({ apiKey });
   }
 
   const model = "gemini-3-flash-preview";
-  
-  // ... rest of logic remains unchanged ...
   
   // Format context from sources
   const context = sources.map(s => `[${s.type.toUpperCase()}: ${s.title}]: ${s.content}`).join('\n');
