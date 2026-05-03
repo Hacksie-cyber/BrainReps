@@ -19,9 +19,27 @@ export async function askHandoutAssistant(
   sources: ContextSource[],
   history: HandoutMessage[] = []
 ) {
+  // Client-side execution: Proxy through backend
+  if (typeof window !== 'undefined') {
+    const response = await fetch('/api/ai/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, sources, history })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Neural synchronization failed (${response.status})`);
+    }
+    
+    const data = await response.json();
+    return data.text;
+  }
+
+  // Server-side execution: Direct call to Gemini
   const apiKey = process.env.BRAIN_REPS_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("Missing AI API Key. Please verify you have added BRAIN_REPS_API_KEY to the 'Secrets' panel in the Settings menu.");
+    throw new Error("Missing AI API Key on server. Please verify BRAIN_REPS_API_KEY is in the platform secrets.");
   }
 
   if (!genAI) {
@@ -29,6 +47,8 @@ export async function askHandoutAssistant(
   }
 
   const model = "gemini-3-flash-preview";
+  
+  // ... rest of logic remains unchanged ...
   
   // Format context from sources
   const context = sources.map(s => `[${s.type.toUpperCase()}: ${s.title}]: ${s.content}`).join('\n');

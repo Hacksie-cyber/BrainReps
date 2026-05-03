@@ -3,6 +3,7 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs/promises";
+import { askHandoutAssistant } from "./src/lib/geminiService";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,7 +12,21 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Basic API Health Check
+  // Body parser for API routes
+  app.use(express.json());
+
+  // API routes
+  app.post("/api/ai/ask", async (req, res) => {
+    try {
+      const { query, sources, history } = req.body;
+      const response = await askHandoutAssistant(query, sources, history);
+      res.json({ text: response });
+    } catch (error: any) {
+      console.error("AI Request Failed:", error);
+      res.status(500).json({ error: error.message || "Internal server error" });
+    }
+  });
+
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
