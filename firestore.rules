@@ -157,6 +157,35 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() || (isTeacher() && existing().get('teacherId', '') == request.auth.uid);
     }
 
+    function isValidHandout(data) {
+      return data.title is string && data.title.size() <= 200 &&
+             data.content is string && data.content.size() <= 100000 &&
+             data.teacherId is string && isValidId(data.teacherId) &&
+             data.createdAt is string &&
+             data.get('isPublic', true) is bool;
+    }
+
+    match /handouts/{handoutId} {
+      allow read: if isSignedIn() && isNotBanned();
+      allow create: if isTeacher() && isValidHandout(incoming()) && 
+                      incoming().teacherId == request.auth.uid;
+      allow update: if isSuperAdmin() || (
+        isTeacher() && existing().teacherId == request.auth.uid && 
+        isValidHandout(incoming()) && incoming().teacherId == existing().teacherId
+      );
+      allow delete: if isSuperAdmin() || (isTeacher() && existing().teacherId == request.auth.uid);
+    }
+
+    match /usage/{usageId} {
+      allow get: if isSignedIn() && (usageId.startsWith(request.auth.uid) || isSuperAdmin());
+      allow create: if isSignedIn() && usageId.startsWith(request.auth.uid) && 
+                      incoming().userId == request.auth.uid && 
+                      incoming().count == 1;
+      allow update: if isSignedIn() && usageId.startsWith(request.auth.uid) && 
+                      incoming().count == existing().count + 1 &&
+                      incoming().count <= 20;
+    }
+
     match /notifications/{notificationId} {
       allow get: if isSignedIn() && (resource.data.get('userId', '') == request.auth.uid || isSuperAdmin());
       allow list: if isSignedIn() && (resource.data.get('userId', '') == request.auth.uid || isSuperAdmin());

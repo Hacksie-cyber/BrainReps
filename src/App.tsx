@@ -18,6 +18,8 @@ import TeacherAnalytics from './components/TeacherAnalytics';
 import AdminManagement from './components/AdminManagement';
 import BannedScreen from './components/BannedScreen';
 import StudentProfile from './components/StudentProfile';
+import HandoutManager from './components/HandoutManager';
+import NeuralAssistant from './components/NeuralAssistant';
 
 import { BookOpen } from 'lucide-react';
 import { doc, getDocFromCache, getDocFromServer } from 'firebase/firestore';
@@ -122,6 +124,9 @@ export default function App() {
             <Route path="/teacher/analytics" element={
               <RequireAuth role="teacher"><TeacherAnalytics /></RequireAuth>
             } />
+            <Route path="/teacher/handouts" element={
+              <RequireAuth role="teacher"><HandoutManager /></RequireAuth>
+            } />
             <Route path="/teacher/quiz/:id" element={
               <RequireAuth role="teacher"><TeacherQuizResults /></RequireAuth>
             } />
@@ -132,6 +137,9 @@ export default function App() {
             } />
             <Route path="/student/quizzes" element={
               <RequireAuth role="student"><StudentQuizzes /></RequireAuth>
+            } />
+            <Route path="/student/assistant" element={
+              <RequireAuth role="student"><NeuralAssistant /></RequireAuth>
             } />
             <Route path="/student/performance" element={
               <RequireAuth role="student"><StudentPerformance /></RequireAuth>
