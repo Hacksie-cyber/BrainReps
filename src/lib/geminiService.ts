@@ -1,6 +1,6 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-let genAI: GoogleGenAI | null = null;
+let genAI: GoogleGenerativeAI | null = null;
 
 export interface HandoutMessage {
   role: 'user' | 'model';
@@ -45,7 +45,7 @@ export async function askHandoutAssistant(
 
   if (!genAI) {
     console.log("[Neural Core] Initializing Generative AI with BRAIN_REPS_API_KEY.");
-    genAI = new GoogleGenAI({ apiKey });
+    genAI = new GoogleGenerativeAI(apiKey);
   }
 
   const model = "gemini-2.5-flash";
@@ -81,25 +81,45 @@ export async function askHandoutAssistant(
   ];
 
   try {
-    const response = await genAI.models.generateContent({
+    const modelInstance = genAI.getGenerativeModel({ 
       model,
+      systemInstruction: systemInstruction,
+    });
+
+    const result = await modelInstance.generateContent({
       contents,
-      config: {
-        systemInstruction,
+      generationConfig: {
         temperature: 0.7,
       }
     });
 
-    if (!response.text) {
-      console.warn("[Neural Core] Response received but text field is empty.", response);
+    const response = await result.response;
+    const text = response.text();
+
+    if (!text) {
+      console.warn("[Neural Core] Response received but text field is empty.");
+      return "I was unable to synchronize with the neural core. Please try again.";
     }
 
-    return response.text || "I was unable to synchronize with the neural core. Please try again.";
+    return text;
   } catch (error: any) {
-    console.error("[Neural Core] Gemini API Error:", error.message || error);
-    if (error.message?.includes("model")) {
-      throw new Error(`The neural model ${model} is currently unavailable or invalid.`);
+    console.error("[Neural Core] Detailed Sync Failure:", {
+      message: error.message,
+      stack: error.stack,
+      status: error.status,
+      model: model
+    });
+    
+    const errorMsg = error.message || String(error);
+    
+    if (errorMsg.includes("model") || errorMsg.includes("404")) {
+      throw new Error(`Neural core rejected model '${model}'. It may be restricted or incorrectly identified. Error: ${errorMsg}`);
     }
-    throw error;
+    
+    if (errorMsg.includes("API key")) {
+      throw new Error("Invalid BrainReps API Key detected by neural core. Please verify your secrets.");
+    }
+
+    throw new Error(`Neural sync failed: ${errorMsg}`);
   }
 }
