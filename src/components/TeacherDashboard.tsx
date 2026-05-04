@@ -119,8 +119,8 @@ export default function TeacherDashboard() {
       setQuizzes(quizzes.filter(q => q.id !== quizId));
       setQuizToDelete(null);
     } catch (error) {
-      console.error(error);
-      alert('Delete failed.');
+      console.error("Deletion failed:", error);
+      handleFirestoreError(error, OperationType.DELETE, `quizzes/${quizId}`);
     } finally {
       setIsDeleting(null);
     }

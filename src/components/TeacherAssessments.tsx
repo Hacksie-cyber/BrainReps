@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { collection, query, where, getDocs, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
@@ -67,8 +67,8 @@ export default function TeacherAssessments() {
       setQuizzes(quizzes.filter(q => q.id !== quizId));
       setQuizToDelete(null);
     } catch (error) {
-      console.error(error);
-      alert('Deletion failed: Database link interrupted.');
+      console.error("Deletion failed:", error);
+      handleFirestoreError(error, OperationType.DELETE, `quizzes/${quizId}`);
     } finally {
       setIsDeleting(null);
     }

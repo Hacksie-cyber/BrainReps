@@ -5,6 +5,7 @@ import { useAuth } from '../lib/AuthContext';
 import { motion } from 'motion/react';
 import { BookOpen, Plus, Trash2, Search, FileText, Send, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
+import DeleteModal from './DeleteModal';
 
 interface Handout {
   id: string;
@@ -23,6 +24,8 @@ export default function HandoutManager() {
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [handoutToDelete, setHandoutToDelete] = useState<Handout | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -71,13 +74,19 @@ export default function HandoutManager() {
     }
   };
 
-  const deleteHandout = async (id: string) => {
-    if (!window.confirm('Delete this material?')) return;
+  const deleteHandout = async () => {
+    if (!handoutToDelete) return;
+    const id = handoutToDelete.id;
+    
+    setIsDeleting(id);
     try {
       await deleteDoc(doc(db, 'handouts', id));
       setHandouts(h => h.filter(x => x.id !== id));
+      setHandoutToDelete(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'handouts');
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -186,8 +195,12 @@ export default function HandoutManager() {
                   </div>
                 </div>
                 <button
-                  onClick={() => deleteHandout(h.id)}
-                  className="p-2 text-slate-300 hover:text-red-500 transition-colors active:scale-90"
+                  onClick={() => setHandoutToDelete(h)}
+                  disabled={isDeleting === h.id}
+                  className={cn(
+                    "p-2 transition-colors active:scale-90",
+                    isDeleting === h.id ? "text-slate-200 animate-pulse" : "text-slate-300 hover:text-red-500"
+                  )}
                 >
                   <Trash2 className="h-5 w-5" />
                 </button>
@@ -196,6 +209,14 @@ export default function HandoutManager() {
           </div>
         </div>
       </div>
+      <DeleteModal
+        isOpen={!!handoutToDelete}
+        onClose={() => setHandoutToDelete(null)}
+        onConfirm={deleteHandout}
+        title="Purge Study Material"
+        message="Are you sure you want to permanently remove this study material? This action will definitively extract it from the Neural Assistant's knowledge base."
+        isDeleting={!!isDeleting}
+      />
     </div>
   );
 }

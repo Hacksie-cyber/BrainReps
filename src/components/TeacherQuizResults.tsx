@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, deleteDoc, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission, Question, UserProfile } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -115,8 +115,8 @@ export default function TeacherQuizResults() {
       
       navigate('/teacher/assessments');
     } catch (error) {
-      console.error(error);
-      alert('Deletion failed: Database link interrupted.');
+      console.error("Deletion failed:", error);
+      handleFirestoreError(error, OperationType.DELETE, `quizzes/${id}`);
       setIsDeleting(false);
     }
   };

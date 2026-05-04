@@ -256,7 +256,7 @@ export default function TeacherStudents() {
       setStudents(students.map(s => s.uid === student.uid ? { ...s, isBanned: newStatus } : s));
     } catch (error) {
       console.error("Governance action failed:", error);
-      alert("Failed to update student access rights.");
+      handleFirestoreError(error, OperationType.UPDATE, `users/${student.uid}`);
     }
   };
 
@@ -288,7 +288,7 @@ export default function TeacherStudents() {
       setStudentToDelete(null);
     } catch (error: any) {
       console.error("Decommissioning failed:", error);
-      alert(`Decommissioning failed: ${error.message || 'Access denied by database protocols.'}`);
+      handleFirestoreError(error, OperationType.DELETE, `users/${student.uid}`);
     } finally {
       setIsDeleting(null);
     }
