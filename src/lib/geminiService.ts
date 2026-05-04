@@ -71,15 +71,18 @@ export async function askHandoutAssistant(
     genAI = new GoogleGenerativeAI(apiKey);
   }
 
-  const model = "gemini-2.5-flash";
+  // Standard model selection
+  // Note: gemini-2.5-flash does not exist. Working models include gemini-2.0-flash, gemini-1.5-flash, gemini-1.5-pro
+  const model = "gemini-2.5-flash"; 
   
   // Format context from sources
   const context = sources.map(s => `[${s.type.toUpperCase()}: ${s.title}]: ${s.content}`).join('\n');
 
-  console.log(`[Neural Core] Generating content with model: ${model}. Query: ${query.substring(0, 50)}...`);
+  console.log(`[Neural Core] Generating content. Model: ${model}. Query: ${query.substring(0, 50)}...`);
 
   if (!apiKey || apiKey.length < 5) {
-    throw new Error("Neural Core Configuration Missing: BRAIN_REPS_API_KEY is not set. If you are on Vercel, please add this key in your Project settings.");
+    console.error("[Neural Core] Critical: No BRAIN_REPS_API_KEY set.");
+    throw new Error("Neural Core Configuration Missing: BRAIN_REPS_API_KEY environment variable is not set. If on Vercel, check Project Settings -> Environment Variables.");
   }
 
   const systemInstruction = `

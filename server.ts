@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs/promises";
@@ -9,78 +8,52 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.use(express.json());
 
-async function startServer() {
-  const PORT = 3000;
-
-  // Body parser for API routes
-  app.use(express.json());
-
-  // API routes
-  app.post("/api/ai/ask", async (req, res) => {
-    const rawKey = process.env.BRAIN_REPS_API_KEY;
-    const hasKey = !!rawKey;
-    const nodeEnv = process.env.NODE_ENV || 'development';
+// API routes defined early for serverless
+app.post("/api/ai/ask", async (req, res) => {
+  const rawKey = process.env.BRAIN_REPS_API_KEY;
+  const hasKey = !!rawKey;
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  
+  console.log(`[Neural Server] AI Processing Request in ${nodeEnv}. KeyConfigured: ${hasKey}`);
+  
+  if (!hasKey) {
+    return res.status(500).json({ 
+      error: "Neural Core Configuration Missing", 
+      details: "BRAIN_REPS_API_KEY environment variable is not set. Action: Go to Vercel Settings -> Environment Variables, add the key, and redeploy." 
+    });
+  }
+  
+  try {
+    const { query, sources, history } = req.body;
+    if (!query) throw new Error("Query is required");
     
-    // Log configuration status without leaking the full key
-    console.log(`[Neural Server] Request received. Env: ${nodeEnv}, KeyConfigured: ${hasKey}`);
-    
-    if (!hasKey) {
-      return res.status(500).json({ 
-        error: "Neural Core Configuration Missing", 
-        details: "The environment variable BRAIN_REPS_API_KEY is not set on this host. If you are on Vercel, add it to 'Environment Variables' in Project Settings." 
-      });
-    }
-    
-    try {
-      const { query, sources, history } = req.body;
-      if (!query) throw new Error("Query is required");
-      
-      const response = await askHandoutAssistant(query, sources, history);
-      console.log(`[Neural Server] AI Response generated successfully (${response.length} chars)`);
-      res.status(200).json({ text: response });
-    } catch (error: any) {
-      const errorMessage = error.message || "Unknown neural core error";
-      const stackLine = error.stack?.split('\n')[0] || "No stack trace";
-      
-      console.error("[Neural Server] AI Processing Failed:", {
-        error: errorMessage,
-        stack: error.stack,
-        path: req.path,
-        env: process.env.NODE_ENV
-      });
-      
-      // Return details to help debugging on external platforms like Vercel
-      res.status(500).json({ 
-        error: errorMessage,
-        details: `Neural sync failed on ${nodeEnv} build. Error: ${stackLine}`
-      });
-    }
-  });
+    const response = await askHandoutAssistant(query, sources, history);
+    res.status(200).json({ text: response });
+  } catch (error: any) {
+    console.error("[Neural Server] AI Processing Failed:", error.message);
+    res.status(500).json({ 
+      error: error.message || "Unknown neural core error",
+      details: `Neural sync failed. Env: ${nodeEnv}`
+    });
+  }
+});
 
-  // Catch-all for API errors (prevents 405 falling through to SPA)
-  app.all("/api/*", (req, res) => {
-    console.warn(`[Neural Server] Unhandled ${req.method} request to ${req.url}`);
-    res.status(404).json({ error: "API route not found or method not allowed" });
-  });
+app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
-  });
-
-  if (process.env.NODE_ENV !== "production") {
-    // Development mode with Vite middleware
+// Initialize logic for middleware
+async function setupMiddleware() {
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-
-    // Development SPA Fallback: Transformed by Vite
+    
     app.all('*', async (req, res, next) => {
-      // Skip if the request has already been handled (e.g. by Vite middlewares)
       if (res.headersSent) return;
-      
       const url = req.originalUrl;
       try {
         let template = await fs.readFile(path.resolve(__dirname, 'index.html'), 'utf-8');
@@ -92,25 +65,27 @@ async function startServer() {
       }
     });
   } else {
-    // Production mode serving static files
     const distPath = path.resolve(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    
-    // SPA fallback: handle all requests by returning index.html
-    app.all('*', (req, res) => {
-      res.sendFile(path.resolve(distPath, 'index.html'));
-    });
-  }
-
-  // Only listen if not in Vercel environment (where Vercel handles the listener)
-  if (!process.env.VERCEL) {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`[BrainReps] Institutional Server Active on Port ${PORT}`);
-      console.log(`[BrainReps] Mode: ${process.env.NODE_ENV || 'development'}`);
-    });
+    app.all('*', (req, res) => res.sendFile(path.resolve(distPath, 'index.html')));
   }
 }
 
-startServer();
+// In Vercel, we don't start the listener ourselves usually, 
+// but we need to ensure middleware is setup if it's production
+if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
+  const distPath = path.resolve(process.cwd(), 'dist');
+  app.use(express.static(distPath));
+  // Note: Vercel does its own routing, so we usually don't need a catch-all if vercel.json is setup
+} else {
+  setupMiddleware();
+}
+
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+  const PORT = Number(process.env.PORT || 3000);
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`[BrainReps] Server running on http://0.0.0.0:${PORT}`);
+  });
+}
 
 export default app;
