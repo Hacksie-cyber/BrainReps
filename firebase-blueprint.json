@@ -69,40 +69,9 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "title", "message", "createdAt"]
-    },
-    "Handout": {
-      "title": "Educational Handout",
-      "description": "Educational materials and handouts provided by teachers for study.",
-      "type": "object",
-      "properties": {
-        "title": { "type": "string" },
-        "content": { "type": "string" },
-        "teacherId": { "type": "string" },
-        "teacherName": { "type": "string" },
-        "subject": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "isPublic": { "type": "boolean" },
-        "allowedStudentIds": { "type": "array", "items": { "type": "string" } }
-      },
-      "required": ["title", "content", "teacherId", "createdAt"]
-    },
-    "AIUsage": {
-      "title": "AI Usage Tracking",
-      "description": "Tracking daily AI assistant requests per user.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "date": { "type": "string" },
-        "count": { "type": "number" }
-      },
-      "required": ["userId", "date", "count"]
     }
   },
   "firestore": {
-    "usage/{usageId}": {
-      "schema": "AIUsage",
-      "description": "Daily AI request counters."
-    },
     "users/{userId}": {
       "schema": "User",
       "description": "Individual user records."
@@ -110,10 +79,6 @@
     "quizzes/{quizId}": {
       "schema": "Quiz",
       "description": "Collection of instructional assessments."
-    },
-    "handouts/{handoutId}": {
-      "schema": "Handout",
-      "description": "Educational materials for RAG-based study assistant."
     },
     "submissions/{submissionId}": {
       "schema": "Submission",
