@@ -20,10 +20,17 @@ async function startServer() {
   app.post("/api/ai/ask", async (req, res) => {
     const rawKey = process.env.BRAIN_REPS_API_KEY;
     const hasKey = !!rawKey;
-    const keySource = rawKey ? "Environment" : "None";
-    const maskedKey = rawKey ? `${rawKey.substring(0, 5)}...${rawKey.substring(rawKey.length - 4)}` : "None";
+    const nodeEnv = process.env.NODE_ENV || 'development';
     
-    console.log(`[Neural Server] Processing AI Request. FoundKey: ${hasKey}, Source: ${keySource}, Masked: ${maskedKey}`);
+    // Log configuration status without leaking the full key
+    console.log(`[Neural Server] Request received. Env: ${nodeEnv}, KeyConfigured: ${hasKey}`);
+    
+    if (!hasKey) {
+      return res.status(500).json({ 
+        error: "Neural Core Configuration Missing", 
+        details: "The environment variable BRAIN_REPS_API_KEY is not set on this host. If you are on Vercel, add it to 'Environment Variables' in Project Settings." 
+      });
+    }
     
     try {
       const { query, sources, history } = req.body;
@@ -46,7 +53,7 @@ async function startServer() {
       // Return details to help debugging on external platforms like Vercel
       res.status(500).json({ 
         error: errorMessage,
-        details: `Neural sync failed at ${stackLine}. Environment: ${process.env.NODE_ENV || 'unknown'}`
+        details: `Neural sync failed on ${nodeEnv} build. Error: ${stackLine}`
       });
     }
   });
