@@ -48,20 +48,20 @@ export async function askHandoutAssistant(
   }
 
   // Server-side execution: Direct call to Gemini
-  const HARDCODED_API_KEY = 'AIzaSyBBmVOQRyckt54PK1EWZ_-vT8i-NoE374A'; // PASTE YOUR KEY HERE FOR TESTING
-  const apiKey = HARDCODED_API_KEY || process.env.BRAIN_REPS_API_KEY;
+  const HARDCODED_API_KEY = ''; 
+  const apiKey = (HARDCODED_API_KEY && HARDCODED_API_KEY.length > 10) ? HARDCODED_API_KEY : process.env.BRAIN_REPS_API_KEY;
   
   if (!apiKey) {
-    console.error("[Neural Core] Critical: No API Key found (Hardcoded or Env).");
-    throw new Error("Neural Core initialization failed: API Key missing. If running on Vercel, ensure BRAIN_REPS_API_KEY is in Project Settings > Environment Variables.");
+    console.error("[Neural Core] Critical: No API Key found in process.env.BRAIN_REPS_API_KEY and HARDCODED_API_KEY is empty.");
+    throw new Error("Neural Core initialization failed: API Key missing. Please ensure BRAIN_REPS_API_KEY is set in your environment variables/secrets.");
   }
 
-  if (!genAI || HARDCODED_API_KEY) {
-    // Re-initialize if using hardcoded key to ensure it's picked up
+  // Ensure we are using a fresh instance if it's the first time or key changed
+  if (!genAI) {
     genAI = new GoogleGenerativeAI(apiKey);
   }
 
-  const model = "gemini-1.5-flash";
+  const model = "gemini-2.5-flash";
   
   // Format context from sources
   const context = sources.map(s => `[${s.type.toUpperCase()}: ${s.title}]: ${s.content}`).join('\n');
@@ -96,7 +96,10 @@ export async function askHandoutAssistant(
   try {
     const modelInstance = genAI.getGenerativeModel({ 
       model,
-      systemInstruction: systemInstruction,
+      systemInstruction: {
+        role: 'system',
+        parts: [{ text: systemInstruction }]
+      }
     });
 
     const result = await modelInstance.generateContent({

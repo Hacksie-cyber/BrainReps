@@ -18,9 +18,13 @@ async function startServer() {
 
   // API routes
   app.post("/api/ai/ask", async (req, res) => {
-    const hasKey = !!process.env.BRAIN_REPS_API_KEY;
-    const keySource = process.env.BRAIN_REPS_API_KEY ? "Env" : "None";
-    console.log(`[Neural Server] Processing AI Request. Method: ${req.method}, Path: ${req.path}, KeyDetected: ${hasKey}, Source: ${keySource}`);
+    const rawKey = process.env.BRAIN_REPS_API_KEY;
+    const hasKey = !!rawKey;
+    const keySource = rawKey ? "Environment" : "None";
+    const maskedKey = rawKey ? `${rawKey.substring(0, 5)}...${rawKey.substring(rawKey.length - 4)}` : "None";
+    
+    console.log(`[Neural Server] Processing AI Request. FoundKey: ${hasKey}, Source: ${keySource}, Masked: ${maskedKey}`);
+    
     try {
       const { query, sources, history } = req.body;
       if (!query) throw new Error("Query is required");
