@@ -29,7 +29,8 @@ export async function askHandoutAssistant(
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Neural synchronization failed (${response.status})`);
+      const details = errorData.details ? ` (${errorData.details})` : '';
+      throw new Error(errorData.error ? `${errorData.error}${details}` : `Neural synchronization failed (${response.status})`);
     }
     
     const data = await response.json();
@@ -48,7 +49,7 @@ export async function askHandoutAssistant(
     genAI = new GoogleGenerativeAI(apiKey);
   }
 
-  const model = "gemini-2.5-flash";
+  const model = "models/gemini-2.5-flash";
   
   // Format context from sources
   const context = sources.map(s => `[${s.type.toUpperCase()}: ${s.title}]: ${s.content}`).join('\n');

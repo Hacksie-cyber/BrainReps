@@ -1,4 +1,3 @@
-import "dotenv/config";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -29,14 +28,17 @@ async function startServer() {
       res.status(200).json({ text: response });
     } catch (error: any) {
       const errorMessage = error.message || "Unknown neural core error";
-      console.error("[Neural Server] AI Processing Failed:", errorMessage);
+      console.error("[Neural Server] AI Processing Failed:", {
+        error: errorMessage,
+        stack: error.stack,
+        path: req.path
+      });
       
-      // Provide more context for common errors
-      if (errorMessage.includes("API Key")) {
-        res.status(401).json({ error: "BrainReps API Key missing or unauthorized." });
-      } else {
-        res.status(500).json({ error: errorMessage });
-      }
+      // Return details to help debugging on external platforms like Vercel
+      res.status(500).json({ 
+        error: errorMessage,
+        details: error.stack?.split('\n')[0] // Help identify location
+      });
     }
   });
 
