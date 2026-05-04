@@ -26,8 +26,15 @@ async function startServer() {
       const response = await askHandoutAssistant(query, sources, history);
       res.status(200).json({ text: response });
     } catch (error: any) {
-      console.error("[Neural Server] AI Processing Failed:", error);
-      res.status(500).json({ error: error.message || "Internal server error" });
+      const errorMessage = error.message || "Unknown neural core error";
+      console.error("[Neural Server] AI Processing Failed:", errorMessage);
+      
+      // Provide more context for common errors
+      if (errorMessage.includes("API Key")) {
+        res.status(401).json({ error: "BrainReps API Key missing or unauthorized." });
+      } else {
+        res.status(500).json({ error: errorMessage });
+      }
     }
   });
 

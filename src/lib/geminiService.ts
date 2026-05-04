@@ -48,12 +48,12 @@ export async function askHandoutAssistant(
     genAI = new GoogleGenAI({ apiKey });
   }
 
-  const model = "gemini-2.5-flash";
+  const model = "gemini-2.0-flash";
   
   // Format context from sources
   const context = sources.map(s => `[${s.type.toUpperCase()}: ${s.title}]: ${s.content}`).join('\n');
 
-  console.log(`[Neural Core] Generating content with model: ${model}`);
+  console.log(`[Neural Core] Generating content with model: ${model}. Query: ${query.substring(0, 50)}...`);
 
   const systemInstruction = `
     You are the BrainReps Neural Assistant. 
@@ -90,9 +90,16 @@ export async function askHandoutAssistant(
       }
     });
 
+    if (!response.text) {
+      console.warn("[Neural Core] Response received but text field is empty.", response);
+    }
+
     return response.text || "I was unable to synchronize with the neural core. Please try again.";
   } catch (error: any) {
-    console.error("Gemini Assistant Sync Failure:", error);
+    console.error("[Neural Core] Gemini API Error:", error.message || error);
+    if (error.message?.includes("model")) {
+      throw new Error(`The neural model ${model} is currently unavailable or invalid.`);
+    }
     throw error;
   }
 }
