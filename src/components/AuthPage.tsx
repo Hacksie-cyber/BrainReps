@@ -43,14 +43,23 @@ export default function AuthPage() {
     try {
       setLoading(true);
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithPopup(auth, provider);
     } catch (error: any) {
       if (error.code === 'auth/popup-closed-by-user') {
         console.log("Sign-in popup closed by user.");
         return;
       }
-      console.error(error);
-      alert("Failed to sign in with Google");
+      console.error("Detailed Sign-in error:", error);
+      
+      let message = "Failed to sign in with Google";
+      if (error.code === 'auth/unauthorized-domain') {
+        message = `Unauthorized Domain: ${window.location.hostname}. Please add this domain to your Firebase Console > Authentication > Settings > Authorized domains.`;
+      } else if (error.message) {
+        message += `: ${error.message}`;
+      }
+      
+      alert(message);
     } finally {
       setLoading(false);
     }

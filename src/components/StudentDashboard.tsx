@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, Trophy, Clock, Search, ArrowRight, CheckCircle2, History, ShieldAlert, AlertTriangle, X, Zap } from 'lucide-react';
+import { BookOpen, Trophy, Clock, Search, ArrowRight, CheckCircle2, History, ShieldAlert, AlertTriangle, X, Zap, Brain, Database } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 
 // Ranking Logic Component to avoid global collection listeners and handle permissions correctly
@@ -379,6 +379,31 @@ export default function StudentDashboard() {
           <div className="flex items-baseline gap-2">
             <h3 className="text-4xl font-bold font-display text-slate-900 dark:text-slate-50 leading-none">{stats.topScore}%</h3>
           </div>
+        </div>
+      </section>
+
+      {/* Brain AI Assistant Section */}
+      <section className="bg-indigo-600 rounded-2xl p-8 text-white shadow-xl shadow-indigo-600/20 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-110 transition-transform duration-700" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div className="max-w-xl space-y-4 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-4">
+              <div className="p-3 bg-white/20 rounded-xl">
+                <Brain className="h-6 w-6 text-white" />
+              </div>
+              <h2 className="text-2xl font-black font-display tracking-tight uppercase italic underline decoration-white/30 underline-offset-8">Neural Assistant</h2>
+            </div>
+            <p className="text-indigo-100 font-medium leading-relaxed italic">
+              Synchronize with our grounded neural model. Ask questions about your handouts, subject matter, and academic materials.
+            </p>
+          </div>
+          <Link
+            to="/student/assistant"
+            className="inline-flex items-center justify-center gap-3 bg-white text-indigo-600 px-8 py-4 rounded-xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-black/10 hover:bg-slate-50 transition-all active:scale-95 group/btn shrink-0"
+          >
+            Launch Neural Core
+            <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+          </Link>
         </div>
       </section>
 

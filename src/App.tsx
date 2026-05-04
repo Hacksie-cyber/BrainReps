@@ -18,6 +18,8 @@ import TeacherAnalytics from './components/TeacherAnalytics';
 import AdminManagement from './components/AdminManagement';
 import BannedScreen from './components/BannedScreen';
 import StudentProfile from './components/StudentProfile';
+import HandoutManager from './components/HandoutManager';
+import NeuralAssistant from './components/NeuralAssistant';
 
 import { BookOpen } from 'lucide-react';
 import { doc, getDocFromCache, getDocFromServer } from 'firebase/firestore';
@@ -44,13 +46,15 @@ function RequireAuth({ children, role }: { children: React.ReactNode, role?: 'te
   const { user, profile, loading } = useAuth();
   const [showIntro, setShowIntro] = React.useState(false);
   const [introStepCompleted, setIntroStepCompleted] = React.useState(() => {
-    // Check if intro was already completed in this session
-    return sessionStorage.getItem('brainreps_intro_completed') === 'true';
+    return sessionStorage.getItem('intro_completed') === 'true';
   });
 
   React.useEffect(() => {
     if (!loading && user && profile && !introStepCompleted) {
       setShowIntro(true);
+    } else if (!loading && user && profile && introStepCompleted) {
+      // Ensure we don't show intro if already completed in session
+      setShowIntro(false);
     }
   }, [loading, user, profile, introStepCompleted]);
 
@@ -66,7 +70,7 @@ function RequireAuth({ children, role }: { children: React.ReactNode, role?: 'te
         onComplete={() => {
           setShowIntro(false);
           setIntroStepCompleted(true);
-          sessionStorage.setItem('brainreps_intro_completed', 'true');
+          sessionStorage.setItem('intro_completed', 'true');
         }} 
       />
     );
@@ -126,6 +130,9 @@ export default function App() {
             <Route path="/teacher/analytics" element={
               <RequireAuth role="teacher"><TeacherAnalytics /></RequireAuth>
             } />
+            <Route path="/teacher/handouts" element={
+              <RequireAuth role="teacher"><HandoutManager /></RequireAuth>
+            } />
             <Route path="/teacher/quiz/:id" element={
               <RequireAuth role="teacher"><TeacherQuizResults /></RequireAuth>
             } />
@@ -136,6 +143,9 @@ export default function App() {
             } />
             <Route path="/student/quizzes" element={
               <RequireAuth role="student"><StudentQuizzes /></RequireAuth>
+            } />
+            <Route path="/student/assistant" element={
+              <RequireAuth role="student"><NeuralAssistant /></RequireAuth>
             } />
             <Route path="/student/performance" element={
               <RequireAuth role="student"><StudentPerformance /></RequireAuth>

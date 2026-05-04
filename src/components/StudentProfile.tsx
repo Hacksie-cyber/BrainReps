@@ -20,8 +20,20 @@ export default function StudentProfile() {
   });
   const [updating, setUpdating] = useState(false);
 
-  const handleImageUpdate = (e: ChangeEvent<HTMLInputElement>) => {
-    setEditForm(prev => ({ ...prev, photoURL: e.target.value }));
+  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 1024 * 1024) { // 1MB limit for Firestore document size safety
+      alert('Image too large. Please select a file under 1MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setEditForm(prev => ({ ...prev, photoURL: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
   };
 
   useEffect(() => {
@@ -183,35 +195,45 @@ export default function StudentProfile() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                       <Camera className="w-3 h-3" /> Profile Picture URL
+                       <Camera className="w-3 h-3" /> Profile Picture Source
                     </label>
-                    <div className="flex gap-4">
-                       <div className="w-20 h-20 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
-                          {editForm.photoURL ? (
-                            <img 
-                              src={editForm.photoURL} 
-                              alt="Preview" 
-                              className="w-full h-full object-cover" 
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(editForm.name)}&background=random`;
-                              }}
-                            />
-                          ) : (
-                            <Camera className="w-6 h-6 text-slate-300" />
-                          )}
-                       </div>
-                       <div className="flex-1 space-y-2">
-                          <div className="relative group">
-                            <input 
-                              type="url" 
-                              value={editForm.photoURL}
-                              onChange={handleImageUpdate}
-                              className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs font-bold"
-                              placeholder="Paste image URL here..."
-                            />
-                          </div>
-                          <p className="text-[9px] font-medium text-slate-400 italic">Provide a direct link to your portrait image.</p>
-                       </div>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex gap-4">
+                        <div className="w-20 h-20 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+                            {editForm.photoURL ? (
+                              <img src={editForm.photoURL} alt="Preview" className="w-full h-full object-cover" />
+                            ) : (
+                              <Camera className="w-6 h-6 text-slate-300" />
+                            )}
+                        </div>
+                        <div className="flex-1 space-y-3">
+                           <input 
+                             type="url"
+                             value={editForm.photoURL}
+                             onChange={(e) => setEditForm(prev => ({ ...prev, photoURL: e.target.value }))}
+                             className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-xs font-bold"
+                             placeholder="Paste image URL here (e.g. from Unsplash or Pinterest)..."
+                           />
+                           <div className="relative">
+                             <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                               <div className="w-full border-t border-slate-200 dark:border-slate-700"></div>
+                             </div>
+                             <div className="relative flex justify-center text-[8px] font-black uppercase">
+                               <span className="bg-slate-50 dark:bg-slate-800 px-2 text-slate-400">OR LOCAL UPLOAD</span>
+                             </div>
+                           </div>
+                           <label className="block w-full px-4 py-2 rounded-xl bg-transparent border border-dashed border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-400 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-center">
+                              Select Memory File
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                onChange={handleImageUpload}
+                                className="hidden" 
+                              />
+                           </label>
+                        </div>
+                      </div>
+                      <p className="text-[9px] font-medium text-slate-400 italic">High-fidelity square images recommended for optimal neural mapping.</p>
                     </div>
                   </div>
                   <div className="space-y-2">

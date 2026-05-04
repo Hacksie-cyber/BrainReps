@@ -1,6 +1,6 @@
 {
   "name": "BrainReps",
-  "description": "Stronger Mind, Better Grades. A comprehensive educational platform for teachers to create dynamic assessments and students to track their cognitive growth.",
+  "description": "Stronger Mind, Better Grades. A comprehensive educational platform for teachers to create dynamic assessments and a grounded Neural AI Assistant for students to query institutional handouts and subject matter.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

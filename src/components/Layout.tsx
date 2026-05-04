@@ -28,17 +28,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const menuItems = isAdmin ? [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/teacher' },
     { label: 'Assessments', icon: BookOpen, path: '/teacher/assessments' },
+    { label: 'Study Materials', icon: Database, path: '/teacher/handouts' },
     { label: 'Teachers', icon: Users, path: '/admin/faculty' },
     { label: 'Students', icon: GraduationCap, path: '/teacher/students' },
     { label: 'Analytics', icon: BarChart3, path: '/teacher/analytics' },
   ] : profile?.role === 'teacher' ? [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/teacher' },
     { label: 'Assessments', icon: BookOpen, path: '/teacher/assessments' },
+    { label: 'Study Materials', icon: Database, path: '/teacher/handouts' },
     { label: 'Students', icon: GraduationCap, path: '/teacher/students' },
     { label: 'Analytics', icon: BarChart3, path: '/teacher/analytics' },
   ] : [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/student' },
     { label: 'My Quizzes', icon: BookOpen, path: '/student/quizzes' },
+    { label: 'Study AI', icon: Brain, path: '/student/assistant' },
     { label: 'Performance', icon: BarChart3, path: '/student/performance' },
     { label: 'Student List', icon: GraduationCap, path: '/student/roster' },
   ];
