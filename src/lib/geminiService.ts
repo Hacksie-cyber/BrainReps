@@ -30,16 +30,26 @@ export async function askHandoutAssistant(
     if (!response.ok) {
       let errorMsg = `Neural synchronization failed (${response.status})`;
       let detailedReason = '';
+      
       try {
-        const errorData = await response.json();
+        const clonedResponse = response.clone();
+        const errorData = await clonedResponse.json();
         detailedReason = errorData.details || '';
         errorMsg = errorData.error ? `${errorData.error}` : errorMsg;
       } catch (e) {
+        // If JSON parsing fails, try to get raw text from the original response
         const text = await response.text().catch(() => '');
-        if (text && text.length < 500) detailedReason = text;
+        if (text) {
+          detailedReason = text.substring(0, 300);
+          // If the text contains information about missing keys, bubble it up
+          if (text.includes("BRAIN_REPS_API_KEY")) {
+            errorMsg = "Neural Core Configuration Missing";
+          }
+        }
       }
       
       const fullError = detailedReason ? `${errorMsg} [Detail: ${detailedReason}]` : errorMsg;
+      console.error("[Gemini Client] Sync Error:", fullError);
       throw new Error(fullError);
     }
     
@@ -61,12 +71,16 @@ export async function askHandoutAssistant(
     genAI = new GoogleGenerativeAI(apiKey);
   }
 
-  const model = "gemini-1.5-flash";
+  const model = "gemini-2.5-flash";
   
   // Format context from sources
   const context = sources.map(s => `[${s.type.toUpperCase()}: ${s.title}]: ${s.content}`).join('\n');
 
   console.log(`[Neural Core] Generating content with model: ${model}. Query: ${query.substring(0, 50)}...`);
+
+  if (!apiKey || apiKey.length < 5) {
+    throw new Error("Neural Core Configuration Missing: BRAIN_REPS_API_KEY is not set. If you are on Vercel, please add this key in your Project settings.");
+  }
 
   const systemInstruction = `
     You are the BrainReps Neural Assistant. 
