@@ -8,8 +8,9 @@ import { askHandoutAssistant } from "./src/lib/geminiService";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const app = express();
+
 async function startServer() {
-  const app = express();
   const PORT = 3000;
 
   // Body parser for API routes
@@ -74,10 +75,15 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[BrainReps] Institutional Server Active on Port ${PORT}`);
-    console.log(`[BrainReps] Mode: ${process.env.NODE_ENV || 'development'}`);
-  });
+  // Only listen if not in Vercel environment (where Vercel handles the listener)
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`[BrainReps] Institutional Server Active on Port ${PORT}`);
+      console.log(`[BrainReps] Mode: ${process.env.NODE_ENV || 'development'}`);
+    });
+  }
 }
 
 startServer();
+
+export default app;
