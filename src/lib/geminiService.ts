@@ -78,7 +78,7 @@ export async function askHandoutAssistant(
 
   // ✅ FIXED: correct model name — gemini-2.5-flash-preview-04-17
   // gemini-2.5-flash does not exist as a standalone ID and causes 404/500
-  const modelName = "gemini-2.5-flash-preview-04-17";
+  const modelName = "gemini-2.5-flash";
 
   const context = sources.length > 0
     ? sources.map(s => `[${s.type.toUpperCase()}: ${s.title}]:\n${s.content}`).join('\n\n')
