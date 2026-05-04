@@ -49,7 +49,7 @@ export async function askHandoutAssistant(
     genAI = new GoogleGenerativeAI(apiKey);
   }
 
-  const model = "models/gemini-2.5-flash";
+  const model = "gemini-2.5-flash";
   
   // Format context from sources
   const context = sources.map(s => `[${s.type.toUpperCase()}: ${s.title}]: ${s.content}`).join('\n');
