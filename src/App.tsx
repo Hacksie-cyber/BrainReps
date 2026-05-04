@@ -43,7 +43,10 @@ testConnection();
 function RequireAuth({ children, role }: { children: React.ReactNode, role?: 'teacher' | 'student' | 'admin' }) {
   const { user, profile, loading } = useAuth();
   const [showIntro, setShowIntro] = React.useState(false);
-  const [introStepCompleted, setIntroStepCompleted] = React.useState(false);
+  const [introStepCompleted, setIntroStepCompleted] = React.useState(() => {
+    // Check if intro was already completed in this session
+    return sessionStorage.getItem('brainreps_intro_completed') === 'true';
+  });
 
   React.useEffect(() => {
     if (!loading && user && profile && !introStepCompleted) {
@@ -63,6 +66,7 @@ function RequireAuth({ children, role }: { children: React.ReactNode, role?: 'te
         onComplete={() => {
           setShowIntro(false);
           setIntroStepCompleted(true);
+          sessionStorage.setItem('brainreps_intro_completed', 'true');
         }} 
       />
     );
