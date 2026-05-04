@@ -50,8 +50,16 @@ export default function AuthPage() {
         console.log("Sign-in popup closed by user.");
         return;
       }
-      console.error(error);
-      alert("Failed to sign in with Google");
+      console.error("Detailed Sign-in error:", error);
+      
+      let message = "Failed to sign in with Google";
+      if (error.code === 'auth/unauthorized-domain') {
+        message = `Unauthorized Domain: ${window.location.hostname}. Please add this domain to your Firebase Console > Authentication > Settings > Authorized domains.`;
+      } else if (error.message) {
+        message += `: ${error.message}`;
+      }
+      
+      alert(message);
     } finally {
       setLoading(false);
     }
