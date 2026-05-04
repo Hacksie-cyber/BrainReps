@@ -38,13 +38,13 @@ export async function askHandoutAssistant(
 
   // Server-side execution: Direct call to Gemini
   const apiKey = process.env.BRAIN_REPS_API_KEY;
+  
   if (!apiKey) {
-    console.error("[Neural Core] CRITICAL: BRAIN_REPS_API_KEY is missing in server environment.");
-    throw new Error("Missing AI API Key on server. Please verify BRAIN_REPS_API_KEY is added to the Secrets panel in Settings.");
+    console.error("[Neural Core] Critical: BRAIN_REPS_API_KEY not found in server environment.");
+    throw new Error("Neural Core initialization failed: API Key missing. Please ensure BRAIN_REPS_API_KEY is set in your environment variables (e.g., Vercel Dashboard).");
   }
 
   if (!genAI) {
-    console.log("[Neural Core] Initializing Generative AI with BRAIN_REPS_API_KEY.");
     genAI = new GoogleGenerativeAI(apiKey);
   }
 

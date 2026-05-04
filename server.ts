@@ -19,7 +19,8 @@ async function startServer() {
 
   // API routes
   app.post("/api/ai/ask", async (req, res) => {
-    console.log(`[Neural Server] Processing AI Request. Method: ${req.method}, Path: ${req.path}`);
+    const hasKey = !!process.env.BRAIN_REPS_API_KEY;
+    console.log(`[Neural Server] Processing AI Request. Method: ${req.method}, Path: ${req.path}, KeyDetected: ${hasKey}`);
     try {
       const { query, sources, history } = req.body;
       if (!query) throw new Error("Query is required");

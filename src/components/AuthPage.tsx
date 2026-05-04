@@ -43,6 +43,7 @@ export default function AuthPage() {
     try {
       setLoading(true);
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithPopup(auth, provider);
     } catch (error: any) {
       if (error.code === 'auth/popup-closed-by-user') {
