@@ -44,42 +44,59 @@ app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
 // Initialize logic for middleware
 async function setupMiddleware() {
-  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
-    const { createServer: createViteServer } = await import("vite");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-    
-    app.all('*', async (req, res, next) => {
-      if (res.headersSent) return;
-      const url = req.originalUrl;
-      try {
-        let template = await fs.readFile(path.resolve(__dirname, 'index.html'), 'utf-8');
-        template = await vite.transformIndexHtml(url, template);
-        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
-      } catch (e) {
-        vite.ssrFixStacktrace(e as Error);
-        next(e);
-      }
-    });
+  const isVercel = !!process.env.VERCEL;
+  const isProd = process.env.NODE_ENV === "production";
+
+  if (!isProd && !isVercel) {
+    try {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+      
+      app.all('*', async (req, res, next) => {
+        if (res.headersSent) return;
+        const url = req.originalUrl;
+        try {
+          const __dirname = path.dirname(fileURLToPath(import.meta.url));
+          let template = await fs.readFile(path.resolve(__dirname, 'index.html'), 'utf-8');
+          template = await vite.transformIndexHtml(url, template);
+          res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+        } catch (e) {
+          vite.ssrFixStacktrace(e as Error);
+          next(e);
+        }
+      });
+    } catch (err) {
+      console.warn("[Neural Server] Vite middleware failed to load, falling back to static.");
+    }
   } else {
+    // Production/Vercel behavior
     const distPath = path.resolve(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.all('*', (req, res) => res.sendFile(path.resolve(distPath, 'index.html')));
+    
+    // In Vercel, the rewrites in vercel.json usually handle the SPA routing,
+    // but we can provide a fallback if dist/index.html exists.
+    app.all('*', async (req, res) => {
+      if (res.headersSent) return;
+      try {
+        const indexPath = path.resolve(distPath, 'index.html');
+        await fs.access(indexPath);
+        res.sendFile(indexPath);
+      } catch {
+        // If dist hasn't been built or index.html is missing, return 404 for non-API
+        if (!req.path.startsWith('/api')) {
+          res.status(404).send("Static assets not found. Please ensure 'npm run build' has completed.");
+        }
+      }
+    });
   }
 }
 
-// In Vercel, we don't start the listener ourselves usually, 
-// but we need to ensure middleware is setup if it's production
-if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
-  const distPath = path.resolve(process.cwd(), 'dist');
-  app.use(express.static(distPath));
-  // Note: Vercel does its own routing, so we usually don't need a catch-all if vercel.json is setup
-} else {
-  setupMiddleware();
-}
+// Execute middleware setup
+setupMiddleware();
 
 if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
   const PORT = Number(process.env.PORT || 3000);

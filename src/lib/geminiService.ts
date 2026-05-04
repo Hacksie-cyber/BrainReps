@@ -72,8 +72,8 @@ export async function askHandoutAssistant(
   }
 
   // Standard model selection
-  // Note: gemini-2.5-flash does not exist. Working models include gemini-2.0-flash, gemini-1.5-flash, gemini-1.5-pro
-  const model = "gemini-2.5-flash"; 
+  // Note: gemini-2.5-flash does not exist. Use gemini-1.5-flash or gemini-2.0-flash
+  const model = "gemini-1.5-flash"; 
   
   // Format context from sources
   const context = sources.map(s => `[${s.type.toUpperCase()}: ${s.title}]: ${s.content}`).join('\n');
