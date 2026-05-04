@@ -28,9 +28,19 @@ export async function askHandoutAssistant(
     });
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const details = errorData.details ? ` (${errorData.details})` : '';
-      throw new Error(errorData.error ? `${errorData.error}${details}` : `Neural synchronization failed (${response.status})`);
+      let errorMsg = `Neural synchronization failed (${response.status})`;
+      try {
+        const errorData = await response.json();
+        const details = errorData.details ? ` [${errorData.details}]` : '';
+        errorMsg = errorData.error ? `${errorData.error}${details}` : errorMsg;
+      } catch (e) {
+        // If not JSON, try to get raw text
+        const text = await response.text().catch(() => '');
+        if (text && text.length < 500) {
+          errorMsg += `: ${text}`;
+        }
+      }
+      throw new Error(errorMsg);
     }
     
     const data = await response.json();
@@ -99,6 +109,8 @@ export async function askHandoutAssistant(
     const response = await result.response;
     const text = response.text();
 
+    console.log(`[Neural Core] Generation successful. Character count: ${text?.length || 0}`);
+
     if (!text) {
       console.warn("[Neural Core] Response received but text field is empty.");
       return "I was unable to synchronize with the neural core. Please try again.";
@@ -110,7 +122,8 @@ export async function askHandoutAssistant(
       message: error.message,
       stack: error.stack,
       status: error.status,
-      model: model
+      model: model,
+      apiKeyPrefix: apiKey ? `${apiKey.substring(0, 5)}...` : 'None'
     });
     
     const errorMsg = error.message || String(error);

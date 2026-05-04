@@ -19,25 +19,30 @@ async function startServer() {
   // API routes
   app.post("/api/ai/ask", async (req, res) => {
     const hasKey = !!process.env.BRAIN_REPS_API_KEY;
-    console.log(`[Neural Server] Processing AI Request. Method: ${req.method}, Path: ${req.path}, KeyDetected: ${hasKey}`);
+    const keySource = process.env.BRAIN_REPS_API_KEY ? "Env" : "None";
+    console.log(`[Neural Server] Processing AI Request. Method: ${req.method}, Path: ${req.path}, KeyDetected: ${hasKey}, Source: ${keySource}`);
     try {
       const { query, sources, history } = req.body;
       if (!query) throw new Error("Query is required");
       
       const response = await askHandoutAssistant(query, sources, history);
+      console.log(`[Neural Server] AI Response generated successfully (${response.length} chars)`);
       res.status(200).json({ text: response });
     } catch (error: any) {
       const errorMessage = error.message || "Unknown neural core error";
+      const stackLine = error.stack?.split('\n')[0] || "No stack trace";
+      
       console.error("[Neural Server] AI Processing Failed:", {
         error: errorMessage,
         stack: error.stack,
-        path: req.path
+        path: req.path,
+        env: process.env.NODE_ENV
       });
       
       // Return details to help debugging on external platforms like Vercel
       res.status(500).json({ 
         error: errorMessage,
-        details: error.stack?.split('\n')[0] // Help identify location
+        details: `Neural sync failed at ${stackLine}. Environment: ${process.env.NODE_ENV || 'unknown'}`
       });
     }
   });
