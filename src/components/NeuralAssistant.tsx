@@ -131,9 +131,10 @@ export default function NeuralAssistant() {
       await updateUsage();
       setMessages(prev => [...prev, { role: 'model', content: response }]);
     } catch (error: any) {
+      console.error("[Neural Assistant] Sync Failed:", error);
       setMessages(prev => [...prev, { 
         role: 'model', 
-        content: `**Neural Desync Detected:** ${error.message || 'The AI synchronization was interrupted.'}`
+        content: `**Neural Desync Detected:**\n\n${error.message || 'The AI synchronization was interrupted.'}\n\n*Technical info: System could not reach neural core. See console for full trace.*`
       }]);
     } finally {
       setLoading(false);

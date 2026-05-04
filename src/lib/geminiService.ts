@@ -29,18 +29,18 @@ export async function askHandoutAssistant(
     
     if (!response.ok) {
       let errorMsg = `Neural synchronization failed (${response.status})`;
+      let detailedReason = '';
       try {
         const errorData = await response.json();
-        const details = errorData.details ? ` [${errorData.details}]` : '';
-        errorMsg = errorData.error ? `${errorData.error}${details}` : errorMsg;
+        detailedReason = errorData.details || '';
+        errorMsg = errorData.error ? `${errorData.error}` : errorMsg;
       } catch (e) {
-        // If not JSON, try to get raw text
         const text = await response.text().catch(() => '');
-        if (text && text.length < 500) {
-          errorMsg += `: ${text}`;
-        }
+        if (text && text.length < 500) detailedReason = text;
       }
-      throw new Error(errorMsg);
+      
+      const fullError = detailedReason ? `${errorMsg} [Detail: ${detailedReason}]` : errorMsg;
+      throw new Error(fullError);
     }
     
     const data = await response.json();
@@ -49,7 +49,7 @@ export async function askHandoutAssistant(
 
   // Server-side execution: Direct call to Gemini
   const HARDCODED_API_KEY = ''; 
-  const apiKey = (HARDCODED_API_KEY && HARDCODED_API_KEY.length > 10) ? HARDCODED_API_KEY : process.env.BRAIN_REPS_API_KEY;
+  const apiKey = HARDCODED_API_KEY || process.env.BRAIN_REPS_API_KEY;
   
   if (!apiKey) {
     console.error("[Neural Core] Critical: No API Key found in process.env.BRAIN_REPS_API_KEY and HARDCODED_API_KEY is empty.");
@@ -61,7 +61,7 @@ export async function askHandoutAssistant(
     genAI = new GoogleGenerativeAI(apiKey);
   }
 
-  const model = "gemini-2.5-flash";
+  const model = "gemini-1.5-flash";
   
   // Format context from sources
   const context = sources.map(s => `[${s.type.toUpperCase()}: ${s.title}]: ${s.content}`).join('\n');
