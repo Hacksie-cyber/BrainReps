@@ -48,10 +48,12 @@ export async function askHandoutAssistant(
     genAI = new GoogleGenAI({ apiKey });
   }
 
-  const model = "gemini-3-flash-preview";
+  const model = "gemini-2.5-flash";
   
   // Format context from sources
   const context = sources.map(s => `[${s.type.toUpperCase()}: ${s.title}]: ${s.content}`).join('\n');
+
+  console.log(`[Neural Core] Generating content with model: ${model}`);
 
   const systemInstruction = `
     You are the BrainReps Neural Assistant. 

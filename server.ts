@@ -18,15 +18,15 @@ async function startServer() {
 
   // API routes
   app.post("/api/ai/ask", async (req, res) => {
-    console.log(`[Neural Server] POST /api/ai/ask - Payload Size: ${JSON.stringify(req.body).length} bytes`);
+    console.log(`[Neural Server] Processing AI Request. Method: ${req.method}, Path: ${req.path}`);
     try {
       const { query, sources, history } = req.body;
       if (!query) throw new Error("Query is required");
       
       const response = await askHandoutAssistant(query, sources, history);
-      res.json({ text: response });
+      res.status(200).json({ text: response });
     } catch (error: any) {
-      console.error("[Neural Server] AI Request Failed:", error);
+      console.error("[Neural Server] AI Processing Failed:", error);
       res.status(500).json({ error: error.message || "Internal server error" });
     }
   });
