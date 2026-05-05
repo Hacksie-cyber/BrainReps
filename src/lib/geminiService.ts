@@ -111,46 +111,69 @@ STRICT GUIDELINES:
 
   console.log(`[Neural Core] Sending request → model: ${modelName}`);
 
-  try {
-    const response = await client.models.generateContent({
-      model: modelName,
-      contents,
-      config: {
-        systemInstruction,
-        temperature: 0.7,
+  // ✅ Retry configuration for high-demand scenarios
+  const maxRetries = 3;
+  let attempt = 0;
+
+  while (attempt <= maxRetries) {
+    try {
+      const response = await client.models.generateContent({
+        model: modelName,
+        contents,
+        config: {
+          systemInstruction,
+          temperature: 0.7,
+        }
+      });
+
+      const text = response.text;
+
+      if (!text) {
+        console.warn("[Neural Core] Empty response from Gemini.");
+        return "I was unable to generate a response. Please try again.";
       }
-    });
 
-    const text = response.text;
+      return text;
 
-    if (!text) {
-      console.warn("[Neural Core] Empty response from Gemini.");
-      return "I was unable to generate a response. Please try again.";
+    } catch (error: any) {
+      const errorMsg = error.message || String(error);
+      const isUnavailable = errorMsg.includes("503") || errorMsg.includes("UNAVAILABLE") || errorMsg.includes("high demand");
+
+      if (isUnavailable && attempt < maxRetries) {
+        attempt++;
+        const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+        console.warn(`[Neural Core] Service unavailable (attempt ${attempt}/${maxRetries}). Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+
+      console.error("[Neural Core] Generation failed:", { model: modelName, error: errorMsg });
+
+      // ✅ Specific error hints for easier debugging and UX
+      if (isUnavailable) {
+        throw new Error(
+          "The neural core is currently under heavy load. Please wait a moment and try your request again."
+        );
+      }
+      if (errorMsg.includes("404") || errorMsg.includes("not found")) {
+        throw new Error(
+          `Model '${modelName}' not found. Check configurations.`
+        );
+      }
+      if (errorMsg.includes("403") || errorMsg.includes("API_KEY")) {
+        throw new Error(
+          "Access denied. Please check neural core credentials."
+        );
+      }
+      if (errorMsg.includes("quota") || errorMsg.includes("429")) {
+        throw new Error(
+          "Message volume limit reached. Please try again in a few minutes."
+        );
+      }
+
+      throw new Error(`Neural sync failed: ${errorMsg}`);
     }
-
-    return text;
-
-  } catch (error: any) {
-    const errorMsg = error.message || String(error);
-    console.error("[Neural Core] Generation failed:", { model: modelName, error: errorMsg });
-
-    // ✅ Specific error hints for easier debugging
-    if (errorMsg.includes("404") || errorMsg.includes("not found")) {
-      throw new Error(
-        `Model '${modelName}' not found. Check https://ai.google.dev/gemini-api/docs/models for available models.`
-      );
-    }
-    if (errorMsg.includes("403") || errorMsg.includes("API_KEY")) {
-      throw new Error(
-        "Invalid or unauthorized API key. Verify BRAIN_REPS_API_KEY in Vercel environment variables."
-      );
-    }
-    if (errorMsg.includes("quota") || errorMsg.includes("429")) {
-      throw new Error(
-        "API quota exceeded. Check your usage at https://aistudio.google.com"
-      );
-    }
-
-    throw new Error(`Neural sync failed: ${errorMsg}`);
   }
+  
+  return "Neural core remains unavailable after retries. Please try again later.";
 }
