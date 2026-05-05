@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, orderBy } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { motion } from 'motion/react';
-import { BookOpen, Plus, Trash2, Search, FileText, Send, Sparkles } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Search, FileText, Send, Sparkles, Upload, File } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
+import * as mammoth from 'mammoth';
 
 interface Handout {
   id: string;
@@ -18,11 +19,13 @@ interface Handout {
 
 export default function HandoutManager() {
   const { profile } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [handouts, setHandouts] = useState<Handout[]>([]);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [handoutToDelete, setHandoutToDelete] = useState<Handout | null>(null);
@@ -47,6 +50,35 @@ export default function HandoutManager() {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.docx')) {
+      alert('Neural sync currently supports .docx files only.');
+      return;
+    }
+
+    setIsParsing(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      
+      // Auto-set title from filename if empty
+      if (!title) {
+        setTitle(file.name.replace(/\.docx$/, ''));
+      }
+      
+      setContent(result.value);
+    } catch (error) {
+      console.error("Failed to parse document:", error);
+      alert("Neural extraction failed. The document might be corrupted or in an unsupported format.");
+    } finally {
+      setIsParsing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -108,9 +140,33 @@ export default function HandoutManager() {
         {/* Upload Form */}
         <div className="col-span-12 lg:col-span-5">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-8 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50 mb-6 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-indigo-500" />
-              Ingest New Material
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-50 mb-6 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-indigo-500" />
+                Ingest New Material
+              </span>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isParsing}
+                className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-[10px] font-black text-slate-500 uppercase tracking-widest transition-colors disabled:opacity-50"
+              >
+                {isParsing ? (
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                ) : (
+                  <>
+                    <Upload className="h-3.5 w-3.5" />
+                    Upload .docx
+                  </>
+                )}
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".docx"
+                className="hidden"
+              />
             </h2>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
@@ -124,15 +180,20 @@ export default function HandoutManager() {
                   required
                 />
               </div>
-              <div>
+              <div className="relative">
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Content (Text/Markdown)</label>
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  placeholder="Paste handout content here..."
+                  placeholder="Paste handout content here or upload a .docx file above..."
                   className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium h-64 resize-none"
                   required
                 />
+                {!content && !isParsing && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+                    <File className="h-24 w-24 text-slate-400" />
+                  </div>
+                )}
               </div>
               <button
                 type="submit"
