@@ -107,9 +107,14 @@ export default function NeuralAssistant() {
 
   const subjects = ['All', ...new Set(sources.map(s => s.subject || 'General'))];
 
+  // ✅ FIXED: [problem 5] Use a useRef boolean flag to block duplicate in-flight requests
+  const isPending = useRef(false);
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || loading) return;
+    
+    // ✅ FIXED: [problem 5] Block if isPending is true OR standard loading is true
+    if (!input.trim() || loading || isPending.current) return;
     
     if (dailyUsage >= DAILY_LIMIT) {
       const limitMsg: HandoutMessage = { 
@@ -122,12 +127,17 @@ export default function NeuralAssistant() {
     }
 
     const userMsg: HandoutMessage = { role: 'user', content: input.trim() };
+    const currentInput = input.trim();
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
+    isPending.current = true; // ✅ FIXED: [problem 5] Set flag
+
+    // ✅ FIXED: [problem 1] Add 600ms debounce before any API call is triggered
+    await new Promise(resolve => setTimeout(resolve, 600));
 
     try {
-      const response = await askHandoutAssistant(userMsg.content, filteredSources, messages);
+      const response = await askHandoutAssistant(currentInput, filteredSources, messages);
       await updateUsage();
       setMessages(prev => [...prev, { role: 'model', content: response }]);
     } catch (error: any) {
@@ -138,6 +148,7 @@ export default function NeuralAssistant() {
       }]);
     } finally {
       setLoading(false);
+      isPending.current = false; // ✅ FIXED: [problem 5] Reset flag
     }
   };
 

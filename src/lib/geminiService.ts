@@ -40,12 +40,21 @@ export async function askHandoutAssistant(
   sources: ContextSource[],
   history: HandoutMessage[] = []
 ) {
+  // ✅ FIXED: [problem 4] Only pass the last 6 messages of history per request to avoid token bloat
+  const trimmedHistory = history.slice(-6);
+
+  // ✅ FIXED: [problem 3] Slice sources to max 3 items and truncate content to 1500 chars
+  const trimmedSources = sources.slice(0, 3).map(s => ({
+    ...s,
+    content: s.content.length > 1500 ? s.content.substring(0, 1500) + "... [truncated]" : s.content
+  }));
+
   // ── Client-side: proxy through backend ──
   if (typeof window !== 'undefined') {
     const response = await fetch('/api/ai/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, sources, history })
+      body: JSON.stringify({ query, sources: trimmedSources, history: trimmedHistory })
     });
 
     if (!response.ok) {
@@ -80,8 +89,8 @@ export async function askHandoutAssistant(
   // gemini-2.5-flash does not exist as a standalone ID and causes 404/500
   const modelName = "gemini-2.5-flash";
 
-  const context = sources.length > 0
-    ? sources.map(s => `[${s.type.toUpperCase()}: ${s.title}]:\n${s.content}`).join('\n\n')
+  const context = trimmedSources.length > 0
+    ? trimmedSources.map(s => `[${s.type.toUpperCase()}: ${s.title}]:\n${s.content}`).join('\n\n')
     : "No context sources provided.";
 
   const systemInstruction = `
@@ -106,7 +115,7 @@ TUTOR RULES:
   `.trim();
 
   const contents = [
-    ...history.map(m => ({
+    ...trimmedHistory.map(m => ({
       role: m.role,
       parts: [{ text: m.content }]
     })),
@@ -144,7 +153,20 @@ TUTOR RULES:
 
     } catch (error: any) {
       const errorMsg = error.message || String(error);
-      const isUnavailable = errorMsg.includes("503") || errorMsg.includes("UNAVAILABLE") || errorMsg.includes("high demand");
+      const statusCode = error.status || (error.response && error.response.status);
+      
+      // ✅ FIXED: [problem 2] Expand retry condition to catch 429, 503, and volume/quota/overloaded/rate strings
+      const isUnavailable = 
+        statusCode === 429 || 
+        statusCode === 503 || 
+        errorMsg.includes("503") || 
+        errorMsg.includes("429") ||
+        errorMsg.includes("UNAVAILABLE") || 
+        errorMsg.includes("high demand") ||
+        errorMsg.includes("volume limit") ||
+        errorMsg.includes("quota") ||
+        errorMsg.includes("overloaded") ||
+        errorMsg.includes("rate limit");
 
       if (isUnavailable && attempt < maxRetries) {
         attempt++;
@@ -159,7 +181,7 @@ TUTOR RULES:
       // ✅ Specific error hints for easier debugging and UX
       if (isUnavailable) {
         throw new Error(
-          "The neural core is currently under heavy load. Please wait a moment and try your request again."
+          "The neural core is currently under heavy load or volume limits. Please wait a moment and try your request again."
         );
       }
       if (errorMsg.includes("404") || errorMsg.includes("not found")) {
