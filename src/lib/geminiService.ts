@@ -87,7 +87,7 @@ export async function askHandoutAssistant(
 
   // ✅ FIXED: correct model name — gemini-2.5-flash-preview-04-17
   // gemini-2.5-flash does not exist as a standalone ID and causes 404/500
-  const modelName = "gemini-2.5-flash";
+  const modelName = "gemini-2.5-flash-lite";
 
   const context = trimmedSources.length > 0
     ? trimmedSources.map(s => `[${s.type.toUpperCase()}: ${s.title}]:\n${s.content}`).join('\n\n')
@@ -155,7 +155,7 @@ TUTOR RULES:
       const errorMsg = error.message || String(error);
       const statusCode = error.status || (error.response && error.response.status);
       
-      // ✅ FIXED: [problem 2] Expand retry condition to catch 429, 503, and volume/quota/overloaded/rate strings
+      // ✅ FIXED: [problem 2] Expand retry condition to catch 429, 503, and volume/quota/overloaded/rate/exhausted strings
       const isUnavailable = 
         statusCode === 429 || 
         statusCode === 503 || 
@@ -166,12 +166,14 @@ TUTOR RULES:
         errorMsg.includes("volume limit") ||
         errorMsg.includes("quota") ||
         errorMsg.includes("overloaded") ||
-        errorMsg.includes("rate limit");
+        errorMsg.includes("rate limit") ||
+        errorMsg.includes("RESOURCE_EXHAUSTED");
 
       if (isUnavailable && attempt < maxRetries) {
         attempt++;
-        const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
-        console.warn(`[Neural Core] Service unavailable (attempt ${attempt}/${maxRetries}). Retrying in ${delay}ms...`);
+        // ✅ Increased delay for quota recovery "one at a time" approach
+        const delay = Math.pow(2, attempt) * 2000; // 4s, 8s, 16s
+        console.warn(`[Neural Core] Rate limit / high demand (attempt ${attempt}/${maxRetries}). Waiting ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -180,8 +182,13 @@ TUTOR RULES:
 
       // ✅ Specific error hints for easier debugging and UX
       if (isUnavailable) {
+        if (errorMsg.includes("quota") || errorMsg.includes("exhausted") || statusCode === 429) {
+          throw new Error(
+            "Neural Quota Exhausted: You have reached the capacity for the Gemini free tier. Please wait about 60 seconds before trying again."
+          );
+        }
         throw new Error(
-          "The neural core is currently under heavy load or volume limits. Please wait a moment and try your request again."
+          "The neural core is currently under heavy load. Please wait a moment and try your request again."
         );
       }
       if (errorMsg.includes("404") || errorMsg.includes("not found")) {

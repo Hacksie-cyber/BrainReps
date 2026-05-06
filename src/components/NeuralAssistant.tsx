@@ -119,7 +119,7 @@ export default function NeuralAssistant() {
     if (dailyUsage >= DAILY_LIMIT) {
       const limitMsg: HandoutMessage = { 
         role: 'model', 
-        content: `**Neural Quota Reached:** You have consumed your daily allocation of ${DAILY_LIMIT} synchronizations. Your cognitive interface will reset in 24 hours.`
+        content: `**Neural Quota Reached:** You have consumed your local daily allocation of ${DAILY_LIMIT} synchronizations. Your cognitive interface will reset in 24 hours.`
       };
       setMessages(prev => [...prev, { role: 'user', content: input.trim() }, limitMsg]);
       setInput('');
@@ -133,8 +133,8 @@ export default function NeuralAssistant() {
     setLoading(true);
     isPending.current = true; // ✅ FIXED: [problem 5] Set flag
 
-    // ✅ FIXED: [problem 1] Add 600ms debounce before any API call is triggered
-    await new Promise(resolve => setTimeout(resolve, 600));
+    // ✅ FIXED: [problem 1] Add 600ms debounce + enforced interval "one at a time"
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     try {
       const response = await askHandoutAssistant(currentInput, filteredSources, messages);
@@ -142,13 +142,23 @@ export default function NeuralAssistant() {
       setMessages(prev => [...prev, { role: 'model', content: response }]);
     } catch (error: any) {
       console.error("[Neural Assistant] Sync Failed:", error);
+      
+      // ✅ Friendly check for quota in the caught error
+      let displayError = error.message || 'The AI synchronization was interrupted.';
+      if (displayError.includes("429") || displayError.includes("quota") || displayError.includes("exhausted")) {
+        displayError = "**API Quota Exceeded:** The Google Gemini free tier limit has been reached. Please wait 60 seconds as the neural core recovers.";
+      }
+
       setMessages(prev => [...prev, { 
         role: 'model', 
-        content: `**Neural Desync Detected:**\n\n${error.message || 'The AI synchronization was interrupted.'}\n\n*Technical info: System could not reach neural core. See console for full trace.*`
+        content: `**Neural Desync Detected:**\n\n${displayError}\n\n*Technical hint: Try slowing down your interactions or wait 1 minute.*`
       }]);
     } finally {
-      setLoading(false);
-      isPending.current = false; // ✅ FIXED: [problem 5] Reset flag
+      // ✅ Enforce a 3s cooldown "one at a time" before the next request can start
+      setTimeout(() => {
+        setLoading(false);
+        isPending.current = false;
+      }, 2000);
     }
   };
 
