@@ -9,19 +9,23 @@ import { cn } from '../lib/utils';
 import BannedScreen from './BannedScreen';
 import { Navigate } from 'react-router-dom';
 
+import modernClassroom from '../assets/images/modern_classroom_ai_1779239893101.png';
+import focusedStudent from '../assets/images/focused_student_tablet_1779239914064.png';
+import neuralLearning from '../assets/images/neural_learning_concept_1779239929443.png';
+
 const SLIDE_IMAGES = [
   {
-    url: '/src/assets/images/modern_classroom_ai_1779239893101.png',
+    url: modernClassroom,
     title: 'Modern Learning',
     description: 'AI-integrated classrooms designed for maximum cognitive growth.'
   },
   {
-    url: '/src/assets/images/focused_student_tablet_1779239914064.png',
+    url: focusedStudent,
     title: 'Personalized Growth',
     description: 'Data-driven analytics to track every step of your academic journey.'
   },
   {
-    url: '/src/assets/images/neural_learning_concept_1779239929443.png',
+    url: neuralLearning,
     title: 'Neural Precision',
     description: 'Advanced algorithms to sharpen your professional competitive edge.'
   }
