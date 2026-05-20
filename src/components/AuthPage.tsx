@@ -37,58 +37,85 @@ function PhotoCarousel() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrent((prev) => (prev + 1) % SLIDE_IMAGES.length);
-    }, 5000);
+    }, 5500); // 5.5 seconds per slide
     return () => clearInterval(timer);
   }, []);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-slate-900 rounded-3xl">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={current}
-          initial={{ opacity: 0, scale: 1.1 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
-          className="absolute inset-0"
-        >
-          <img
-            src={SLIDE_IMAGES[current].url}
-            alt={SLIDE_IMAGES[current].title}
-            className="h-full w-full object-cover opacity-60 mix-blend-overlay"
-            referrerPolicy="no-referrer"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
-        </motion.div>
-      </AnimatePresence>
+    <div className="relative h-full w-full overflow-hidden bg-slate-950 rounded-3xl select-none shadow-2xl shadow-indigo-500/5">
+      {/* Background Images Stacked with smooth cinematic cross-dissolve */}
+      <div className="absolute inset-0 bg-slate-950">
+        {SLIDE_IMAGES.map((slide, index) => {
+          const isActive = index === current;
+          return (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, scale: 1.05 }}
+              animate={{ 
+                opacity: isActive ? 1 : 0,
+                scale: isActive ? 1 : 1.05
+              }}
+              transition={{ 
+                duration: 2.2, // Generous slow 2.2s fade transition
+                ease: [0.25, 1, 0.5, 1] // Custom refined easeOutCubic curve
+              }}
+              className="absolute inset-0 pointer-events-none"
+            >
+              <img
+                src={slide.url}
+                alt={slide.title}
+                className="h-full w-full object-cover opacity-60 mix-blend-overlay"
+                referrerPolicy="no-referrer"
+              />
+            </motion.div>
+          );
+        })}
+        {/* Soft elegant gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/45 to-transparent opacity-95 pointer-events-none" />
+      </div>
 
       <div className="absolute bottom-12 left-12 right-12 z-10">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={current}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.8 }}
-          >
-            <h3 className="text-3xl font-black text-white tracking-tighter mb-2 italic">
-              {SLIDE_IMAGES[current].title}
-            </h3>
-            <p className="text-slate-300 font-medium text-lg leading-relaxed max-w-md">
-              {SLIDE_IMAGES[current].description}
-            </p>
-          </motion.div>
-        </AnimatePresence>
+        {/* Caption Slide Overlap using Stacked linear fades */}
+        <div className="relative h-28 w-full">
+          {SLIDE_IMAGES.map((slide, index) => {
+            const isActive = index === current;
+            return (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ 
+                  opacity: isActive ? 1 : 0, 
+                  y: isActive ? 0 : -15,
+                  pointerEvents: isActive ? 'auto' : 'none'
+                }}
+                transition={{ 
+                  duration: 1.5, 
+                  ease: "easeInOut" 
+                }}
+                className="absolute bottom-0 left-0 w-full flex flex-col justify-end"
+              >
+                <h3 className="text-3xl font-black text-white tracking-tighter mb-2 italic">
+                  {slide.title}
+                </h3>
+                <p className="text-slate-300 font-medium text-lg leading-relaxed max-w-md">
+                  {slide.description}
+                </p>
+              </motion.div>
+            );
+          })}
+        </div>
 
+        {/* Carousel Indicators */}
         <div className="mt-8 flex gap-2">
           {SLIDE_IMAGES.map((_, i) => (
             <button
               key={i}
               onClick={() => setCurrent(i)}
               className={cn(
-                "h-1.5 transition-all duration-500 rounded-full",
-                i === current ? "w-8 bg-indigo-500" : "w-2 bg-slate-700"
+                "h-1.5 transition-all duration-500 rounded-full cursor-pointer focus:outline-none",
+                i === current ? "w-8 bg-indigo-500" : "w-2 bg-slate-800 hover:bg-slate-700"
               )}
+              aria-label={`Go to slide ${i + 1}`}
             />
           ))}
         </div>
@@ -303,89 +330,88 @@ export default function AuthPage() {
       )}
 
       {/* Main Hero Section */}
-      <div ref={homeRef} className="max-w-7xl mx-auto px-6 pt-24 md:pt-32 pb-20">
-        <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[70vh]">
-          {/* Left Side: Content */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            className="flex flex-col items-center lg:items-start text-center lg:text-left"
-          >
-            <div className="mb-8 ">
-              <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-indigo-600/40 transform -rotate-6 transition-transform hover:scale-105 active:scale-95">
-                <Brain className="h-10 w-10" />
-              </div>
+      <div ref={homeRef} className="max-w-4xl mx-auto px-6 pt-24 md:pt-32 pb-20">
+        {/* Hero content - centered */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="flex flex-col items-center text-center mb-16"
+        >
+          <div className="mb-8">
+            <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-indigo-600/40 transform -rotate-6 transition-transform hover:scale-105 active:scale-95">
+              <Brain className="h-10 w-10" />
             </div>
-            
-            <h1 className="mb-4 text-6xl font-black tracking-tighter text-slate-900 dark:text-slate-50 md:text-8xl transition-colors">
-              Brain<span className="text-indigo-600 dark:text-indigo-400">Reps</span>
-            </h1>
-            
-            <p className="mb-8 text-xl font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] transition-colors">
-              Stronger Mind, Better Grades.
-            </p>
-            
-            <p className="mb-10 text-lg text-slate-400 dark:text-slate-500 max-w-lg font-medium leading-relaxed italic transition-colors">
-              The ultimate regimen for academic excellence. Repetition, assessment, 
-              and data-driven growth to sharpen your competitive edge.
-            </p>
-            
-            <button
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="inline-flex items-center gap-3 rounded-xl bg-indigo-600 px-10 py-5 font-bold text-white shadow-2xl shadow-indigo-600/20 transition-all hover:bg-indigo-700 hover:-translate-y-1 active:translate-y-0"
-            >
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" 
-                className="h-6 w-6 brightness-0 invert" 
-                alt="Google" 
-                referrerPolicy="no-referrer"
-              />
-              Start Your Neural Regimen
-            </button>
-
-            {/* Institutional Trust Links */}
-            <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
-              <div className="space-y-2">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Data Privacy</h4>
-                <p className="text-[11px] text-slate-500 leading-relaxed">Encrypted data and secure silos ensure cognitive progress remains protected.</p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Academic Integrity</h4>
-                <p className="text-[11px] text-slate-500 leading-relaxed">Built for educators who value authentic, legitimate data-driven growth.</p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Institutional Tool</h4>
-                <p className="text-[11px] text-slate-500 leading-relaxed">Dedicated assessment ecosystem serving verified schools and faculties.</p>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Right Side: Sliding Carousel */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="hidden lg:block h-[600px] w-full"
+          </div>
+          
+          <h1 className="mb-4 text-6xl font-black tracking-tighter text-slate-900 dark:text-slate-50 md:text-8xl transition-colors">
+            Brain<span className="text-indigo-600 dark:text-indigo-400">Reps</span>
+          </h1>
+          
+          <p className="mb-8 text-xl font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] transition-colors">
+            Stronger Mind, Better Grades.
+          </p>
+          
+          <p className="mb-10 text-lg text-slate-400 dark:text-slate-500 max-w-lg font-medium leading-relaxed italic transition-colors mx-auto">
+            The ultimate regimen for academic excellence. Repetition, assessment, 
+            and data-driven growth to sharpen your competitive edge.
+          </p>
+          
+          <button
+            onClick={handleGoogleSignIn}
+            disabled={loading}
+            className="inline-flex items-center gap-3 rounded-xl bg-indigo-600 px-10 py-5 font-bold text-white shadow-2xl shadow-indigo-600/20 transition-all hover:bg-indigo-700 hover:-translate-y-1 active:translate-y-0"
           >
-            <PhotoCarousel />
-          </motion.div>
-        </div>
-        
-        {/* Mobile View Carousel - Show below hero */}
-        <div className="lg:hidden mt-12 h-[400px] w-full">
-           <PhotoCarousel />
+            <img 
+              src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" 
+              className="h-6 w-6 brightness-0 invert" 
+              alt="Google" 
+              referrerPolicy="no-referrer"
+            />
+            Start Your Neural Regimen
+          </button>
+        </motion.div>
+
+        {/* Sliding Carousel (Now below the hero section) */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="h-[350px] md:h-[500px] w-full mb-20"
+        >
+          <PhotoCarousel />
+        </motion.div>
+
+        {/* Institutional Trust Section (Now below the slide) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left border-t border-slate-150 dark:border-slate-800/80 pt-16">
+          <div className="space-y-2">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Data Privacy</h4>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Encrypted student data and secure institutional silos ensure that your cognitive progress remains private and protected at all times.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Academic Integrity</h4>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Built for educators who value authentic learning. Our platform discourages deceptive practices and focuses on legitimate data-driven growth.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Institutional Tool</h4>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              BrainReps is a dedicated assessment ecosystem serving verified schools and faculties. We do not host malicious software or deceptive content.
+            </p>
+          </div>
         </div>
 
-        <footer className="mt-32 pb-8 space-y-6">
-           <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-8 gap-y-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+        <footer className="mt-28 pb-8 space-y-6 text-center">
+           <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
               <button className="hover:text-indigo-600 transition-colors">Privacy Policy</button>
               <button className="hover:text-indigo-600 transition-colors">Terms of Service</button>
               <button className="hover:text-indigo-600 transition-colors">Support Center</button>
               <a href="mailto:support@brainreps.edu" className="hover:text-indigo-600 transition-colors">Contact Faculty</a>
            </div>
-           <div className="flex items-center justify-center lg:justify-start gap-2 text-[9px] text-slate-300 dark:text-slate-700 italic font-medium">
+           <div className="flex items-center justify-center gap-2 text-[9px] text-slate-300 dark:text-slate-700 italic font-medium">
               <span>© {new Date().getFullYear()} BrainReps Institutional Analytics. All rights reserved.</span>
            </div>
         </footer>
