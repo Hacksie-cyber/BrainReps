@@ -275,14 +275,20 @@ export default function NotificationCenter() {
                         <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                            {!n.isRead && (
                              <button
-                               onClick={() => markAsRead(n.id)}
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 markAsRead(n.id);
+                               }}
                                className="p-1 px-2.5 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-md text-[8px] font-black uppercase tracking-tighter transition-colors flex items-center gap-1"
                              >
                                 <MailOpen className="w-2.5 h-2.5" /> Read
                              </button>
                            )}
                            <button
-                             onClick={() => deleteNotification(n.id)}
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               deleteNotification(n.id);
+                             }}
                              className="p-1 px-2.5 hover:bg-red-100 dark:hover:bg-red-900/50 text-slate-400 hover:text-red-600 rounded-md text-[8px] font-black uppercase tracking-tighter transition-colors flex items-center gap-1"
                            >
                               <X className="w-2.5 h-2.5" /> Clear

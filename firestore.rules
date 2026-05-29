@@ -205,7 +205,7 @@ service cloud.firestore {
       );
       allow update: if isSignedIn() && isNotBanned() && existing().get('userId', '') == request.auth.uid && 
                    incoming().diff(existing()).affectedKeys().hasOnly(['isRead']);
-      allow delete: if isSignedIn() && isNotBanned() && existing().get('userId', '') == request.auth.uid;
+      allow delete: if isSignedIn() && isNotBanned() && (existing().get('userId', '') == request.auth.uid || isSuperAdmin());
     }
   }
 }
