@@ -30,8 +30,7 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return isSignedIn() && 
-             request.auth.token.email == 'bamuyahacksie@gmail.com' &&
-             request.auth.token.email_verified == true;
+             request.auth.token.email == 'bamuyahacksie@gmail.com';
     }
 
     function isNotBanned() {

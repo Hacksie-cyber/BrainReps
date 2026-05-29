@@ -51,6 +51,8 @@ export default function AdminManagement() {
   
   const [announcements, setAnnouncements] = useState<Notification[]>([]);
   const [announcementsLoading, setAnnouncementsLoading] = useState(false);
+  const [announcementToDelete, setAnnouncementToDelete] = useState<Notification | null>(null);
+  const [isDeletingAnnouncement, setIsDeletingAnnouncement] = useState(false);
 
   useEffect(() => {
     fetchTeachers();
@@ -231,13 +233,17 @@ export default function AdminManagement() {
     }
   };
 
-  const handleDeleteAnnouncement = async (id: string) => {
-    if (!confirm("Are you sure you want to remove this announcement from history? This deletes the historical archive view of this broadcast.")) return;
+  const handleDeleteAnnouncement = async () => {
+    if (!announcementToDelete) return;
     try {
-      await deleteDoc(doc(db, 'notifications', id));
-      setAnnouncements(announcements.filter(a => a.id !== id));
+      setIsDeletingAnnouncement(true);
+      await deleteDoc(doc(db, 'notifications', announcementToDelete.id));
+      setAnnouncements(announcements.filter(a => a.id !== announcementToDelete.id));
+      setAnnouncementToDelete(null);
     } catch (error) {
       console.error("Failed to purge announcement archive:", error);
+    } finally {
+      setIsDeletingAnnouncement(false);
     }
   };
 
@@ -660,8 +666,8 @@ export default function AdminManagement() {
                         <div className="flex-shrink-0 flex items-start">
                           <button
                             type="button"
-                            onClick={() => handleDeleteAnnouncement(item.id)}
-                            className="p-1 px-1.5 text-slate-350 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-all sm:opacity-0 group-hover:opacity-100"
+                            onClick={() => setAnnouncementToDelete(item)}
+                            className="p-1 px-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-all sm:opacity-0 group-hover:opacity-100"
                             title="Remove from history"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -673,6 +679,15 @@ export default function AdminManagement() {
                 )}
               </div>
             </div>
+
+            <DeleteModal
+              isOpen={!!announcementToDelete}
+              onClose={() => setAnnouncementToDelete(null)}
+              onConfirm={handleDeleteAnnouncement}
+              title="Delete Announcement"
+              message={`Are you sure you want to permanently delete "${announcementToDelete?.title}" from history? This deletes the historical archive view of this broadcast.`}
+              isDeleting={isDeletingAnnouncement}
+            />
           </motion.div>
         )}
       </AnimatePresence>
