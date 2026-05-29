@@ -561,7 +561,9 @@ export default function QuizSession() {
   }
 
   // Block students if limit is reached
-  if (profile?.role === 'student' && quiz.retakeLimit !== 0 && attemptCount >= (quiz.retakeLimit || 1)) {
+  const extraAllowed = quiz.extraAttempts?.[profile?.uid || ''] || 0;
+  const totalLimit = (quiz.retakeLimit || 1) + extraAllowed;
+  if (profile?.role === 'student' && quiz.retakeLimit !== 0 && attemptCount >= totalLimit) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95 duration-500 px-4">
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mb-4 w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 dark:text-slate-500 shadow-xl border border-slate-200 dark:border-slate-700">
@@ -569,7 +571,7 @@ export default function QuizSession() {
         </motion.div>
         <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">Attempt Limit Reached</h2>
         <p className="mb-10 text-lg text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto leading-relaxed">
-          The teacher has set a maximum of <b>{quiz.retakeLimit === 0 ? 'Unlimited' : `${quiz.retakeLimit} attempt(s)`}</b> for this assessment. 
+          The teacher has set a maximum of <b>{quiz.retakeLimit === 0 ? 'Unlimited' : `${totalLimit} attempt(s)`}</b> for this assessment. 
           Please consult your performance dashboard for detailed results.
         </p>
         <div className="flex flex-col sm:flex-row items-center gap-4">

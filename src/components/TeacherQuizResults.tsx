@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs, orderBy, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, deleteDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission, Question, UserProfile } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download, FileText } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download, FileText, Plus, Minus, Search } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
 import { jsPDF } from 'jspdf';
@@ -23,6 +23,46 @@ export default function TeacherQuizResults() {
   const [participantSearch, setParticipantSearch] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showGrantModal, setShowGrantModal] = useState(false);
+  const [grantSearch, setGrantSearch] = useState('');
+  const [grantingStudentId, setGrantingStudentId] = useState<string | null>(null);
+
+  const handleGrantExtraAttempt = async (studentId: string, countChange: number) => {
+    if (!quiz || !id) return;
+    try {
+      setGrantingStudentId(studentId);
+      const currentExtra = quiz.extraAttempts?.[studentId] || 0;
+      const newExtraCount = Math.max(0, currentExtra + countChange);
+      const updatedExtra = {
+        ...(quiz.extraAttempts || {}),
+        [studentId]: newExtraCount
+      };
+      
+      await updateDoc(doc(db, 'quizzes', id), {
+        extraAttempts: updatedExtra
+      });
+
+      setQuiz({ ...quiz, extraAttempts: updatedExtra });
+
+      if (countChange > 0) {
+        try {
+          const { addLocalNotification } = await import('../lib/localNotifications');
+          addLocalNotification(studentId, {
+            title: '🔄 Extra Attempt Granted!',
+            message: `The instructor has granted you an extra attempt on "${quiz.title}". You can take or retake this module now!`,
+            type: 'assignment',
+            relatedId: quiz.id
+          });
+        } catch (errNotif) {
+          console.error("Failed to notify student of extra attempt:", errNotif);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update extra attempts:", error);
+    } finally {
+      setGrantingStudentId(null);
+    }
+  };
 
   useEffect(() => {
     if (!id || !profile) return;
@@ -316,6 +356,13 @@ export default function TeacherQuizResults() {
              </div>
             <div className="flex items-center gap-2">
               <button 
+                onClick={() => setShowGrantModal(true)}
+                className="px-4 py-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30 rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all flex items-center gap-2 shadow-sm active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Extra Attempts
+              </button>
+              <button 
                 onClick={exportToCSV}
                 className="px-4 py-2 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2 shadow-sm active:scale-95"
               >
@@ -343,6 +390,7 @@ export default function TeacherQuizResults() {
                   <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 text-center">Date</th>
                   <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Result</th>
                   <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Percentile</th>
+                  <th className="px-8 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
@@ -420,12 +468,30 @@ export default function TeacherQuizResults() {
                            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500">{Math.round((sub.score/sub.totalPoints) * 100)}%</span>
                         </div>
                       </td>
+                      <td className="px-8 py-5 text-right font-medium" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleGrantExtraAttempt(sub.studentId, 1)}
+                            disabled={grantingStudentId === sub.studentId}
+                            title="Grant +1 Attempt"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 border border-indigo-100 dark:border-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold uppercase text-[10px] tracking-wider transition-all disabled:opacity-50"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>+1 Attempt</span>
+                            {quiz.extraAttempts?.[sub.studentId] ? (
+                              <span className="ml-1 bg-indigo-600 text-white font-black px-1.5 py-0.5 rounded-full text-[9px]">
+                                +{quiz.extraAttempts[sub.studentId]}
+                              </span>
+                            ) : null}
+                          </button>
+                        </div>
+                      </td>
                     </motion.tr>
                   );
                 })}
                 {filteredSubmissions.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-8 py-16 text-center text-slate-300 dark:text-slate-700 italic font-medium tracking-tight">
+                    <td colSpan={6} className="px-8 py-16 text-center text-slate-300 dark:text-slate-700 italic font-medium tracking-tight">
                       {participantSearch ? "No students matching your search criteria." : "No submission records detected in the database."}
                     </td>
                   </tr>
@@ -510,6 +576,137 @@ export default function TeacherQuizResults() {
                   );
                 })}
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Manage Extra Attempts Modal */}
+      <AnimatePresence>
+        {showGrantModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowGrantModal(false);
+                setGrantSearch('');
+              }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] border border-slate-100 dark:border-slate-800"
+            >
+              <header className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 tracking-tight">Extra Retake Attempts</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Grant or revoke extra retake counts for any student.</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowGrantModal(false);
+                    setGrantSearch('');
+                  }}
+                  className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 dark:text-slate-500"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </header>
+
+              <div className="p-5 border-b border-slate-100 dark:border-slate-800">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Search student by name or email..."
+                    value={grantSearch}
+                    onChange={(e) => setGrantSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="p-6 overflow-y-auto space-y-4 custom-scrollbar flex-1 min-h-[300px]">
+                {students
+                  .filter(s => 
+                    s.name?.toLowerCase().includes(grantSearch.toLowerCase()) || 
+                    s.email?.toLowerCase().includes(grantSearch.toLowerCase())
+                  )
+                  .map((student) => {
+                    const extra = quiz?.extraAttempts?.[student.uid] || 0;
+                    const hasSubmissions = submissions.some(sub => sub.studentId === student.uid);
+
+                    return (
+                      <div key={student.uid} className="flex items-center justify-between p-3.5 bg-slate-50/55 dark:bg-slate-850/20 rounded-xl border border-slate-100 dark:border-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-black text-slate-400 dark:text-slate-500 overflow-hidden">
+                            {student.photoURL ? (
+                              <img src={student.photoURL} alt={student.name} className="w-full h-full object-cover" />
+                            ) : (
+                              student.name?.charAt(0) || 'S'
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-bold text-xs text-slate-700 dark:text-slate-200 leading-none mb-1">{student.name}</p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate max-w-[180px]">{student.email}</p>
+                            {!hasSubmissions && (
+                              <span className="text-[8px] font-bold text-slate-400 dark:text-slate-600 tracking-wide uppercase bg-slate-100 dark:bg-slate-800/50 px-1 py-0.5 rounded border border-slate-200 dark:border-slate-700">No submission yet</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleGrantExtraAttempt(student.uid, -1)}
+                            disabled={extra === 0 || grantingStudentId === student.uid}
+                            className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-red-500 disabled:opacity-40 transition-all flex items-center justify-center h-7 w-7"
+                            title="Decrease extra attempt"
+                          >
+                            <Minus className="h-3.5 w-3.5" />
+                          </button>
+                          
+                          <div className="w-8 text-center">
+                            <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                              {extra}
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={() => handleGrantExtraAttempt(student.uid, 1)}
+                            disabled={grantingStudentId === student.uid}
+                            className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-indigo-600 disabled:opacity-40 transition-all flex items-center justify-center h-7 w-7"
+                            title="Increase extra attempt"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                {students.filter(s => 
+                  s.name?.toLowerCase().includes(grantSearch.toLowerCase()) || 
+                  s.email?.toLowerCase().includes(grantSearch.toLowerCase())
+                ).length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center py-10 text-center">
+                    <p className="text-xs text-slate-400 italic">No matching students found in current cohort.</p>
+                  </div>
+                )}
+              </div>
+              <footer className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowGrantModal(false);
+                    setGrantSearch('');
+                  }}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-md active:scale-95"
+                >
+                  Done
+                </button>
+              </footer>
             </motion.div>
           </div>
         )}

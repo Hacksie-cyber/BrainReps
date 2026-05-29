@@ -36,6 +36,7 @@ export interface Quiz {
   isHidden?: boolean;
   allowedStudentIds?: string[];
   isPublic?: boolean;
+  extraAttempts?: Record<string, number>;
 }
 
 export interface QuizSubmission {

@@ -28,40 +28,48 @@ export default function StudentQuizzes() {
         const quizzesCacheKey = studentCache.generateKey('quizzes-list', profile.uid);
         let qList = studentCache.get<Quiz[]>(quizzesCacheKey, 5 * 60 * 1000);
         
-        if (!qList) {
-          // Query for quizzes that are global OR specifically assigned to this student
-          const q = query(
-            collection(db, 'quizzes'),
-            or(
-              where('isPublic', '==', true),
-              where('allowedStudentIds', 'array-contains', profile.uid)
-            )
-          );
-          
-          const quizSnap = await getDocs(q);
-          qList = quizSnap.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as Quiz))
-            .filter(quiz => !quiz.isHidden) // Secondary UI safety filter
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          
-          studentCache.set(quizzesCacheKey, qList);
+        if (qList && active) {
+          setQuizzes(qList);
+          // We can set loading to false early if we already have items to display
+          setLoading(false);
         }
         
-        if (active) setQuizzes(qList);
+        // Always fetch fresh from Firestore in the background to revalidate
+        const q = query(
+          collection(db, 'quizzes'),
+          or(
+            where('isPublic', '==', true),
+            where('allowedStudentIds', 'array-contains', profile.uid)
+          )
+        );
+        
+        const quizSnap = await getDocs(q);
+        const freshQuizzes = quizSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as Quiz))
+          .filter(quiz => !quiz.isHidden) // Secondary UI safety filter
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        
+        studentCache.set(quizzesCacheKey, freshQuizzes);
+        if (active) {
+          setQuizzes(freshQuizzes);
+        }
 
         const subsCacheKey = studentCache.generateKey('submissions-list', profile.uid);
         let sList = studentCache.get<QuizSubmission[]>(subsCacheKey, 2 * 60 * 1000);
 
-        if (!sList) {
-          const subSnap = await getDocs(query(
-            collection(db, 'submissions'),
-            where('studentId', '==', profile.uid)
-          ));
-          sList = subSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission));
-          studentCache.set(subsCacheKey, sList);
+        if (sList && active) {
+          setSubmissions(sList);
         }
-        
-        if (active) setSubmissions(sList);
+
+        const subSnap = await getDocs(query(
+          collection(db, 'submissions'),
+          where('studentId', '==', profile.uid)
+        ));
+        const freshSubs = subSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission));
+        studentCache.set(subsCacheKey, freshSubs);
+        if (active) {
+          setSubmissions(freshSubs);
+        }
       } catch (error) {
         console.error(error);
       } finally {
@@ -276,7 +284,9 @@ export default function StudentQuizzes() {
                 const latestSubmission = [...userSubmissions].sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0];
                 const isCompleted = userSubmissions.length > 0;
                 const isUnlimitedQuiz = quiz.retakeLimit === 0;
-                const limitReached = profile?.role === 'student' && !isUnlimitedQuiz && userSubmissions.length >= (quiz.retakeLimit || 1);
+                const extraAllowed = quiz.extraAttempts?.[profile?.uid || ''] || 0;
+                const totalLimit = (quiz.retakeLimit || 1) + extraAllowed;
+                const limitReached = profile?.role === 'student' && !isUnlimitedQuiz && userSubmissions.length >= totalLimit;
                 
                 return (
                   <motion.div
@@ -309,7 +319,7 @@ export default function StudentQuizzes() {
                            </div>
                         )}
                         <span className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.1em] bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded border border-slate-100 dark:border-slate-800">
-                          {profile?.role === 'teacher' || isUnlimitedQuiz ? 'Unlimited Retakes' : `Attempts: ${userSubmissions.length} / ${quiz.retakeLimit || 1}`}
+                          {profile?.role === 'teacher' || isUnlimitedQuiz ? 'Unlimited Retakes' : `Attempts: ${userSubmissions.length} / ${totalLimit}`}
                         </span>
                       </div>
                     </div>

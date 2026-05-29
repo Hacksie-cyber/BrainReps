@@ -128,13 +128,12 @@ export default function StudentDashboard() {
     if (!profile) return;
     let active = true;
 
-    // 1. Fetch assessments (cached, 5 minutes TTL)
+    // 1. Fetch assessments (stale-while-revalidate pattern)
     const fetchQuizzes = async () => {
       const quizzesCacheKey = studentCache.generateKey('quizzes-list', profile.uid);
       const cachedQuizzes = studentCache.get<Quiz[]>(quizzesCacheKey, 5 * 60 * 1000);
-      if (cachedQuizzes) {
-        if (active) setQuizzes(cachedQuizzes);
-        return;
+      if (cachedQuizzes && active) {
+        setQuizzes(cachedQuizzes);
       }
 
       try {
@@ -697,7 +696,9 @@ export default function StudentDashboard() {
               const submission = submissions.find(s => s.quizId === quiz.id);
               const userSubs = submissions.filter(s => s.quizId === quiz.id);
               const isUnlimited = profile?.role === 'teacher' || quiz.retakeLimit === 0;
-              const limitReached = !isUnlimited && userSubs.length >= (quiz.retakeLimit || 1);
+              const extraAllowed = quiz.extraAttempts?.[profile?.uid || ''] || 0;
+              const totalLimit = (quiz.retakeLimit || 1) + extraAllowed;
+              const limitReached = !isUnlimited && userSubs.length >= totalLimit;
 
               return (
                 <motion.div
@@ -714,7 +715,7 @@ export default function StudentDashboard() {
                     <div className="flex flex-col items-end gap-2">
                        {submission && (
                          <div className="flex flex-col items-end gap-1.5">
-                           <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-[10px] rounded-full border border-emerald-100 dark:border-emerald-800/50 font-bold uppercase tracking-widest shadow-sm">
+                           <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 text-emerald-700 text-[10px] rounded-full border border-emerald-100 dark:border-emerald-900/30 font-bold uppercase tracking-widest shadow-sm">
                               <CheckCircle2 className="h-3 w-3" />
                               Attempted
                            </div>
@@ -724,7 +725,7 @@ export default function StudentDashboard() {
                          </div>
                        )}
                        <span className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.1em] bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1 rounded border border-slate-100 dark:border-slate-800">
-                          {isUnlimited ? 'Unlimited' : `Attempts: ${userSubs.length} / ${quiz.retakeLimit || 1}`}
+                          {isUnlimited ? 'Unlimited' : `Attempts: ${userSubs.length} / ${totalLimit}`}
                         </span>
                     </div>
                   </div>
