@@ -254,6 +254,61 @@ export default function StudentDashboard() {
     };
   }, [profile]);
 
+  // 4. Daily Deadline Realtime Alert & Clean-up System
+  useEffect(() => {
+    if (!profile || quizzes.length === 0) return;
+
+    const checkTodayDeadlines = async () => {
+      try {
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+        
+        const { doc, setDoc, deleteDoc } = await import('firebase/firestore');
+
+        for (const quiz of quizzes) {
+          if (!quiz.deadline) continue;
+          
+          const qDate = new Date(quiz.deadline);
+          const isDueToday = qDate.getDate() === today.getDate() &&
+                             qDate.getMonth() === today.getMonth() &&
+                             qDate.getFullYear() === today.getFullYear();
+
+          const uniqueNotifId = `deadline-${quiz.id}-${profile.uid}-${todayStr}`;
+
+          if (isDueToday) {
+            const hasSubmitted = submissions.some(s => s.quizId === quiz.id);
+            if (!hasSubmitted) {
+              try {
+                await setDoc(doc(db, 'notifications', uniqueNotifId), {
+                  userId: profile.uid,
+                  title: '⚡ Deadline Alert: Due Today!',
+                  message: `The module "${quiz.title}" is due today at ${qDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Complete it now!`,
+                  type: 'assignment',
+                  relatedId: quiz.id,
+                  isRead: false,
+                  createdAt: new Date().toISOString()
+                });
+              } catch (err) {
+                console.error("Failed to write daily deadline notification:", err);
+              }
+            } else {
+              // Clean up the alert if student has successfully completed/submitted
+              try {
+                await deleteDoc(doc(db, 'notifications', uniqueNotifId));
+              } catch (err) {
+                console.warn("Failed to delete completed daily deadline notification:", err);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Deadline Alert System check failed:", err);
+      }
+    };
+
+    checkTodayDeadlines();
+  }, [profile, quizzes, submissions]);
+
   const filteredQuizzes = quizzes.filter(q => {
     if (q.isHidden && profile?.role !== 'teacher') return false;
     

@@ -465,6 +465,27 @@ export default function QuizSession() {
           console.warn("Rank persistence failed but state updated locally:", syncErr);
         }
 
+        // If they get a high score or perfect score, notify them!
+        const finalPercentage = actualTotal > 0 ? (finalScore / actualTotal) * 100 : 0;
+        if (finalPercentage >= 80) {
+          const isPerfect = finalPercentage === 100;
+          try {
+            await addDoc(collection(db, 'notifications'), {
+              userId: profile.uid,
+              title: isPerfect ? '🏆 Perfect Score Achievement!' : '🌟 High Score Achievement!',
+              message: isPerfect 
+                ? `Fantastic! You scored a perfect 100% (${finalScore}/${actualTotal}) on "${quiz.title}". Outstanding work!`
+                : `Great job! You achieved a high score of ${finalScore}/${actualTotal} (${Math.round(finalPercentage)}%) on "${quiz.title}".`,
+              type: 'achievement',
+              relatedId: quiz.id,
+              isRead: false,
+              createdAt: new Date().toISOString()
+            });
+          } catch (notifErr) {
+            console.error("Failed to create score notification:", notifErr);
+          }
+        }
+
         // Trigger celebration
         confetti({
           particleCount: 150,
