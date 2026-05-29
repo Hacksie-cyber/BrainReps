@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
@@ -7,11 +7,20 @@ import { Bell, X, Check, Trash2, MailOpen, AlertCircle, BookOpen, Volume2, Volum
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatDeadline } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { 
+  getLocalNotifications, 
+  markLocalNotificationAsRead, 
+  markAllLocalNotificationsAsRead, 
+  deleteLocalNotification, 
+  clearAllLocalNotifications, 
+  subscribeToLocalNotifications 
+} from '../lib/localNotifications';
 
 export default function NotificationCenter() {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [dbNotifications, setDbNotifications] = useState<Notification[]>([]);
+  const [localNotifications, setLocalNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
@@ -26,6 +35,20 @@ export default function NotificationCenter() {
     audioRef.current.volume = 0.5;
   }, []);
 
+  // Subscribe to local storage notifications
+  useEffect(() => {
+    if (!profile) {
+      setLocalNotifications([]);
+      return;
+    }
+    setLocalNotifications(getLocalNotifications(profile.uid));
+    
+    return subscribeToLocalNotifications(() => {
+      setLocalNotifications(getLocalNotifications(profile.uid));
+    });
+  }, [profile]);
+
+  // Subscribe to Firestore notifications
   useEffect(() => {
     if (!profile) return;
 
@@ -37,20 +60,7 @@ export default function NotificationCenter() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
-      // Sort client-side to avoid composite index requirement
-      data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      
-      // Sound logic
-      if (!isFirstLoad.current && !isMuted) {
-        const newNotifications = data.filter(n => !prevNotificationIds.current.has(n.id) && !n.isRead);
-        if (newNotifications.length > 0 && audioRef.current) {
-          audioRef.current.play().catch(e => console.log('Audio playback blocked or failed:', e));
-        }
-      }
-
-      setNotifications(data);
-      prevNotificationIds.current = new Set(data.map(n => n.id));
-      isFirstLoad.current = false;
+      setDbNotifications(data);
       setLoading(false);
     }, (error) => {
       console.error("Notification listener error:", error);
@@ -60,13 +70,42 @@ export default function NotificationCenter() {
     return () => unsubscribe();
   }, [profile]);
 
+  // Combined notifications computed and sorted client-side
+  const notifications = useMemo(() => {
+    const combined = [...dbNotifications, ...localNotifications];
+    combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return combined;
+  }, [dbNotifications, localNotifications]);
+
+  // Sound triggering logic for new unread notifications
+  useEffect(() => {
+    if (loading) return;
+
+    if (!isFirstLoad.current && !isMuted) {
+      const newNotifications = notifications.filter(n => !prevNotificationIds.current.has(n.id) && !n.isRead);
+      if (newNotifications.length > 0 && audioRef.current) {
+        audioRef.current.play().catch(e => console.log('Audio playback blocked or failed:', e));
+      }
+    }
+
+    prevNotificationIds.current = new Set(notifications.map(n => n.id));
+    isFirstLoad.current = false;
+  }, [notifications, isMuted, loading]);
+
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
+  const isLocalNotif = (id: string) => id.startsWith('local-') || id.startsWith('deadline-');
+
   const markAsRead = async (id: string) => {
-    try {
-      await updateDoc(doc(db, 'notifications', id), { isRead: true });
-    } catch (error) {
-      console.error(error);
+    if (!profile) return;
+    if (isLocalNotif(id)) {
+      markLocalNotificationAsRead(profile.uid, id);
+    } else {
+      try {
+        await updateDoc(doc(db, 'notifications', id), { isRead: true });
+      } catch (error) {
+        console.error(error);
+      }
     }
   };
 
@@ -80,32 +119,48 @@ export default function NotificationCenter() {
   };
 
   const markAllAsRead = async () => {
+    if (!profile) return;
     try {
-      const batch = writeBatch(db);
-      notifications.filter(n => !n.isRead).forEach(n => {
-        batch.update(doc(db, 'notifications', n.id), { isRead: true });
-      });
-      await batch.commit();
+      markAllLocalNotificationsAsRead(profile.uid);
+
+      const unreadDb = dbNotifications.filter(n => !n.isRead);
+      if (unreadDb.length > 0) {
+        const batch = writeBatch(db);
+        unreadDb.forEach(n => {
+          batch.update(doc(db, 'notifications', n.id), { isRead: true });
+        });
+        await batch.commit();
+      }
     } catch (error) {
       console.error(error);
     }
   };
 
   const deleteNotification = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, 'notifications', id));
-    } catch (error) {
-      console.error(error);
+    if (!profile) return;
+    if (isLocalNotif(id)) {
+      deleteLocalNotification(profile.uid, id);
+    } else {
+      try {
+        await deleteDoc(doc(db, 'notifications', id));
+      } catch (error) {
+        console.error(error);
+      }
     }
   };
 
   const clearAll = async () => {
+    if (!profile) return;
     try {
-      const batch = writeBatch(db);
-      notifications.forEach(n => {
-        batch.delete(doc(db, 'notifications', n.id));
-      });
-      await batch.commit();
+      clearAllLocalNotifications(profile.uid);
+
+      if (dbNotifications.length > 0) {
+        const batch = writeBatch(db);
+        dbNotifications.forEach(n => {
+          batch.delete(doc(db, 'notifications', n.id));
+        });
+        await batch.commit();
+      }
     } catch (error) {
       console.error(error);
     }

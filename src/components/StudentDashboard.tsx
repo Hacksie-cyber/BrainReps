@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, Trophy, Clock, Search, ArrowRight, CheckCircle2, History, ShieldAlert, AlertTriangle, X, Zap, Brain, Database, PieChart as PieIcon } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 import { studentCache } from '../lib/studentCache';
+import { addLocalNotification, deleteLocalNotification } from '../lib/localNotifications';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Ranking Logic Component to avoid global collection listeners and handle permissions correctly
@@ -258,12 +259,10 @@ export default function StudentDashboard() {
   useEffect(() => {
     if (!profile || quizzes.length === 0) return;
 
-    const checkTodayDeadlines = async () => {
+    const checkTodayDeadlines = () => {
       try {
         const today = new Date();
         const todayStr = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
-        
-        const { doc, setDoc, deleteDoc } = await import('firebase/firestore');
 
         for (const quiz of quizzes) {
           if (!quiz.deadline) continue;
@@ -279,24 +278,22 @@ export default function StudentDashboard() {
             const hasSubmitted = submissions.some(s => s.quizId === quiz.id);
             if (!hasSubmitted) {
               try {
-                await setDoc(doc(db, 'notifications', uniqueNotifId), {
-                  userId: profile.uid,
+                addLocalNotification(profile.uid, {
+                  id: uniqueNotifId,
                   title: '⚡ Deadline Alert: Due Today!',
                   message: `The module "${quiz.title}" is due today at ${qDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Complete it now!`,
                   type: 'assignment',
-                  relatedId: quiz.id,
-                  isRead: false,
-                  createdAt: new Date().toISOString()
+                  relatedId: quiz.id
                 });
               } catch (err) {
-                console.error("Failed to write daily deadline notification:", err);
+                console.error("Failed to write daily deadline notification to local storage:", err);
               }
             } else {
               // Clean up the alert if student has successfully completed/submitted
               try {
-                await deleteDoc(doc(db, 'notifications', uniqueNotifId));
+                deleteLocalNotification(profile.uid, uniqueNotifId);
               } catch (err) {
-                console.warn("Failed to delete completed daily deadline notification:", err);
+                console.warn("Failed to delete completed daily deadline notification from local storage:", err);
               }
             }
           }
