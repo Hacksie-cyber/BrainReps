@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, Search, CheckCircle2, Clock, ArrowRight, ShieldAlert, AlertTriangle, X, Trophy, Star } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn, formatDeadline } from '../lib/utils';
+import { studentCache } from '../lib/studentCache';
 
 export default function StudentQuizzes() {
   const { profile } = useAuth();
@@ -20,38 +21,59 @@ export default function StudentQuizzes() {
 
   useEffect(() => {
     if (!profile) return;
+    let active = true;
 
     const fetchData = async () => {
       try {
-        // Query for quizzes that are global OR specifically assigned to this student
-        const q = query(
-          collection(db, 'quizzes'),
-          or(
-            where('isPublic', '==', true),
-            where('allowedStudentIds', 'array-contains', profile.uid)
-          )
-        );
+        const quizzesCacheKey = studentCache.generateKey('quizzes-list', profile.uid);
+        let qList = studentCache.get<Quiz[]>(quizzesCacheKey, 5 * 60 * 1000);
         
-        const quizSnap = await getDocs(q);
-        const qList = quizSnap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as Quiz))
-          .filter(quiz => !quiz.isHidden) // Secondary UI safety filter
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setQuizzes(qList);
+        if (!qList) {
+          // Query for quizzes that are global OR specifically assigned to this student
+          const q = query(
+            collection(db, 'quizzes'),
+            or(
+              where('isPublic', '==', true),
+              where('allowedStudentIds', 'array-contains', profile.uid)
+            )
+          );
+          
+          const quizSnap = await getDocs(q);
+          qList = quizSnap.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as Quiz))
+            .filter(quiz => !quiz.isHidden) // Secondary UI safety filter
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          
+          studentCache.set(quizzesCacheKey, qList);
+        }
+        
+        if (active) setQuizzes(qList);
 
-        const subSnap = await getDocs(query(
-          collection(db, 'submissions'),
-          where('studentId', '==', profile.uid)
-        ));
-        setSubmissions(subSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission)));
+        const subsCacheKey = studentCache.generateKey('submissions-list', profile.uid);
+        let sList = studentCache.get<QuizSubmission[]>(subsCacheKey, 2 * 60 * 1000);
+
+        if (!sList) {
+          const subSnap = await getDocs(query(
+            collection(db, 'submissions'),
+            where('studentId', '==', profile.uid)
+          ));
+          sList = subSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission));
+          studentCache.set(subsCacheKey, sList);
+        }
+        
+        if (active) setSubmissions(sList);
       } catch (error) {
         console.error(error);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     fetchData();
+
+    return () => {
+      active = false;
+    };
   }, [profile]);
 
   const [topAchievers, setTopAchievers] = useState<Record<string, { name: string, score: number, total: number }>>({});
@@ -59,9 +81,18 @@ export default function StudentQuizzes() {
 
   useEffect(() => {
     if (!profile || quizzes.length === 0) return;
+    let active = true;
 
     const fetchTopAchievers = async () => {
-      setLoadingTop(true);
+      const topAchieversCacheKey = studentCache.generateKey('top-achievers-quizzes', profile.uid);
+      const cachedAchievers = studentCache.get<Record<string, { name: string; score: number; total: number }>>(topAchieversCacheKey, 5 * 60 * 1000);
+      
+      if (cachedAchievers) {
+        if (active) setTopAchievers(cachedAchievers);
+        return;
+      }
+
+      if (active) setLoadingTop(true);
       const achievers: Record<string, any> = {};
       
       try {
@@ -97,15 +128,23 @@ export default function StudentQuizzes() {
         results.forEach(res => {
           if (res) achievers[res.quizId] = res.data;
         });
-        setTopAchievers(achievers);
+        
+        studentCache.set(topAchieversCacheKey, achievers);
+        if (active) {
+          setTopAchievers(achievers);
+        }
       } catch (err) {
         console.error("Global top achievers sync failed:", err);
       } finally {
-        setLoadingTop(false);
+        if (active) setLoadingTop(false);
       }
     };
 
     fetchTopAchievers();
+
+    return () => {
+      active = false;
+    };
   }, [profile, quizzes]);
 
   const filteredQuizzes = quizzes.filter(quiz => {

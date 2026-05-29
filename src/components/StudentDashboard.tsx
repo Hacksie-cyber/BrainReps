@@ -7,52 +7,76 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, Trophy, Clock, Search, ArrowRight, CheckCircle2, History, ShieldAlert, AlertTriangle, X, Zap, Brain, Database } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
+import { studentCache } from '../lib/studentCache';
 
 // Ranking Logic Component to avoid global collection listeners and handle permissions correctly
 function QuizRankings({ quizId, currentStudentId }: { quizId: string, currentStudentId: string }) {
   const [stats, setStats] = useState<{ top1: QuizSubmission | null, myRank: number, total: number }>({ top1: null, myRank: 0, total: 0 });
 
   useEffect(() => {
-    const q = query(
-      collection(db, 'submissions'),
-      where('quizId', '==', quizId),
-      where('status', '==', 'completed')
-    );
+    let active = true;
+    const cacheKey = studentCache.generateKey('quiz-rankings', quizId, currentStudentId);
+    
+    // Check if we have a fresh cache entry (TTL: 3 minutes)
+    const cachedData = studentCache.get<{ top1: QuizSubmission | null; myRank: number; total: number }>(cacheKey, 3 * 60 * 1000);
+    if (cachedData) {
+      setStats(cachedData);
+      return;
+    }
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const allSubs = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
-        .filter(s => {
-          const role = (s.studentRole || 'student').toLowerCase();
-          return role !== 'teacher' && role !== 'admin' && role !== 'educator' && role !== 'faculty';
+    const fetchRankings = async () => {
+      try {
+        const q = query(
+          collection(db, 'submissions'),
+          where('quizId', '==', quizId),
+          where('status', '==', 'completed')
+        );
+        const snapshot = await getDocs(q);
+        if (!active) return;
+
+        const allSubs = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
+          .filter(s => {
+            const role = (s.studentRole || 'student').toLowerCase();
+            return role !== 'teacher' && role !== 'admin' && role !== 'educator' && role !== 'faculty';
+          });
+        
+        const latestSubsMap = new Map<string, QuizSubmission>();
+        allSubs.forEach(s => {
+          const existing = latestSubsMap.get(s.studentId);
+          if (!existing || s.score > existing.score) {
+            latestSubsMap.set(s.studentId, s);
+          }
         });
-      
-      const latestSubsMap = new Map<string, QuizSubmission>();
-      allSubs.forEach(s => {
-        const existing = latestSubsMap.get(s.studentId);
-        if (!existing || s.score > existing.score) {
-          latestSubsMap.set(s.studentId, s);
+        
+        const sortedSubs = Array.from(latestSubsMap.values()).sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          const timeA = a.timeTaken || 0;
+          const timeB = b.timeTaken || 0;
+          if (timeB !== timeA) return timeA - timeB;
+          return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
+        });
+
+        const newStats = {
+          top1: sortedSubs[0] || null,
+          myRank: sortedSubs.findIndex(s => s.studentId === currentStudentId) + 1,
+          total: sortedSubs.length
+        };
+
+        studentCache.set(cacheKey, newStats);
+        if (active) {
+          setStats(newStats);
         }
-      });
-      
-      const sortedSubs = Array.from(latestSubsMap.values()).sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        const timeA = a.timeTaken || 0;
-        const timeB = b.timeTaken || 0;
-        if (timeB !== timeA) return timeA - timeB;
-        return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
-      });
+      } catch (error: any) {
+        console.warn(`Ranking fetch failed for quiz ${quizId}:`, error.message);
+      }
+    };
 
-      setStats({
-        top1: sortedSubs[0] || null,
-        myRank: sortedSubs.findIndex(s => s.studentId === currentStudentId) + 1,
-        total: sortedSubs.length
-      });
-    }, (error) => {
-      console.warn(`Ranking sync failed for quiz ${quizId}:`, error.message);
-    });
+    fetchRankings();
 
-    return () => unsubscribe();
+    return () => {
+      active = false;
+    };
   }, [quizId, currentStudentId]);
 
   return (
@@ -100,9 +124,17 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (!profile) return;
+    let active = true;
 
-    // 1. Fetch assessments
+    // 1. Fetch assessments (cached, 5 minutes TTL)
     const fetchQuizzes = async () => {
+      const quizzesCacheKey = studentCache.generateKey('quizzes-list', profile.uid);
+      const cachedQuizzes = studentCache.get<Quiz[]>(quizzesCacheKey, 5 * 60 * 1000);
+      if (cachedQuizzes) {
+        if (active) setQuizzes(cachedQuizzes);
+        return;
+      }
+
       try {
         const q = query(
           collection(db, 'quizzes'),
@@ -116,7 +148,9 @@ export default function StudentDashboard() {
           .map(doc => ({ id: doc.id, ...doc.data() } as Quiz))
           .filter(q => !q.isHidden)
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setQuizzes(quizList);
+        
+        studentCache.set(quizzesCacheKey, quizList);
+        if (active) setQuizzes(quizList);
       } catch (error) {
         console.error("Quiz fetch failed:", error);
       }
@@ -131,19 +165,35 @@ export default function StudentDashboard() {
       const subList = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
         .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-      setSubmissions(subList);
-      setLoading(false);
+      if (active) {
+        setSubmissions(subList);
+        setLoading(false);
+      }
     }, (error) => {
       console.error("User submissions sync failed:", error);
     });
 
-    // 3. Real-time global rankings data targeting completed modules
-    const qAllSubs = query(
-      collection(db, 'submissions'),
-      where('status', '==', 'completed')
-    );
-    const unsubAllSubs = onSnapshot(qAllSubs, (snapshot) => {
+    // 3. Get global rankings data targeting completed modules (cached: 5 mins TTL)
+    const fetchGlobalRankings = async () => {
+      const globalRankCacheKey = studentCache.generateKey('global-rankings', profile.uid);
+      const cachedGlobal = studentCache.get<{ globalRank: { rank: number; total: number } | null; topAchiever: string | null }>(globalRankCacheKey, 5 * 60 * 1000);
+      
+      if (cachedGlobal) {
+        if (active) {
+          setGlobalRank(cachedGlobal.globalRank);
+          setTopAchiever(cachedGlobal.topAchiever);
+        }
+        return;
+      }
+
       try {
+        const qAllSubs = query(
+          collection(db, 'submissions'),
+          where('status', '==', 'completed')
+        );
+        const snapshot = await getDocs(qAllSubs);
+        if (!active) return;
+        
         const allSubs = snapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as QuizSubmission))
           .filter(s => {
@@ -171,25 +221,35 @@ export default function StudentDashboard() {
           return { studentId, name: studentNames.get(studentId) || "Anonymous", total };
         }).sort((a, b) => b.total - a.total);
 
+        let myRank: { rank: number; total: number } | null = null;
+        let topName: string | null = null;
+
         const myRankIndex = rankingList.findIndex(r => r.studentId === profile.uid);
         if (myRankIndex !== -1) {
-          setGlobalRank({ rank: myRankIndex + 1, total: rankingList.length });
+          myRank = { rank: myRankIndex + 1, total: rankingList.length };
         }
         if (rankingList.length > 0) {
-          setTopAchiever(`${rankingList[0].name} (${rankingList[0].total}pts)`);
+          topName = `${rankingList[0].name} (${rankingList[0].total}pts)`;
+        }
+
+        const dataToCache = { globalRank: myRank, topAchiever: topName };
+        studentCache.set(globalRankCacheKey, dataToCache);
+
+        if (active) {
+          setGlobalRank(myRank);
+          setTopAchiever(topName);
         }
       } catch (error) {
         console.warn("Global ranking calculation failed:", error);
       }
-    }, (error) => {
-      console.error("Global submissions sync failed:", error);
-    });
+    };
 
     fetchQuizzes();
+    fetchGlobalRankings();
 
     return () => {
+      active = false;
       unsubUser();
-      unsubAllSubs();
     };
   }, [profile]);
 

@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Trophy, Target, TrendingUp, Calendar, BookOpen, Shield, Zap, Award } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
+import { studentCache } from '../lib/studentCache';
 
 export default function StudentPerformance() {
   const { profile } = useAuth();
@@ -18,6 +19,7 @@ export default function StudentPerformance() {
 
   useEffect(() => {
     if (!profile) return;
+    let active = true;
 
     // Use onSnapshot for real-time updates to ensure the latest submissions appear instantly
     const q = query(
@@ -32,33 +34,48 @@ export default function StudentPerformance() {
           // Sort by submittedAt string or serverTimestamp if available
           .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
         
-        setSubmissions(subList);
+        if (active) setSubmissions(subList);
 
-        // Fetch related quizzes to show question texts and teacher names
+        // Fetch related quizzes to show question texts and teacher names (using cached lookup)
         const quizIds = Array.from(new Set(subList.map(s => s.quizId)));
-        const newQuizIds = quizIds.filter(id => !quizzes[id]);
-        
-        if (newQuizIds.length > 0) {
-          const quizMap: Record<string, Quiz> = { ...quizzes };
-          await Promise.all(newQuizIds.map(async (qId) => {
+        const quizMap: Record<string, Quiz> = { ...quizzes };
+        let updated = false;
+
+        await Promise.all(quizIds.map(async (qId) => {
+          const cacheKey = studentCache.generateKey('quiz-detail', qId);
+          let cachedQuiz = studentCache.get<Quiz>(cacheKey, 10 * 60 * 1000); // 10 minutes TTL
+          
+          if (!cachedQuiz) {
             const qSnap = await getDoc(doc(db, 'quizzes', qId));
             if (qSnap.exists()) {
-              quizMap[qId] = { id: qSnap.id, ...qSnap.data() } as Quiz;
+              cachedQuiz = { id: qSnap.id, ...qSnap.data() } as Quiz;
+              studentCache.set(cacheKey, cachedQuiz);
             }
-          }));
+          }
+
+          if (cachedQuiz && !quizMap[qId]) {
+            quizMap[qId] = cachedQuiz;
+            updated = true;
+          }
+        }));
+        
+        if (updated && active) {
           setQuizzes(quizMap);
         }
       } catch (error) {
         console.error("Error processing submissions:", error);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }, (error) => {
       console.error("Listener failed:", error);
-      setLoading(false);
+      if (active) setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, [profile?.uid]);
 
   if (loading) return <div className="flex h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" /></div>;

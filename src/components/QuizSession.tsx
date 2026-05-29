@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
 import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAlert, AlertTriangle, Trophy, Medal, Star } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
+import { studentCache } from '../lib/studentCache';
 
 export default function QuizSession() {
   const { id } = useParams();
@@ -487,6 +488,7 @@ export default function QuizSession() {
           console.error("DEBUG: Firebase Permission Error during rank calculation. Check rules for 'submissions' collection list/read access.");
         }
       }
+      studentCache.invalidateStudentCache();
       setFinished(true);
       finishedRef.current = true;
     } catch (error: any) {
