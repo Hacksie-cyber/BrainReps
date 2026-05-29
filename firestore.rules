@@ -186,11 +186,23 @@ service cloud.firestore {
                       incoming().count <= 20;
     }
 
+    function isValidNotification(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.message is string && data.message.size() <= 1000 &&
+             data.get('type', '') is string && data.get('type', '').size() <= 50 &&
+             data.get('relatedId', '') is string && data.get('relatedId', '').size() <= 128 &&
+             data.isRead is bool &&
+             data.createdAt is string;
+    }
+
     match /notifications/{notificationId} {
       allow get: if isSignedIn() && (resource.data.get('userId', '') == request.auth.uid || isSuperAdmin());
       allow list: if isSignedIn() && (resource.data.get('userId', '') == request.auth.uid || isSuperAdmin());
       
-      allow create: if isTeacher() || isSuperAdmin();
+      allow create: if isSignedIn() && isNotBanned() && isValidNotification(incoming()) && (
+        isTeacher() || isSuperAdmin() || incoming().userId == request.auth.uid
+      );
       allow update: if isSignedIn() && isNotBanned() && existing().get('userId', '') == request.auth.uid && 
                    incoming().diff(existing()).affectedKeys().hasOnly(['isRead']);
       allow delete: if isSignedIn() && isNotBanned() && existing().get('userId', '') == request.auth.uid;

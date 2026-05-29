@@ -401,7 +401,7 @@ export default function StudentQuizzes() {
                           onClick={() => setSelectedQuizId(quiz.id)}
                           className="flex items-center gap-2 rounded-xl bg-indigo-600 dark:bg-indigo-700 px-6 py-3 text-[11px] font-bold uppercase tracking-widest text-white shadow-[0_10px_20px_rgba(79,70,229,0.15)] hover:shadow-[0_15px_30px_rgba(79,70,229,0.3)] hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all active:scale-95 group/btn"
                         >
-                          {isCompleted ? 'Retry Attempt' : 'Launch Module'}
+                          {isCompleted ? 'Retake Test' : 'Take Test'}
                           <ArrowRight className="h-4 w-4 transform group-hover/btn:translate-x-0.5 transition-transform" />
                         </button>
                       )}
