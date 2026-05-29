@@ -5,9 +5,10 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, Trophy, Clock, Search, ArrowRight, CheckCircle2, History, ShieldAlert, AlertTriangle, X, Zap, Brain, Database } from 'lucide-react';
+import { BookOpen, Trophy, Clock, Search, ArrowRight, CheckCircle2, History, ShieldAlert, AlertTriangle, X, Zap, Brain, Database, PieChart as PieIcon } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 import { studentCache } from '../lib/studentCache';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Ranking Logic Component to avoid global collection listeners and handle permissions correctly
 function QuizRankings({ quizId, currentStudentId }: { quizId: string, currentStudentId: string }) {
@@ -297,6 +298,42 @@ export default function StudentDashboard() {
       : 0
   };
 
+  // Calculate performance breakdown for the donut chart based on all assigned quizzes
+  const masteredCount = quizzes.filter(q => {
+    const quizSubmissions = submissions.filter(s => s.quizId === q.id);
+    if (quizSubmissions.length === 0) return false;
+    const bestScorePercent = Math.max(...quizSubmissions.map(s => (s.score / s.totalPoints) * 100));
+    return bestScorePercent >= 75;
+  }).length;
+
+  const passedCount = quizzes.filter(q => {
+    const quizSubmissions = submissions.filter(s => s.quizId === q.id);
+    if (quizSubmissions.length === 0) return false;
+    const bestScorePercent = Math.max(...quizSubmissions.map(s => (s.score / s.totalPoints) * 100));
+    return bestScorePercent >= 50 && bestScorePercent < 75;
+  }).length;
+
+  const reviewCount = quizzes.filter(q => {
+    const quizSubmissions = submissions.filter(s => s.quizId === q.id);
+    if (quizSubmissions.length === 0) return false;
+    const bestScorePercent = Math.max(...quizSubmissions.map(s => (s.score / s.totalPoints) * 100));
+    return bestScorePercent < 50;
+  }).length;
+
+  const unattemptedCount = quizzes.filter(q => {
+    const quizSubmissions = submissions.filter(s => s.quizId === q.id);
+    return quizSubmissions.length === 0;
+  }).length;
+
+  const totalInBreakdown = masteredCount + passedCount + reviewCount + unattemptedCount;
+
+  const donutData = [
+    { name: 'Mastered (≥75%)', value: masteredCount, color: '#10B981', hoverColor: '#059669', percentage: totalInBreakdown > 0 ? Math.round((masteredCount / totalInBreakdown) * 100) : 0 },
+    { name: 'Passed (50-74%)', value: passedCount, color: '#6366F1', hoverColor: '#4F46E5', percentage: totalInBreakdown > 0 ? Math.round((passedCount / totalInBreakdown) * 100) : 0 },
+    { name: 'Needs Review (<50%)', value: reviewCount, color: '#EF4444', hoverColor: '#DC2626', percentage: totalInBreakdown > 0 ? Math.round((reviewCount / totalInBreakdown) * 100) : 0 },
+    { name: 'Unattempted', value: unattemptedCount, color: '#64748B', hoverColor: '#475569', percentage: totalInBreakdown > 0 ? Math.round((unattemptedCount / totalInBreakdown) * 100) : 0 },
+  ];
+
   if (loading) {
     return (
       <div className="flex h-[80vh] flex-col items-center justify-center text-center p-4">
@@ -439,6 +476,113 @@ export default function StudentDashboard() {
           <div className="flex items-baseline gap-2">
             <h3 className="text-4xl font-bold font-display text-slate-900 dark:text-slate-50 leading-none">{stats.topScore}%</h3>
           </div>
+        </div>
+      </section>
+
+      {/* Curriculum Performance Breakdown (Donut Graph Section) */}
+      <section className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)]">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+          
+          {/* Left Text Detail */}
+          <div className="flex-1 space-y-4 w-full text-center lg:text-left">
+            <div className="flex items-center justify-center lg:justify-start gap-3">
+              <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/30">
+                <PieIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight">Curriculum Mastery Breakdown</h3>
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium tracking-tight">Real-time completion distribution across your assigned modules</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium italic max-w-lg mx-auto lg:mx-0">
+              Your overall progress indicates that you have successfully mastered <span className="text-emerald-500 font-bold">{masteredCount}</span> of your <span className="text-slate-700 dark:text-slate-200 font-bold">{quizzes.length}</span> assigned subjects. Complete outstanding unattempted assignments to improve your institutional standings.
+            </p>
+
+            {/* Custom Interactive Legend Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 pt-2">
+              {donutData.map((item) => (
+                <div 
+                  key={item.name} 
+                  className="p-3 rounded-xl border border-slate-100/40 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-800/20 text-left transition-all hover:bg-slate-50 dark:hover:bg-slate-800/40 relative overflow-hidden group/item"
+                >
+                  <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: item.color }} />
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{item.name.split(' (')[0]}</p>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="text-lg font-black text-slate-700 dark:text-slate-200">{item.value} <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">mod</span></span>
+                    <span className="text-xs font-black" style={{ color: item.color }}>{item.percentage}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right Visual Donut Chart */}
+          <div className="w-full lg:w-[320px] shrink-0 flex flex-col items-center justify-center relative">
+            <div className="w-[280px] h-[220px] relative flex items-center justify-center">
+              
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Tooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-slate-900 dark:bg-slate-950 text-white p-3 rounded-xl shadow-xl text-center border border-slate-800/50 text-xs font-bold leading-none space-y-1.5 animate-in zoom-in-95 duration-100">
+                            <p className="uppercase tracking-wide text-[10px] text-slate-400">{data.name}</p>
+                            <p className="text-sm font-black text-white">{data.value} {data.value === 1 ? 'Module' : 'Modules'}</p>
+                            <p className="text-[10px] text-indigo-300 font-medium">({data.percentage}% of overall)</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Pie
+                    data={donutData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={65}
+                    outerRadius={88}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {donutData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.color} 
+                        className="transition-all duration-300 hover:opacity-90 outline-none cursor-pointer"
+                      />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+
+              {/* Absolute Central Counter inside the Donut hole */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-3xl font-black font-display tracking-tight text-slate-800 dark:text-slate-50 leading-none">
+                  {masteredCount}<span className="text-sm font-bold text-slate-400 dark:text-slate-600"> / {totalInBreakdown}</span>
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mt-1">
+                  Mastered
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Status Bar */}
+            <div className="w-full flex justify-center gap-4 text-[10px] font-extrabold uppercase tracking-wide text-slate-400 mt-2">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                Done
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#64748B]" />
+                Incomplete
+              </div>
+            </div>
+
+          </div>
+
         </div>
       </section>
 
