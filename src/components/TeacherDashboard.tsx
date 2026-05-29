@@ -273,9 +273,9 @@ export default function TeacherDashboard() {
         </div>
       </section>
 
-      <div className="grid grid-cols-12 gap-8 min-h-0">
+      <div className="flex flex-col gap-8 min-h-0">
         {/* Main Content Split */}
-        <div className="col-span-12 lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col shadow-sm transition-all overflow-hidden lg:h-[700px]">
+        <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col shadow-sm transition-all overflow-hidden">
           <div className="px-8 py-6 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between bg-slate-50/10 backdrop-blur-sm">
             <h2 className="font-bold font-display text-slate-900 dark:text-slate-50 flex items-center gap-3">
               <BookCheck className="h-5 w-5 text-indigo-500" />
@@ -364,7 +364,7 @@ export default function TeacherDashboard() {
                            </div>
                         </td>
                         <td className="px-8 py-7 text-right pr-12">
-                           <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                           <div className="flex items-center justify-end gap-3 transition-opacity">
                              <button 
                                onClick={(e) => {
                                  e.stopPropagation();
@@ -411,7 +411,7 @@ export default function TeacherDashboard() {
         </div>
 
         {/* Performance Trends Sidebar */}
-        <div className="col-span-12 lg:col-span-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col shadow-sm transition-all overflow-hidden lg:h-[700px]">
+        <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col shadow-sm transition-all overflow-hidden">
           <div className="px-8 py-6 border-b border-slate-50 dark:border-slate-800 bg-slate-50/10 backdrop-blur-sm">
             <h2 className="font-bold font-display text-slate-900 dark:text-slate-50 flex items-center gap-3">
               <BarChart3 className="h-5 w-5 text-indigo-500" />
