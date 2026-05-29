@@ -14,6 +14,7 @@ export default function StudentPerformance() {
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
   const [quizzes, setQuizzes] = useState<Record<string, Quiz>>({});
   const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(5);
 
   const [showRestrictionModal, setShowRestrictionModal] = useState(false);
 
@@ -196,7 +197,7 @@ export default function StudentPerformance() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                  {submissions.map((sub) => (
+                  {submissions.slice(0, visibleCount).map((sub) => (
                     <tr 
                       key={sub.id} 
                       className="group cursor-pointer hover:bg-slate-50/30 dark:hover:bg-slate-800/20 transition-colors"
@@ -269,7 +270,7 @@ export default function StudentPerformance() {
 
            {/* Mobile view */}
            <div className="md:hidden divide-y divide-slate-50 dark:divide-slate-800/50">
-              {submissions.map((sub) => (
+              {submissions.slice(0, visibleCount).map((sub) => (
                 <button
                   key={sub.id}
                   onClick={() => setShowRestrictionModal(true)}
@@ -305,6 +306,18 @@ export default function StudentPerformance() {
                 </button>
             ))}
            </div>
+
+           {submissions.length > visibleCount && (
+             <div className="p-4 bg-slate-50/50 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800/50 text-center">
+               <button
+                 id="btn-show-more-activities"
+                 onClick={() => setVisibleCount(prev => prev + 5)}
+                 className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-500 dark:hover:bg-indigo-600 rounded-xl font-bold text-xs tracking-tight transition-all active:scale-95 shadow-md shadow-indigo-600/10 hover:shadow-lg hover:shadow-indigo-600/20"
+               >
+                 Show More Activities
+               </button>
+             </div>
+           )}
         </div>
       </section>
 
