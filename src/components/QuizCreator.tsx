@@ -303,32 +303,32 @@ export default function QuizCreator() {
       </header>
 
       <section className="space-y-8">
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-8 shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-200 dark:border-slate-800/80 space-y-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Questionnaire Heading</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quiz / Module Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Economics Mid-Term Phase 1"
-              className="w-full text-2xl font-bold tracking-tight border-b-2 border-slate-100 dark:border-slate-800 bg-transparent text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none py-2 transition-all placeholder:text-slate-200 dark:placeholder:text-slate-700"
+              placeholder="e.g. Economics Mid-Term Quiz"
+              className="w-full text-lg font-semibold border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-950/40 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 py-3 px-4 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Executive Summary</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Description & Instructions for Students</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Provide a high-level overview of the assessment goals..."
-              className="w-full text-sm text-slate-600 dark:text-slate-400 border-none focus:ring-0 p-0 resize-none h-16 bg-transparent placeholder:text-slate-200 dark:placeholder:text-slate-700 font-medium leading-relaxed italic"
+              placeholder="Provide clean instructions, topics covered, or goals of this module..."
+              className="w-full text-sm text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-950/40 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 py-2.5 px-4 resize-none h-20 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-medium leading-normal"
             />
           </div>
 
-          <div className="pt-6 border-t border-slate-50 dark:border-slate-800 space-y-6">
+          <div className="pt-6 border-t border-slate-150 dark:border-slate-800 space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-indigo-500" />
-                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Strategic Access Control</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Student Access Control</label>
               </div>
               <div className="flex items-center gap-3">
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -339,16 +339,16 @@ export default function QuizCreator() {
                     className="sr-only peer"
                   />
                   <div className="w-9 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
-                  <span className="ms-3 text-[8px] font-black uppercase tracking-tighter text-slate-500 dark:text-slate-400">Global Access</span>
+                  <span className="ms-3 text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">Publicly Available</span>
                 </label>
-                <div className="h-4 w-[1px] bg-slate-100 dark:bg-slate-800 mx-1" />
+                <div className="h-4 w-[1px] bg-slate-150 dark:bg-slate-800 mx-1" />
                 {isPublic ? (
-                  <span className="text-[8px] font-black uppercase bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded border border-emerald-100 dark:border-emerald-800/50 flex items-center gap-1">
-                    <ShieldCheck className="w-2 h-2" /> Global
+                  <span className="text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-100 dark:border-emerald-950/30 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" /> Public
                   </span>
                 ) : (
-                  <span className="text-[8px] font-black uppercase bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded border border-amber-100 dark:border-amber-800/50 flex items-center gap-1">
-                    <ShieldCheck className="w-2 h-2" /> {allowedStudentIds.length} Authorized
+                  <span className="text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 px-2.5 py-1 rounded-lg border border-indigo-100 dark:border-indigo-950/40 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" /> {allowedStudentIds.length} Selected
                   </span>
                 )}
               </div>
@@ -364,24 +364,24 @@ export default function QuizCreator() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative flex-1 group">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
                       <input
                         type="text"
-                        placeholder="Search and authorize specific students..."
+                        placeholder="Search student names to authorize specific access..."
                         value={studentSearch}
                         onChange={(e) => setStudentSearch(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500/20 focus:outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 italic"
+                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-350 focus:bg-white dark:focus:bg-slate-900 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 focus:outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-550"
                       />
                     </div>
                     {studentSearch && students.filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase())).length > 0 && (
                       <button
                         onClick={() => {
                           const filteredUids = students
-                            .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()))
-                            .map(s => s.uid);
+                             .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()))
+                             .map(s => s.uid);
                           setAllowedStudentIds(prev => Array.from(new Set([...prev, ...filteredUids])));
                         }}
-                        className="px-4 py-2.5 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl text-[10px] font-black uppercase hover:bg-indigo-100 transition-all flex items-center gap-2"
+                        className="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900 rounded-xl text-[10px] font-black uppercase hover:bg-indigo-100 transition-all flex items-center gap-2"
                       >
                         <UserPlus className="w-3.5 h-3.5" /> Authorize Results
                       </button>
@@ -398,7 +398,7 @@ export default function QuizCreator() {
                           <motion.div
                             key={uid}
                             layout
-                            className="flex items-center gap-2 bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-lg border border-indigo-100 text-[10px] font-black group"
+                            className="flex items-center gap-2 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 px-3 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-900/40 text-xs font-semibold shadow-sm group"
                           >
                             {student.name}
                             <button
@@ -412,7 +412,7 @@ export default function QuizCreator() {
                       })}
                       <button 
                         onClick={() => setAllowedStudentIds([])}
-                        className="text-[10px] font-bold text-slate-400 hover:text-red-500 px-2 py-1 transition-colors"
+                        className="text-xs font-bold text-slate-400 hover:text-red-500 px-2 py-1 transition-colors"
                       >
                         Clear All
                       </button>
@@ -439,7 +439,7 @@ export default function QuizCreator() {
                               "flex items-center justify-between p-3 rounded-xl border transition-all text-left group",
                               isSelected 
                                 ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 shadow-sm" 
-                                : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700"
+                                : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-slate-250 dark:hover:border-slate-700"
                             )}
                           >
                             <div className="flex items-center gap-3">
@@ -481,25 +481,32 @@ export default function QuizCreator() {
             </AnimatePresence>
             
             {isPublic ? (
-               <p className="text-[9px] font-medium text-emerald-600 italic bg-emerald-50/50 p-2 rounded-lg border border-emerald-100/50">
-                  Visible to the entire institution: All students are authorized to Launch this module.
-               </p>
+              <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 italic bg-emerald-50/30 dark:bg-emerald-950/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+                ✓ Visible to all students. Everyone in the cohort is authorized to take this module.
+              </p>
             ) : (
-               <p className="text-[9px] font-medium text-slate-400 italic">
-                  Private assessment: Only specifically authorized students above can view and Launch this module.
-               </p>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 italic bg-slate-50/50 dark:bg-slate-800/20 p-3 rounded-xl border border-slate-200/50 dark:border-slate-850">
+                🔒 Private Assessment. Only specifically authorized students above will be eligible.
+              </p>
             )}
           </div>
 
-          <div className="pt-6 border-t border-slate-50 dark:border-slate-800">
-            <div className="space-y-4">
-               <div className="flex items-center gap-2">
-                  <Settings className="w-4 h-4 text-indigo-500" />
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Retake Configuration</label>
-               </div>
-               
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+          <div className="pt-8 border-t border-slate-150 dark:border-slate-800">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-6 flex items-center gap-2">
+              <Settings className="w-4 h-4 text-indigo-500" />
+              Settings & Assessment Policies
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Attempts Card */}
+              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800/60 flex flex-col justify-between space-y-4">
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Attempt Limit</h4>
+                  <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 leading-normal">Set maximum retakes allowed for standard takers.</p>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2.5">
                     <input
                       type="number"
                       min="1"
@@ -507,73 +514,66 @@ export default function QuizCreator() {
                       disabled={isUnlimited}
                       value={retakeLimit}
                       onChange={(e) => setRetakeLimit(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-16 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                      className="w-16 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50"
                     />
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">Standard Attempts</span>
-                  </div>
-
-                  <div className="flex items-center gap-3 px-4">
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={isUnlimited}
-                        onChange={(e) => setIsUnlimited(e.target.checked)}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-slate-200 dark:bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                      <span className="ms-3 text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">Unlimited Retakes</span>
-                    </label>
-                  </div>
-               </div>
-
-               <div className="pt-4 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-indigo-500" />
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Submission Deadline</label>
+                    <span className="text-xs font-semibold text-slate-550 dark:text-slate-400">Attempts</span>
                   </div>
                   
-                  <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 max-w-[280px]">
+                  <label className="relative inline-flex items-center cursor-pointer">
                     <input
-                      type="datetime-local"
-                      value={deadline}
-                      onChange={(e) => setDeadline(e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500 transition-all font-sans"
+                      type="checkbox"
+                      checked={isUnlimited}
+                      onChange={(e) => setIsUnlimited(e.target.checked)}
+                      className="sr-only peer"
                     />
-                  </div>
-                  <p className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter italic">
-                    Assessment lockout triggers automatically after this timestamp. Leave empty for continuous access.
-                  </p>
-               </div>
+                    <div className="w-9 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                    <span className="ms-2.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Unlimited Attempts</span>
+                  </label>
+                </div>
+              </div>
 
-               <div className="pt-4 space-y-4">
-                 <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-indigo-500" />
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Strategic Time Limit</label>
-                 </div>
-                 
-                 <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 max-w-[280px]">
-                    <input
-                      type="number"
-                      min="0"
-                      max="480"
-                      value={timeLimit}
-                      onChange={(e) => setTimeLimit(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-16 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">Minutes Duration</span>
-                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">Set to 0 for unlimited time</span>
-                    </div>
+              {/* Deadline Card */}
+              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800/60 flex flex-col justify-between space-y-4">
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Due Date & Deadline</h4>
+                  <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 leading-normal">Assessment lockout triggers automatically after this timestamp.</p>
+                </div>
+                
+                <input
+                  type="datetime-local"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-sans"
+                />
+              </div>
+
+              {/* Time Limit Card */}
+              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800/60 flex flex-col justify-between space-y-4">
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Time Limit Duration</h4>
+                  <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 leading-normal">Set maximum duration allowed per run. Set to 0 for unlimited time.</p>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="0"
+                    max="480"
+                    value={timeLimit}
+                    onChange={(e) => setTimeLimit(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-18 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm font-black text-slate-750 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-350">{timeLimit > 0 ? `${timeLimit} Minutes limit` : 'No time limit'}</span>
+                    <span className="text-[10px] text-slate-450 dark:text-slate-500">Enable quiz duration countdown</span>
                   </div>
-               </div>
-               <p className="text-[10px] font-medium text-slate-400 italic">
-                 Note: Educators always retain absolute review privileges with unlimited attempts.
-               </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           <AnimatePresence>
             {questions.map((q, index) => (
               <motion.div
@@ -581,129 +581,176 @@ export default function QuizCreator() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.98 }}
-                className="group relative bg-white dark:bg-slate-900 rounded-xl p-8 shadow-sm border border-slate-200 dark:border-slate-800"
+                className="group relative bg-white dark:bg-slate-900 rounded-2xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-800/80 transition-all hover:border-slate-300 dark:hover:border-slate-700"
               >
-                <div className="absolute left-6 top-8 text-slate-200 dark:text-slate-800 group-hover:text-indigo-200 dark:group-hover:text-indigo-900/50 transition-colors pointer-events-none">
-                  <div className="w-8 h-8 rounded bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 dark:text-slate-500">
-                    {index + 1}
+                {/* Clean Header Row for the Question Card */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
+                  <div className="flex items-center gap-3">
+                    <span className="h-8 w-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm font-black shadow-inner">
+                      {index + 1}
+                    </span>
+                    <span className="px-3 py-1 bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-slate-150 dark:border-slate-800">
+                      {q.type.replace('-', ' ')}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 hidden md:inline">({q.id.split('-')[0]})</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Question Weight:</span>
+                      <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 px-2 py-1 rounded-xl">
+                        <input
+                          type="number"
+                          min="1"
+                          value={q.points}
+                          onChange={(e) => updateQuestion(q.id, { points: Math.max(1, parseInt(e.target.value) || 1) })}
+                          className="w-10 h-6 bg-transparent text-center font-black text-slate-800 dark:text-slate-200 text-xs focus:outline-none transition-all"
+                        />
+                        <span className="text-[10px] font-bold text-slate-405 dark:text-slate-500 uppercase">Pts</span>
+                      </div>
+                    </div>
+                    
+                    <div className="h-4 w-[1px] bg-slate-150 dark:bg-slate-800 hidden sm:block" />
+                    
+                    <button 
+                      onClick={() => removeQuestion(q.id)} 
+                      className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all"
+                      title="Remove Question"
+                    >
+                      <Trash2 className="h-4.5 w-4.5" />
+                    </button>
                   </div>
                 </div>
 
-                <div className="ml-12 space-y-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                         <span className="px-2 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded border border-slate-100 dark:border-slate-700 text-[9px] font-black uppercase tracking-tighter">
-                            {q.type.replace('-', ' ')}
-                         </span>
-                         <span className="text-[10px] font-bold text-slate-300 dark:text-slate-600">ID: {q.id.split('-')[0]}</span>
-                      </div>
-                      <input
-                        type="text"
-                        value={q.question}
-                        onChange={(e) => updateQuestion(q.id, { question: e.target.value })}
-                        placeholder="Enter strategic question content..."
-                        className="w-full text-lg font-bold border-none focus:ring-0 p-0 bg-transparent text-slate-800 dark:text-white placeholder:text-slate-200 dark:placeholder:text-slate-700"
-                      />
-                    </div>
-                    <button onClick={() => removeQuestion(q.id)} className="p-2 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                <div className="space-y-6">
+                  {/* Question Prompt Input */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Question Text</label>
+                    <input
+                      type="text"
+                      value={q.question}
+                      onChange={(e) => updateQuestion(q.id, { question: e.target.value })}
+                      placeholder="e.g. Which of the following is a key driver of inflation?"
+                      className="w-full text-base font-semibold border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 focus:bg-white dark:bg-slate-950/45 dark:focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 px-4 py-3 text-slate-900 dark:text-white transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                    />
                   </div>
 
+                  {/* Multiple Choice Options */}
                   {q.type === 'multiple-choice' && q.options && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {q.options.map((opt, optIdx) => (
-                        <div key={optIdx} className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700 focus-within:border-indigo-200 dark:focus-within:border-indigo-800 transition-all">
-                          <button
-                            onClick={() => updateQuestion(q.id, { correctAnswer: optIdx.toString() })}
-                            className={`h-5 w-5 flex-shrink-0 rounded-full border-2 transition-all flex items-center justify-center ${
-                              q.correctAnswer === optIdx.toString() ? 'bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow-lg shadow-indigo-600/20' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900'
-                            }`}
+                    <div className="space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Options (Select the correct radio option)</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                        {q.options.map((opt, optIdx) => (
+                          <div 
+                            key={optIdx} 
+                            className={cn(
+                              "flex items-center gap-3 p-3 rounded-xl border transition-all duration-200",
+                              q.correctAnswer === optIdx.toString()
+                                ? "bg-indigo-50/40 dark:bg-indigo-950/10 border-indigo-200 dark:border-indigo-900/50 shadow-sm"
+                                : "bg-slate-50/40 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800/80 focus-within:border-slate-350 dark:focus-within:border-slate-600"
+                            )}
                           >
-                            {q.correctAnswer === optIdx.toString() && <CheckCircle2 className="h-3 w-3" />}
-                          </button>
-                          <input
-                            type="text"
-                            value={opt}
-                            onChange={(e) => updateOption(q.id, optIdx, e.target.value)}
-                            placeholder={`Variable Option ${optIdx + 1}`}
-                            className="w-full bg-transparent border-none focus:ring-0 p-0 text-xs font-bold text-slate-600 dark:text-slate-400 placeholder:text-slate-300 dark:placeholder:text-slate-700 italic"
-                          />
-                        </div>
-                      ))}
+                            <button
+                              type="button"
+                              onClick={() => updateQuestion(q.id, { correctAnswer: optIdx.toString() })}
+                              className={cn(
+                                "h-5 w-5 flex-shrink-0 rounded-full border-2 transition-all flex items-center justify-center",
+                                q.correctAnswer === optIdx.toString() 
+                                  ? 'bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow shadow-indigo-600/30' 
+                                  : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900'
+                              )}
+                              title="Set as Correct Answer"
+                            >
+                              {q.correctAnswer === optIdx.toString() && <CheckCircle2 className="h-3.5 w-3.5" />}
+                            </button>
+                            <input
+                              type="text"
+                              value={opt}
+                              onChange={(e) => updateOption(q.id, optIdx, e.target.value)}
+                              placeholder={`Option ${optIdx + 1}`}
+                              className="w-full bg-transparent border-none focus:ring-0 p-0 text-xs font-semibold text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
+                  {/* True / False Statement Options */}
                   {q.type === 'true-false' && (
-                    <div className="flex gap-3">
-                      {['true', 'false'].map((val) => (
-                        <button
-                          key={val}
-                          onClick={() => updateQuestion(q.id, { correctAnswer: val })}
-                          className={`flex-1 rounded-lg border-2 py-3 text-xs font-black uppercase tracking-wider transition-all ${
-                            q.correctAnswer === val ? 'bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow-lg shadow-indigo-600/20' : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700'
-                          }`}
-                        >
-                          {val}
-                        </button>
-                      ))}
+                    <div className="space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Correct Answer Choice</p>
+                      <div className="flex gap-3">
+                        {['true', 'false'].map((val) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => updateQuestion(q.id, { correctAnswer: val })}
+                            className={cn(
+                              "flex-1 rounded-xl border-2 py-3 text-xs font-bold uppercase tracking-wider transition-all",
+                              q.correctAnswer === val 
+                                ? 'bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow-md' 
+                                : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+                            )}
+                          >
+                            {val}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
 
+                  {/* Short Answer (Assertion Keywords) */}
                   {q.type === 'short-answer' && (
                     <div className="space-y-3">
-                       <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 font-mono">Assertion Keywords</label>
-                          <span className="text-[9px] font-bold text-indigo-500 dark:text-indigo-400 italic">Partial credit enabled: Separate multiple keywords with commas</span>
-                       </div>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Answer Keywords / Keyphrases</label>
+                        <span className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400 italic">Separate alternative keywords with commas (for automatic scanner)</span>
+                      </div>
                       <input
                         type="text"
                         value={q.correctAnswer}
                         onChange={(e) => updateQuestion(q.id, { correctAnswer: e.target.value })}
-                        placeholder="Keyword A, Keyword B, Keyword C..."
-                        className="w-full rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-200 dark:focus:border-indigo-800 transition-all focus:outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                        placeholder="e.g. GDP, gross domestic product, economic outputs"
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 px-4 py-3 text-xs font-bold text-slate-750 dark:text-slate-300 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400"
                       />
                     </div>
                   )}
-
-                  <div className="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-800">
-                    <div className="flex items-center gap-2">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Credit Value:</label>
-                       <input
-                        type="number"
-                        min="1"
-                        value={q.points}
-                        onChange={(e) => updateQuestion(q.id, { points: parseInt(e.target.value) || 1 })}
-                        className="w-12 rounded bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-1 py-0.5 text-center font-bold text-slate-700 dark:text-slate-200 text-xs focus:outline-none focus:border-indigo-200 dark:focus:border-indigo-800"
-                      />
-                    </div>
-                  </div>
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 py-10 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/50">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 dark:text-slate-600 w-full text-center mb-2">Append Component</span>
-            <button
-              onClick={() => addQuestion('multiple-choice')}
-              className="flex items-center gap-2 px-5 py-2 bg-white dark:bg-slate-900 rounded-lg text-xs font-bold shadow-sm border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-300 dark:hover:border-indigo-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" /> Multiple Choice
-            </button>
-            <button
-              onClick={() => addQuestion('true-false')}
-              className="flex items-center gap-2 px-5 py-2 bg-white dark:bg-slate-900 rounded-lg text-xs font-bold shadow-sm border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-300 dark:hover:border-indigo-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" /> True / False
-            </button>
-            <button
-              onClick={() => addQuestion('short-answer')}
-              className="flex items-center gap-2 px-5 py-2 bg-white dark:bg-slate-900 rounded-lg text-xs font-bold shadow-sm border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-300 dark:hover:border-indigo-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" /> Short Answer
-            </button>
+          {/* Add Question Selector */}
+          <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-slate-205 dark:border-slate-800/80 rounded-2xl bg-slate-50/30 dark:bg-slate-950/10 space-y-4">
+            <div className="space-y-1.5">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Append New Question Component</h4>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Select a question template below to insert it at the end of your assessment.</p>
+            </div>
+            
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => addQuestion('multiple-choice')}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-900 rounded-xl text-xs font-bold shadow-sm border border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-450 hover:border-indigo-305 dark:hover:border-indigo-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all hover:-translate-y-0.5 active:translate-y-0"
+              >
+                <Plus className="w-3.5 h-3.5" /> Multiple Choice
+              </button>
+              <button
+                type="button"
+                onClick={() => addQuestion('true-false')}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-900 rounded-xl text-xs font-bold shadow-sm border border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-450 hover:border-indigo-305 dark:hover:border-indigo-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all hover:-translate-y-0.5 active:translate-y-0"
+              >
+                <Plus className="w-3.5 h-3.5" /> True / False
+              </button>
+              <button
+                type="button"
+                onClick={() => addQuestion('short-answer')}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-900 rounded-xl text-xs font-bold shadow-sm border border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-450 hover:border-indigo-305 dark:hover:border-indigo-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all hover:-translate-y-0.5 active:translate-y-0"
+              >
+                <Plus className="w-3.5 h-3.5" /> Short Answer
+              </button>
+            </div>
           </div>
         </div>
       </section>
