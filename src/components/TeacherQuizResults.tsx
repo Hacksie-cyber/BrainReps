@@ -26,6 +26,64 @@ export default function TeacherQuizResults() {
   const [showGrantModal, setShowGrantModal] = useState(false);
   const [grantSearch, setGrantSearch] = useState('');
   const [grantingStudentId, setGrantingStudentId] = useState<string | null>(null);
+  const [draftResponses, setDraftResponses] = useState<QuizSubmission['responses']>([]);
+  const [isSavingScore, setIsSavingScore] = useState(false);
+
+  useEffect(() => {
+    if (selectedSubmission) {
+      setDraftResponses(selectedSubmission.responses);
+    } else {
+      setDraftResponses([]);
+    }
+  }, [selectedSubmission]);
+
+  const handlePointsChange = (questionId: string, val: number) => {
+    setDraftResponses(prev => prev.map(res => {
+      if (res.questionId === questionId) {
+        const points = Math.min(Math.max(0, val), res.maxPoints);
+        return {
+          ...res,
+          pointsEarned: points,
+          isCorrect: points === res.maxPoints
+        };
+      }
+      return res;
+    }));
+  };
+
+  const handleSaveGrades = async () => {
+    if (!selectedSubmission || !draftResponses.length) return;
+    try {
+      setIsSavingScore(true);
+      const newScore = draftResponses.reduce((acc, curr) => acc + curr.pointsEarned, 0);
+      
+      const subRef = doc(db, 'submissions', selectedSubmission.id);
+      await updateDoc(subRef, {
+        responses: draftResponses,
+        score: newScore,
+        graded: true
+      });
+
+      // Send a notification to the student automatically
+      try {
+        const { addLocalNotification } = await import('../lib/localNotifications');
+        addLocalNotification(selectedSubmission.studentId, {
+          title: '📝 Score Adjusted / Reviewed!',
+          message: `Your submission on "${quiz.title}" was manually graded or adjusted by your instructor. Adjusted total: ${newScore}/${selectedSubmission.totalPoints}.`,
+          type: 'assignment',
+          relatedId: quiz.id
+        });
+      } catch (errNotif) {
+        console.error("Failed to notify student of grade update:", errNotif);
+      }
+
+      setSelectedSubmission(null);
+    } catch (err) {
+      console.error("Failed to save overridden scores:", err);
+    } finally {
+      setIsSavingScore(false);
+    }
+  };
 
   const handleGrantExtraAttempt = async (studentId: string, countChange: number) => {
     if (!quiz || !id) return;
@@ -443,6 +501,11 @@ export default function TeacherQuizResults() {
                               {sub.status === 'in-progress' && (
                                 <span className="text-[8px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded border border-amber-100 dark:border-amber-900 animate-pulse">In Progress</span>
                               )}
+                              {sub.status !== 'in-progress' && (sub.graded ? (
+                                <span className="text-[8px] font-black uppercase text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-950/40">Graded</span>
+                              ) : (
+                                <span className="text-[8px] font-black uppercase text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-900/40">Autograded</span>
+                              ))}
                             </div>
                             <p className="text-[9px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-tighter">View Attempt Breakdown</p>
                           </div>
@@ -504,81 +567,189 @@ export default function TeacherQuizResults() {
 
       {/* Breakdown Modal */}
       <AnimatePresence>
-        {selectedSubmission && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedSubmission(null)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
-            />
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-100 dark:border-slate-800"
-            >
-              <header className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
-                <div>
-                  <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{selectedSubmission.studentName}</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Performance Breakdown • {selectedSubmission.score} / {selectedSubmission.totalPoints}</p>
+        {selectedSubmission && (() => {
+          const draftScore = draftResponses.reduce((acc, curr) => acc + curr.pointsEarned, 0);
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedSubmission(null)}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
+              />
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-100 dark:border-slate-800"
+              >
+                <header className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{selectedSubmission.studentName}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      Performance Breakdown & Manual Grading • <span className="font-bold text-indigo-600 dark:text-indigo-400">{draftScore} / {selectedSubmission.totalPoints}</span> ({Math.round((draftScore / selectedSubmission.totalPoints) * 100)}%)
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedSubmission(null)}
+                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 dark:text-slate-500"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </header>
+
+                <div className="p-8 overflow-y-auto space-y-8 custom-scrollbar flex-1">
+                  {draftResponses.map((res, idx) => {
+                    const q = getQuestion(res.questionId);
+                    if (!q) return null;
+                    
+                    return (
+                      <div key={idx} className="space-y-4 pb-6 border-b border-slate-100 dark:border-slate-800 last:border-b-0 last:pb-0">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">Question {idx + 1} • {q.type.replace('-', ' ')}</span>
+                            <h4 className="font-bold text-slate-800 dark:text-slate-100 leading-snug">{q.question}</h4>
+                          </div>
+                          <div className="text-right">
+                            <p className={cn(
+                              "text-lg font-black",
+                              res.pointsEarned === res.maxPoints ? "text-emerald-500 dark:text-emerald-400" : res.pointsEarned > 0 ? "text-amber-500 dark:text-amber-400" : "text-rose-500"
+                            )}>
+                              {res.pointsEarned} <span className="text-[10px] text-slate-350 dark:text-slate-650">/ {res.maxPoints}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-50 dark:bg-slate-850/40 rounded-xl p-5 border border-slate-100 dark:border-slate-800 space-y-3">
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500">Student Response</p>
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 italic">
+                              {q.type === 'multiple-choice' && q.options && !isNaN(parseInt(res.answer))
+                                ? `"${q.options[parseInt(res.answer)] || res.answer}"`
+                                : `"${res.answer || "No response provided"}"`}
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500">Correct Answer / Reference</p>
+                            <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                              {q.type === 'multiple-choice' && q.options && !isNaN(parseInt(q.correctAnswer))
+                                ? q.options[parseInt(q.correctAnswer)]
+                                : q.correctAnswer}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Point Adjustment Intervention Controller */}
+                        <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-50/50 dark:bg-slate-800/20 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                          <div className="space-y-0.5">
+                            <p className="text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-wider">Manual Score Adjust</p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Fine-tune or use fast grading pre-sets.</p>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            {/* Preset Buttons */}
+                            <div className="flex items-center gap-1.5 border-r border-slate-200 dark:border-slate-800 pr-3 mr-0.5">
+                              <button
+                                type="button"
+                                onClick={() => handlePointsChange(res.questionId, res.maxPoints)}
+                                className={cn(
+                                  "px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider transition-all",
+                                  res.pointsEarned === res.maxPoints 
+                                    ? "bg-emerald-600 text-white shadow-sm" 
+                                    : "bg-white hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-emerald-950/20 border border-slate-200 dark:border-slate-705 text-slate-600 dark:text-slate-350 hover:text-emerald-600"
+                                )}
+                              >
+                                Full Credit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handlePointsChange(res.questionId, 0)}
+                                className={cn(
+                                  "px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider transition-all",
+                                  res.pointsEarned === 0 
+                                    ? "bg-rose-600 text-white shadow-sm" 
+                                    : "bg-white hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/20 border border-slate-200 dark:border-slate-705 text-slate-600 dark:text-slate-350 hover:text-rose-600"
+                                )}
+                              >
+                                Zero Credit
+                              </button>
+                            </div>
+
+                            {/* Fine-tune Incremental Selector */}
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handlePointsChange(res.questionId, res.pointsEarned - 1)}
+                                className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 hover:text-rose-500 dark:hover:bg-slate-700/60 transition-all flex items-center justify-center font-bold text-xs shadow-sm active:scale-95"
+                                title="Decrease score by 1"
+                              >
+                                -1
+                              </button>
+                              <input
+                                type="number"
+                                min={0}
+                                max={res.maxPoints}
+                                step="any"
+                                value={res.pointsEarned}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  if (!isNaN(val)) {
+                                    handlePointsChange(res.questionId, val);
+                                  } else {
+                                    handlePointsChange(res.questionId, 0);
+                                  }
+                                }}
+                                className="w-16 py-1.5 text-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-black text-slate-750 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                title="Enter score manually"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handlePointsChange(res.questionId, res.pointsEarned + 1)}
+                                className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 hover:text-emerald-500 dark:hover:bg-slate-700/60 transition-all flex items-center justify-center font-bold text-xs shadow-sm active:scale-95"
+                                title="Increase score by 1"
+                              >
+                                +1
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <button 
-                  onClick={() => setSelectedSubmission(null)}
-                  className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 dark:text-slate-500"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </header>
 
-              <div className="p-8 overflow-y-auto space-y-8 custom-scrollbar">
-                {selectedSubmission.responses.map((res, idx) => {
-                  const q = getQuestion(res.questionId);
-                  if (!q) return null;
-                  
-                  return (
-                    <div key={idx} className="space-y-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">Question {idx + 1}</span>
-                          <h4 className="font-bold text-slate-800 dark:text-slate-100 leading-snug">{q.question}</h4>
-                        </div>
-                        <div className="text-right">
-                          <p className={cn(
-                            "text-lg font-black",
-                            res.pointsEarned === res.maxPoints ? "text-emerald-500 dark:text-emerald-400" : res.pointsEarned > 0 ? "text-amber-500 dark:text-amber-400" : "text-slate-300 dark:text-slate-700"
-                          )}>
-                            {res.pointsEarned} <span className="text-[10px] text-slate-300 dark:text-slate-700">/ {res.maxPoints}</span>
-                          </p>
-                        </div>
-                      </div>
+                <footer className="px-8 py-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/35 flex items-center justify-between">
+                  <div className="text-left">
+                    <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">Adjustment Total</span>
+                    <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200">
+                      {draftScore} <span className="text-xs text-slate-400">/ {selectedSubmission.totalPoints} points</span>
+                    </p>
+                  </div>
 
-                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-100 dark:border-slate-800 space-y-3">
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500">Student Response</p>
-                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 italic">
-                            {q.type === 'multiple-choice' && q.options && !isNaN(parseInt(res.answer))
-                              ? `"${q.options[parseInt(res.answer)] || res.answer}"`
-                              : `"${res.answer || "No response provided"}"`}
-                          </p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500">Correct Answer / Reference</p>
-                          <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
-                            {q.type === 'multiple-choice' && q.options && !isNaN(parseInt(q.correctAnswer))
-                              ? q.options[parseInt(q.correctAnswer)]
-                              : q.correctAnswer}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </div>
-        )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSelectedSubmission(null)}
+                      className="px-4 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 transition-all active:scale-95"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveGrades}
+                      disabled={isSavingScore}
+                      className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-2"
+                    >
+                      {isSavingScore ? (
+                        <span className="inline-block animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full" />
+                      ) : null}
+                      Save Changes
+                    </button>
+                  </div>
+                </footer>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Manage Extra Attempts Modal */}
