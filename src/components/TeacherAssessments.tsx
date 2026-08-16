@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, BookOpen, Trash2, BarChart3, Settings, MoreVertical, Edit, Eye, EyeOff, ShieldCheck, Clock } from 'lucide-react';
+import { Plus, Search, BookOpen, Trash2, BarChart3, Settings, MoreVertical, Edit, Eye, EyeOff, ShieldCheck, Clock, Presentation, Tv } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 import DeleteModal from './DeleteModal';
 
@@ -161,6 +161,16 @@ export default function TeacherAssessments() {
                       </div>
                       
                       <div className="flex gap-2">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/teacher/present/${quiz.id}`);
+                          }}
+                          className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white border border-indigo-100 dark:border-indigo-800 rounded-xl transition-all shadow-sm active:scale-90"
+                          title="Launch Classroom Slide Presentation (Projector Mode)"
+                        >
+                          <Presentation className="h-4 w-4" />
+                        </button>
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();

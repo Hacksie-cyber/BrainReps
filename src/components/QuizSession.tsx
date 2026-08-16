@@ -853,15 +853,17 @@ export default function QuizSession() {
                     )}
                   </div>
                </div>
-               <div className="flex flex-col items-end gap-1.5 min-w-[70px]">
-                  <span className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter whitespace-nowrap">{Math.round(progress)}% Complete</span>
-                  <button
-                    onClick={() => setShowConfirmModal(true)}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-600 rounded-lg border border-red-100 hover:bg-red-200 transition-all text-[10px] font-black uppercase tracking-widest shadow-sm active:scale-95"
-                  >
-                    <Send className="w-2.5 h-2.5" />
-                    End
-                  </button>
+               <div className="flex items-center gap-2">
+                  <div className="flex flex-col items-end gap-1.5 min-w-[70px]">
+                     <span className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter whitespace-nowrap">{Math.round(progress)}% Complete</span>
+                     <button
+                       onClick={() => setShowConfirmModal(true)}
+                       className="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-600 rounded-lg border border-red-100 hover:bg-red-200 transition-all text-[10px] font-black uppercase tracking-widest shadow-sm active:scale-95"
+                     >
+                       <Send className="w-2.5 h-2.5" />
+                       End
+                     </button>
+                  </div>
                </div>
             </div>
             <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -875,116 +877,116 @@ export default function QuizSession() {
             )}
           </header>
 
-          <section className="min-h-[400px]">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentQuestion.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                className="rounded-xl bg-white dark:bg-slate-900 p-6 md:p-10 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200 dark:border-slate-800 space-y-8"
-              >
-                {/* Question UI Remains the same */}
-                <div className="space-y-4">
-                  <span className="inline-block rounded-lg bg-slate-50 dark:bg-slate-800 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-800">
-                    {currentQuestion.type.replace('-', ' ')} Assessment Block
-                  </span>
-                  <h2 className="text-xl md:text-2xl font-bold leading-snug text-slate-900 dark:text-white tracking-tight">{currentQuestion.question}</h2>
-                </div>
+            <section className="min-h-[400px]">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentQuestion.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  className="rounded-xl bg-white dark:bg-slate-900 p-6 md:p-10 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200 dark:border-slate-800 space-y-8"
+                >
+                  {/* Question UI */}
+                  <div className="space-y-4">
+                    <span className="inline-block rounded-lg bg-slate-50 dark:bg-slate-800 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-800">
+                      {currentQuestion.type.replace('-', ' ')} Assessment Block
+                    </span>
+                    <h2 className="text-xl md:text-2xl font-bold leading-snug text-slate-900 dark:text-white tracking-tight">{currentQuestion.question}</h2>
+                  </div>
 
-                <div className="space-y-3">
-                  {currentQuestion.type === 'multiple-choice' && currentQuestion.options && (
-                    <div className="grid gap-3">
-                      {currentQuestion.options.map((option, i) => (
-                        <button
-                          key={i}
-                          onClick={() => handleResponse(currentQuestion.id, i.toString())}
-                          className={cn(
-                            "group flex items-center justify-between rounded-xl border-2 p-5 transition-all text-left",
-                            responses[currentQuestion.id] === i.toString()
-                              ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 ring-4 ring-indigo-600/5"
-                              : "border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30 text-slate-600 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
-                          )}
-                        >
-                          <span className="font-bold text-sm tracking-tight">{option}</span>
-                          <div className={cn(
-                            "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all",
-                             responses[currentQuestion.id] === i.toString() ? "bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow-lg shadow-indigo-600/20" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
-                          )}>
-                            {responses[currentQuestion.id] === i.toString() && <CheckCircle2 className="h-3 w-3" />}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <div className="space-y-3">
+                    {currentQuestion.type === 'multiple-choice' && currentQuestion.options && (
+                      <div className="grid gap-3">
+                        {currentQuestion.options.map((option, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleResponse(currentQuestion.id, i.toString())}
+                            className={cn(
+                              "group flex items-center justify-between rounded-xl border-2 p-5 transition-all text-left",
+                              responses[currentQuestion.id] === i.toString()
+                                ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 ring-4 ring-indigo-600/5"
+                                : "border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30 text-slate-600 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            )}
+                          >
+                            <span className="font-bold text-sm tracking-tight">{option}</span>
+                            <div className={cn(
+                              "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all",
+                               responses[currentQuestion.id] === i.toString() ? "bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow-lg shadow-indigo-600/20" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                            )}>
+                              {responses[currentQuestion.id] === i.toString() && <CheckCircle2 className="h-3 w-3" />}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
 
-                  {currentQuestion.type === 'true-false' && (
-                    <div className="grid grid-cols-2 gap-4">
-                      {['true', 'false'].map((val) => (
-                        <button
-                          key={val}
-                          onClick={() => handleResponse(currentQuestion.id, val)}
-                          className={cn(
-                            "flex flex-col items-center justify-center gap-4 rounded-xl border-2 py-8 md:py-12 transition-all group",
-                            responses[currentQuestion.id] === val
-                              ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 ring-4 ring-indigo-600/5"
-                              : "border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300"
-                          )}
-                        >
-                          <span className="text-base md:text-xl font-black uppercase tracking-[0.2em]">{val}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                    {currentQuestion.type === 'true-false' && (
+                      <div className="grid grid-cols-2 gap-4">
+                        {['true', 'false'].map((val) => (
+                          <button
+                            key={val}
+                            onClick={() => handleResponse(currentQuestion.id, val)}
+                            className={cn(
+                              "flex flex-col items-center justify-center gap-4 rounded-xl border-2 py-8 md:py-12 transition-all group",
+                              responses[currentQuestion.id] === val
+                                ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 ring-4 ring-indigo-600/5"
+                                : "border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30 text-slate-400 dark:text-slate-500 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300"
+                            )}
+                          >
+                            <span className="text-base md:text-xl font-black uppercase tracking-[0.2em]">{val}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
 
-                  {currentQuestion.type === 'short-answer' && (
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Strategic Response Input</label>
-                      <textarea
-                        value={responses[currentQuestion.id] || ''}
-                        onBlur={(e) => (e.target.value = e.target.value.trim())}
-                        onChange={(e) => handleResponse(currentQuestion.id, e.target.value)}
-                        placeholder="Formulate your response with precision..."
-                        className="w-full h-40 rounded-xl border border-slate-100 bg-slate-50/50 p-6 text-base font-medium text-slate-700 focus:bg-white focus:border-indigo-600/20 focus:ring-4 focus:ring-indigo-600/5 focus:outline-none transition-all resize-none placeholder:text-slate-300 italic"
-                      />
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </section>
+                    {currentQuestion.type === 'short-answer' && (
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Strategic Response Input</label>
+                        <textarea
+                          value={responses[currentQuestion.id] || ''}
+                          onBlur={(e) => (e.target.value = e.target.value.trim())}
+                          onChange={(e) => handleResponse(currentQuestion.id, e.target.value)}
+                          placeholder="Formulate your response with precision..."
+                          className="w-full h-40 rounded-xl border border-slate-100 bg-slate-50/50 p-6 text-base font-medium text-slate-700 focus:bg-white focus:border-indigo-600/20 focus:ring-4 focus:ring-indigo-600/5 focus:outline-none transition-all resize-none placeholder:text-slate-300 italic"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </section>
 
-          <footer className="flex items-center justify-between gap-4 pt-6 border-t border-slate-100">
-            <button
-              disabled={currentIndex === 0}
-              onClick={() => setCurrentIndex(currentIndex - 1)}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 md:px-6 py-3 font-bold text-xs text-slate-400 transition-all hover:text-slate-800 hover:bg-slate-50 disabled:opacity-0"
-            >
-              <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Previous Case</span>
-            </button>
-
-            {currentIndex === quiz.questions.length - 1 ? (
+            <footer className="flex items-center justify-between gap-4 pt-6 border-t border-slate-100">
               <button
-                onClick={() => handleSubmit()}
-                disabled={submitting || !responses[currentQuestion.id]}
-                className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 md:px-8 py-3 font-bold text-xs text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+                disabled={currentIndex === 0}
+                onClick={() => setCurrentIndex(currentIndex - 1)}
+                className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 md:px-6 py-3 font-bold text-xs text-slate-400 transition-all hover:text-slate-800 hover:bg-slate-50 disabled:opacity-0"
               >
-                {submitting ? 'Transmitting...' : 'Finalize'}
-                <Send className="h-3.5 w-3.5" />
+                <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Previous Case</span>
               </button>
-            ) : (
-              <button
-                disabled={!responses[currentQuestion.id]}
-                onClick={() => setCurrentIndex(currentIndex + 1)}
-                className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 md:px-8 py-3 font-bold text-xs text-white shadow-lg shadow-indigo-600/20 transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
-              >
-                Advance
-                <ArrowRight className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </footer>
+
+              {currentIndex === quiz.questions.length - 1 ? (
+                <button
+                  onClick={() => handleSubmit()}
+                  disabled={submitting || !responses[currentQuestion.id]}
+                  className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 md:px-8 py-3 font-bold text-xs text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
+                >
+                  {submitting ? 'Transmitting...' : 'Finalize'}
+                  <Send className="h-3.5 w-3.5" />
+                </button>
+              ) : (
+                <button
+                  disabled={!responses[currentQuestion.id]}
+                  onClick={() => setCurrentIndex(currentIndex + 1)}
+                  className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 md:px-8 py-3 font-bold text-xs text-white shadow-lg shadow-indigo-600/20 transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
+                >
+                  Advance
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </footer>
+          </div>
         </div>
-      </div>
 
       {/* Early Submission Confirmation Modal */}
       <AnimatePresence>

@@ -20,6 +20,7 @@ import BannedScreen from './components/BannedScreen';
 import StudentProfile from './components/StudentProfile';
 import HandoutManager from './components/HandoutManager';
 import NeuralAssistant from './components/NeuralAssistant';
+import TeacherSlidePresentation from './components/TeacherSlidePresentation';
 
 import { BookOpen } from 'lucide-react';
 import { doc, getDocFromCache, getDocFromServer } from 'firebase/firestore';
@@ -135,6 +136,12 @@ export default function App() {
             } />
             <Route path="/teacher/quiz/:id" element={
               <RequireAuth role="teacher"><TeacherQuizResults /></RequireAuth>
+            } />
+            <Route path="/teacher/present/:id" element={
+              <RequireAuth role="teacher"><TeacherSlidePresentation /></RequireAuth>
+            } />
+            <Route path="/teacher/quiz/:id/present" element={
+              <RequireAuth role="teacher"><TeacherSlidePresentation /></RequireAuth>
             } />
 
             {/* Student Routes */}

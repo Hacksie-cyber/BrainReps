@@ -6,7 +6,7 @@ import { Quiz, QuizSubmission, UserProfile } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { cn, formatDeadline } from '../lib/utils';
-import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2, UserX, ShieldAlert, Edit, Database } from 'lucide-react';
+import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2, UserX, ShieldAlert, Edit, Database, Presentation } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import DeleteModal from './DeleteModal';
 

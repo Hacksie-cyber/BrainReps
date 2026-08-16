@@ -5,7 +5,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission, Question, UserProfile } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download, FileText, Plus, Minus, Search } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download, FileText, Plus, Minus, Search, Presentation } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
 import { jsPDF } from 'jspdf';
@@ -364,14 +364,24 @@ export default function TeacherQuizResults() {
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium italic">Analytics Report • Generated {new Date().toLocaleDateString()}</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowDeleteModal(true)}
-          disabled={isDeleting}
-          className="p-2.5 bg-white dark:bg-slate-900 text-red-500 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-900 transition-all shadow-sm flex items-center gap-2 text-xs font-bold disabled:opacity-50"
-        >
-          <Trash2 className="w-4 h-4" />
-          {isDeleting ? 'Deleting...' : 'Remove Module'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate(`/teacher/present/${quiz.id}`)}
+            className="p-2.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2 text-xs font-bold active:scale-95"
+            title="Launch Classroom Projector Presentation"
+          >
+            <Presentation className="w-4 h-4" />
+            <span>Classroom Projector</span>
+          </button>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            disabled={isDeleting}
+            className="p-2.5 bg-white dark:bg-slate-900 text-red-500 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-900 transition-all shadow-sm flex items-center gap-2 text-xs font-bold disabled:opacity-50"
+          >
+            <Trash2 className="w-4 h-4" />
+            {isDeleting ? 'Deleting...' : 'Remove Module'}
+          </button>
+        </div>
       </header>
 
       <section className="grid gap-6 sm:grid-cols-3">
