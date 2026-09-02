@@ -36,9 +36,21 @@ import {
   CheckCircle2,
   HelpCircle,
   LayoutGrid,
-  Rows
+  Rows,
+  Volume2,
+  VolumeX,
+  SlidersHorizontal,
+  Timer,
+  FastForward
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+
+const TIMER_PRESETS = [
+  { label: '25s', seconds: 25, key: '1', title: '25 Seconds' },
+  { label: '30s', seconds: 30, key: '2', title: '30 Seconds' },
+  { label: '45s', seconds: 45, key: '3', title: '45 Seconds' },
+  { label: '1m', seconds: 60, key: '4', title: '1 Minute (60s)' },
+] as const;
 
 export default function TeacherSlidePresentation() {
   const { id } = useParams<{ id: string }>();
@@ -67,11 +79,14 @@ export default function TeacherSlidePresentation() {
   const [revealedQuestions, setRevealedQuestions] = useState<Record<string, boolean>>({});
   const [allSummaryRevealed, setAllSummaryRevealed] = useState(true);
 
-  // Timer State
-  const [timerDuration, setTimerDuration] = useState<number>(60); // seconds per question default
-  const [timerRemaining, setTimerRemaining] = useState<number>(60);
+  // Timer State with 25s, 30s, 45s, 1m presets
+  const [timerDuration, setTimerDuration] = useState<number>(30); // Default to 30s preset
+  const [timerRemaining, setTimerRemaining] = useState<number>(30);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [autoAdvanceOnTimer, setAutoAdvanceOnTimer] = useState<boolean>(false);
+  const [autoStartOnSlideChange, setAutoStartOnSlideChange] = useState<boolean>(false);
+  const [showTimerSettings, setShowTimerSettings] = useState<boolean>(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -90,10 +105,17 @@ export default function TeacherSlidePresentation() {
         const data = { id: snap.id, ...snap.data() } as Quiz;
         setQuiz(data);
         if (data.timeLimit && data.timeLimit > 0) {
-          // If total time limit is set, default question timer to reasonable fraction
-          const approxPerQuestion = Math.max(30, Math.floor((data.timeLimit * 60) / (data.questions.length || 1)));
-          setTimerDuration(approxPerQuestion);
-          setTimerRemaining(approxPerQuestion);
+          // If total time limit is set, pick closest matching preset or reasonable value
+          const approxPerQuestion = Math.max(25, Math.floor((data.timeLimit * 60) / (data.questions.length || 1)));
+          if (approxPerQuestion <= 27) setTimerDuration(25);
+          else if (approxPerQuestion <= 38) setTimerDuration(30);
+          else if (approxPerQuestion <= 52) setTimerDuration(45);
+          else setTimerDuration(60);
+          
+          setTimerRemaining(approxPerQuestion <= 27 ? 25 : approxPerQuestion <= 38 ? 30 : approxPerQuestion <= 52 ? 45 : 60);
+        } else {
+          setTimerDuration(30);
+          setTimerRemaining(30);
         }
 
         // Initialize revealed questions state to all true by default
@@ -121,52 +143,24 @@ export default function TeacherSlidePresentation() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Timer interval
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isTimerRunning && timerRemaining > 0) {
-      interval = setInterval(() => {
-        setTimerRemaining(prev => {
-          if (prev <= 1) {
-            setIsTimerRunning(false);
-            if (soundEnabled) {
-              try {
-                const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-                gain.gain.setValueAtTime(0.15, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.5);
-              } catch (e) {
-                // Audio context not allowed or supported
-              }
-            }
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isTimerRunning, timerRemaining, soundEnabled]);
+  const handleSelectPreset = (seconds: number) => {
+    setTimerDuration(seconds);
+    setTimerRemaining(seconds);
+  };
+
+  const totalQuestions = quiz ? quiz.questions.length : 0;
+  const totalSlides = totalQuestions + 1; // Last slide is the Answer Key Summary
+  const isSummarySlide = currentIndex === totalQuestions;
 
   // Reset timer on question change
   const handleQuestionChange = (newIndex: number, direction: number) => {
     setSlideDirection(direction);
     setCurrentIndex(newIndex);
     setTimerRemaining(timerDuration);
+    if (autoStartOnSlideChange && newIndex < totalQuestions) {
+      setIsTimerRunning(true);
+    }
   };
-
-  const totalQuestions = quiz ? quiz.questions.length : 0;
-  const totalSlides = totalQuestions + 1; // Last slide is the Answer Key Summary
-  const isSummarySlide = currentIndex === totalQuestions;
 
   const handleNext = () => {
     if (!quiz) return;
@@ -180,6 +174,50 @@ export default function TeacherSlidePresentation() {
       handleQuestionChange(currentIndex - 1, -1);
     }
   };
+
+  // Timer interval with optional sound and auto-advance
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (isTimerRunning && timerRemaining > 0 && !isSummarySlide) {
+      interval = setInterval(() => {
+        setTimerRemaining(prev => {
+          if (prev <= 1) {
+            setIsTimerRunning(false);
+            if (soundEnabled) {
+              try {
+                const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+                gain.gain.setValueAtTime(0.18, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.5);
+              } catch (e) {
+                // Audio context not allowed or supported
+              }
+            }
+
+            // Auto-advance if configured and not last slide
+            if (autoAdvanceOnTimer && currentIndex < totalQuestions - 1) {
+              setTimeout(() => {
+                handleNext();
+              }, 800);
+            }
+
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isTimerRunning, timerRemaining, soundEnabled, autoAdvanceOnTimer, currentIndex, totalQuestions, isSummarySlide]);
 
   const toggleFullscreen = () => {
     try {
@@ -220,6 +258,21 @@ export default function TeacherSlidePresentation() {
       } else if (e.key.toLowerCase() === 't' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         setIsTimerRunning(prev => !prev);
+      } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setTimerRemaining(timerDuration);
+      } else if (e.key === '1') {
+        e.preventDefault();
+        handleSelectPreset(25);
+      } else if (e.key === '2') {
+        e.preventDefault();
+        handleSelectPreset(30);
+      } else if (e.key === '3') {
+        e.preventDefault();
+        handleSelectPreset(45);
+      } else if (e.key === '4') {
+        e.preventDefault();
+        handleSelectPreset(60);
       } else if (e.key.toLowerCase() === '?' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         setShowShortcutsModal(prev => !prev);
@@ -420,7 +473,7 @@ export default function TeacherSlidePresentation() {
           </div>
         </div>
 
-        {/* Center: Slide Progress Pill */}
+        {/* Center: Slide Progress Pill & Question Timer Controls */}
         <div className="hidden lg:flex items-center gap-3">
           <div className={cn(
             "flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-bold tracking-wider",
@@ -444,32 +497,196 @@ export default function TeacherSlidePresentation() {
             )}
           </div>
 
-          {/* Quick Question Timer Widget (only on question slides) */}
+          {/* Question Timer Widget with 25s, 30s, 45s, 1m presets */}
           {!isSummarySlide && (
             <div className={cn(
-              "flex items-center gap-2 px-3 py-1 rounded-xl border text-xs font-mono font-bold transition-all",
+              "flex items-center gap-1.5 p-1 rounded-2xl border transition-all relative",
               timerRemaining <= 10 && isTimerRunning
-                ? "bg-red-950/40 border-red-800 text-red-400 animate-pulse"
+                ? "bg-red-950/40 border-red-800/80 ring-1 ring-red-500/30"
                 : themeMode === 'dark'
-                  ? "bg-slate-900 border-slate-800 text-indigo-300"
-                  : "bg-indigo-50 border-indigo-200 text-indigo-700"
+                  ? "bg-slate-900/90 border-slate-800 text-slate-200"
+                  : "bg-slate-100 border-slate-200 text-slate-800"
             )}>
-              <Clock className="w-3.5 h-3.5 text-indigo-400" />
-              <span>{formatTime(timerRemaining)}</span>
+              {/* Countdown Digits & Play/Pause */}
+              <div className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-mono font-bold",
+                timerRemaining <= 10 && isTimerRunning
+                  ? "text-red-400 animate-pulse"
+                  : themeMode === 'dark'
+                    ? "text-indigo-300"
+                    : "text-indigo-700"
+              )}>
+                <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="w-9">{formatTime(timerRemaining)}</span>
+              </div>
+
+              {/* Play / Pause */}
               <button
                 onClick={() => setIsTimerRunning(prev => !prev)}
-                className="p-1 hover:bg-white/10 rounded transition-all"
-                title={isTimerRunning ? "Pause Timer (T)" : "Start Timer (T)"}
+                className={cn(
+                  "p-1.5 rounded-lg transition-all",
+                  isTimerRunning 
+                    ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30" 
+                    : "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+                )}
+                title={isTimerRunning ? "Pause Timer (Shortcut: T)" : "Start Timer (Shortcut: T)"}
               >
-                {isTimerRunning ? <Pause className="w-3 h-3 text-amber-400" /> : <Play className="w-3 h-3 text-emerald-400" />}
+                {isTimerRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
               </button>
+
+              {/* Reset Timer */}
               <button
                 onClick={() => setTimerRemaining(timerDuration)}
-                className="p-1 hover:bg-white/10 rounded transition-all text-slate-400 hover:text-slate-200"
-                title="Reset Timer to Duration"
+                className="p-1.5 rounded-lg hover:bg-white/10 transition-all text-slate-400 hover:text-slate-200"
+                title="Reset Timer to Duration (Shortcut: R)"
               >
-                <RotateCcw className="w-3 h-3" />
+                <RotateCcw className="w-3.5 h-3.5" />
               </button>
+
+              {/* Divider */}
+              <div className="h-4 w-px bg-slate-700/50 mx-0.5" />
+
+              {/* Preset Selector Chips (25s, 30s, 45s, 1m) */}
+              <div className="flex items-center gap-1 bg-black/20 p-0.5 rounded-xl">
+                {TIMER_PRESETS.map(preset => {
+                  const isActive = timerDuration === preset.seconds;
+                  return (
+                    <button
+                      key={preset.seconds}
+                      onClick={() => handleSelectPreset(preset.seconds)}
+                      className={cn(
+                        "px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1",
+                        isActive
+                          ? "bg-indigo-600 text-white shadow-sm font-black"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                      )}
+                      title={`Set Timer to ${preset.title} (Key: ${preset.key})`}
+                    >
+                      <span>{preset.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Timer Settings / Audio / Auto-advance Menu */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowTimerSettings(prev => !prev)}
+                  className={cn(
+                    "p-1.5 rounded-lg transition-all",
+                    showTimerSettings || autoAdvanceOnTimer || autoStartOnSlideChange
+                      ? "bg-indigo-500/20 text-indigo-400"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-white/10"
+                  )}
+                  title="Timer Options (Chime Sound, Auto-Advance, Auto-Start)"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Dropdown Popover */}
+                {showTimerSettings && (
+                  <div className={cn(
+                    "absolute top-full right-0 mt-2 p-3 rounded-2xl border shadow-2xl z-50 w-64 space-y-2.5 backdrop-blur-xl",
+                    themeMode === 'dark' ? "bg-slate-900/95 border-slate-800 text-slate-200 shadow-black/80" : "bg-white border-slate-200 text-slate-800 shadow-xl"
+                  )}>
+                    <div className="flex items-center justify-between border-b pb-2 border-slate-800/60">
+                      <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                        <Timer className="w-3.5 h-3.5" />
+                        <span>Slide Timer Options</span>
+                      </span>
+                      <button 
+                        onClick={() => setShowTimerSettings(false)}
+                        className="p-1 text-slate-400 hover:text-white rounded"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    {/* Presets Grid */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Timer Duration</span>
+                      <div className="grid grid-cols-4 gap-1">
+                        {TIMER_PRESETS.map(p => (
+                          <button
+                            key={p.seconds}
+                            onClick={() => {
+                              handleSelectPreset(p.seconds);
+                              setShowTimerSettings(false);
+                            }}
+                            className={cn(
+                              "py-1 rounded-lg text-xs font-bold text-center border transition-all",
+                              timerDuration === p.seconds
+                                ? "bg-indigo-600 border-indigo-500 text-white font-black"
+                                : themeMode === 'dark'
+                                  ? "bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600"
+                                  : "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200"
+                            )}
+                          >
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Sound Alert Toggle */}
+                    <button
+                      onClick={() => setSoundEnabled(prev => !prev)}
+                      className={cn(
+                        "w-full flex items-center justify-between p-2 rounded-xl border text-xs font-medium transition-all",
+                        soundEnabled 
+                          ? "bg-indigo-600/10 border-indigo-500/30 text-indigo-300" 
+                          : "bg-transparent border-slate-800 text-slate-400"
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-indigo-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-500" />}
+                        <span>Audio Chime on 0:00</span>
+                      </span>
+                      <span className={cn("text-[10px] font-bold uppercase px-1.5 py-0.5 rounded", soundEnabled ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-500")}>
+                        {soundEnabled ? "On" : "Off"}
+                      </span>
+                    </button>
+
+                    {/* Auto-advance slide toggle */}
+                    <button
+                      onClick={() => setAutoAdvanceOnTimer(prev => !prev)}
+                      className={cn(
+                        "w-full flex items-center justify-between p-2 rounded-xl border text-xs font-medium transition-all",
+                        autoAdvanceOnTimer 
+                          ? "bg-emerald-600/10 border-emerald-500/30 text-emerald-300" 
+                          : "bg-transparent border-slate-800 text-slate-400"
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <FastForward className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Auto-Advance at 0:00</span>
+                      </span>
+                      <span className={cn("text-[10px] font-bold uppercase px-1.5 py-0.5 rounded", autoAdvanceOnTimer ? "bg-emerald-600 text-white" : "bg-slate-800 text-slate-500")}>
+                        {autoAdvanceOnTimer ? "On" : "Off"}
+                      </span>
+                    </button>
+
+                    {/* Auto-start timer on slide change */}
+                    <button
+                      onClick={() => setAutoStartOnSlideChange(prev => !prev)}
+                      className={cn(
+                        "w-full flex items-center justify-between p-2 rounded-xl border text-xs font-medium transition-all",
+                        autoStartOnSlideChange 
+                          ? "bg-indigo-600/10 border-indigo-500/30 text-indigo-300" 
+                          : "bg-transparent border-slate-800 text-slate-400"
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Play className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>Auto-Start on New Slide</span>
+                      </span>
+                      <span className={cn("text-[10px] font-bold uppercase px-1.5 py-0.5 rounded", autoStartOnSlideChange ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-500")}>
+                        {autoStartOnSlideChange ? "On" : "Off"}
+                      </span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -604,6 +821,23 @@ export default function TeacherSlidePresentation() {
           </button>
         </div>
       </header>
+
+      {/* Dynamic Question Timer Progress Line */}
+      {!isSummarySlide && (
+        <div className="w-full h-1 bg-slate-800/40 relative overflow-hidden">
+          <div 
+            className={cn(
+              "h-full transition-all duration-1000 ease-linear",
+              timerRemaining <= 10 && isTimerRunning
+                ? "bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)]"
+                : timerRemaining <= timerDuration / 3
+                  ? "bg-amber-500"
+                  : "bg-indigo-500"
+            )}
+            style={{ width: `${Math.max(0, Math.min(100, (timerRemaining / timerDuration) * 100))}%` }}
+          />
+        </div>
+      )}
 
       {/* Classroom Announcement Banner */}
       <div className={cn(
@@ -1306,6 +1540,14 @@ export default function TeacherSlidePresentation() {
                 <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
                   <span className="text-slate-400">Play / Pause Question Timer</span>
                   <kbd className="px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-white font-mono font-bold">T</kbd>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
+                  <span className="text-slate-400">Reset Timer to Duration</span>
+                  <kbd className="px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-white font-mono font-bold">R</kbd>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
+                  <span className="text-slate-400">Timer Presets (25s, 30s, 45s, 1m)</span>
+                  <kbd className="px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-white font-mono font-bold">1, 2, 3, 4</kbd>
                 </div>
               </div>
 
