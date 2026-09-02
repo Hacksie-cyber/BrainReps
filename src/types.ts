@@ -60,6 +60,9 @@ export interface QuizSubmission {
   status?: 'in-progress' | 'completed';
   timeTaken?: number; // In seconds
   studentRole?: UserRole;
+  antiCheatTriggered?: boolean;
+  breachCount?: number;
+  breachReason?: string;
 }
 
 export interface Notification {

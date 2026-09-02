@@ -10,6 +10,7 @@ import { cn, formatDeadline } from '../lib/utils';
 import { studentCache } from '../lib/studentCache';
 import { addLocalNotification, deleteLocalNotification } from '../lib/localNotifications';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { getQuizColorTheme } from '../lib/quizThemes';
 
 // Ranking Logic Component to avoid global collection listeners and handle permissions correctly
 function QuizRankings({ quizId, currentStudentId }: { quizId: string, currentStudentId: string }) {
@@ -699,6 +700,7 @@ export default function StudentDashboard() {
               const extraAllowed = quiz.extraAttempts?.[profile?.uid || ''] || 0;
               const totalLimit = (quiz.retakeLimit || 1) + extraAllowed;
               const limitReached = !isUnlimited && userSubs.length >= totalLimit;
+              const theme = getQuizColorTheme(quiz.id, i);
 
               return (
                 <motion.div
@@ -706,103 +708,128 @@ export default function StudentDashboard() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="group relative flex flex-col bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 hover:border-indigo-100 dark:hover:border-indigo-900 transition-all duration-300"
+                  className={cn(
+                    "group relative flex flex-col bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 transition-all duration-300 overflow-hidden",
+                    theme.cardBorderHover,
+                    theme.cardShadowHover
+                  )}
                 >
-                  <div className="mb-6 flex items-start justify-between">
-                    <div className="w-12 h-12 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-xl flex items-center justify-center text-indigo-500 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300 shadow-sm border border-indigo-100/50 dark:border-indigo-900/30">
-                      <BookOpen className="h-6 w-6" />
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                       {submission && (
-                         <div className="flex flex-col items-end gap-1.5">
-                           <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 text-emerald-700 text-[10px] rounded-full border border-emerald-100 dark:border-emerald-900/30 font-bold uppercase tracking-widest shadow-sm">
-                              <CheckCircle2 className="h-3 w-3" />
-                              Attempted
+                  {/* Top Decorative Gradient Accent Bar */}
+                  <div className={cn("absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r transition-all duration-300", theme.gradientBar)} />
+
+                  {/* Subtle Hover Gradient Light Background */}
+                  <div className={cn("absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500", theme.cardHoverBg)} />
+
+                  <div className="relative z-10 flex flex-col h-full">
+                    <div className="mb-6 flex items-start justify-between">
+                      <div className={cn(
+                        "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shadow-sm border",
+                        theme.iconBoxBg,
+                        theme.iconBoxText,
+                        theme.iconBoxHoverBg,
+                        theme.iconBoxBorder
+                      )}>
+                        <BookOpen className="h-6 w-6" />
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                         {submission && (
+                           <div className="flex flex-col items-end gap-1.5">
+                             <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 text-emerald-700 text-[10px] rounded-full border border-emerald-100 dark:border-emerald-900/30 font-bold uppercase tracking-widest shadow-sm">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Attempted
+                             </div>
+                             <span className={cn("text-xs font-black font-display", theme.retakeScoreText)}>
+                                {Math.round((submission.score / submission.totalPoints) * 100)}%
+                             </span>
                            </div>
-                           <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 font-display">
-                              {Math.round((submission.score / submission.totalPoints) * 100)}%
-                           </span>
-                         </div>
-                       )}
-                       <span className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.1em] bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1 rounded border border-slate-100 dark:border-slate-800">
-                          {isUnlimited ? 'Unlimited' : `Attempts: ${userSubs.length} / ${totalLimit}`}
-                        </span>
-                    </div>
-                  </div>
-                  
-                  <h3 className="text-xl font-bold font-display text-slate-900 dark:text-slate-50 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors tracking-tight leading-tight mb-2">
-                    {quiz.title}
-                  </h3>
-                  
-                  <div className="flex flex-col gap-2.5 mb-5">
-                    <div className="flex items-center gap-2 group/educator cursor-help" title={`Curriculum designed by ${quiz.teacherName}`}>
-                       <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[8px] font-black text-slate-500 group-hover/educator:bg-indigo-100 group-hover/educator:text-indigo-600 transition-colors uppercase border border-slate-200/50 dark:border-slate-700/50">
-                          {quiz.teacherName?.charAt(0) || 'E'}
-                       </div>
-                       <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 group-hover/educator:text-slate-900 dark:group-hover/educator:text-slate-100 transition-colors">By {quiz.teacherName}</p>
+                         )}
+                         <span className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.1em] bg-slate-50 dark:bg-slate-800/50 px-2.5 py-1 rounded border border-slate-100 dark:border-slate-800">
+                            {isUnlimited ? 'Unlimited' : `Attempts: ${userSubs.length} / ${totalLimit}`}
+                          </span>
+                      </div>
                     </div>
                     
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                        <Clock className="h-3.5 w-3.5 text-slate-300 dark:text-slate-700" />
-                        {quiz.questions.length} Items
+                    <h3 className={cn("text-xl font-bold font-display text-slate-900 dark:text-slate-50 transition-colors tracking-tight leading-tight mb-2", theme.titleHover)}>
+                      {quiz.title}
+                    </h3>
+                    
+                    <div className="flex flex-col gap-2.5 mb-5">
+                      <div className="flex items-center gap-2 group/educator cursor-help" title={`Curriculum designed by ${quiz.teacherName}`}>
+                         <div className={cn(
+                           "w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[8px] font-black text-slate-500 transition-colors uppercase border border-slate-200/50 dark:border-slate-700/50",
+                           theme.authorAvatarBg,
+                           theme.authorAvatarText
+                         )}>
+                            {quiz.teacherName?.charAt(0) || 'E'}
+                         </div>
+                         <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 group-hover/educator:text-slate-900 dark:group-hover/educator:text-slate-100 transition-colors">By {quiz.teacherName}</p>
                       </div>
                       
-                      {quiz.deadline && (
-                        <div className={cn(
-                          "flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter transition-all",
-                          new Date(quiz.deadline) < new Date() 
-                            ? "bg-red-50 text-red-500 border border-red-100 animate-pulse" 
-                            : "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800/50"
-                        )}>
-                          <Clock className="h-2.5 w-2.5" />
-                          {formatDeadline(quiz.deadline)}
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                          <Clock className="h-3.5 w-3.5 text-slate-300 dark:text-slate-700" />
+                          {quiz.questions.length} Items
+                        </div>
+                        
+                        {quiz.deadline && (
+                          <div className={cn(
+                            "flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter transition-all",
+                            new Date(quiz.deadline) < new Date() 
+                              ? "bg-red-50 text-red-500 border border-red-100 animate-pulse" 
+                              : theme.subtleBadge
+                          )}>
+                            <Clock className="h-2.5 w-2.5" />
+                            {formatDeadline(quiz.deadline)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 font-medium leading-relaxed italic line-clamp-2">
+                      {quiz.description || "Instructional module for structural logic evaluation."}
+                    </p>
+                    
+                    {/* Competitive Metrics */}
+                    <QuizRankings quizId={quiz.id} currentStudentId={profile?.uid || ''} />
+                    
+                    <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      {submission ? (
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">Your Score</span>
+                          <span className="text-sm font-black text-slate-700 dark:text-slate-200">{submission.score} / {submission.totalPoints}</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">Status</span>
+                          <span className="text-sm font-black text-amber-500">Available</span>
                         </div>
                       )}
-                    </div>
-                  </div>
-                  
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 font-medium leading-relaxed italic line-clamp-2">
-                    {quiz.description || "Instructional module for structural logic evaluation."}
-                  </p>
-                  
-                  {/* Competitive Metrics */}
-                  <QuizRankings quizId={quiz.id} currentStudentId={profile?.uid || ''} />
-                  
-                  <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    {submission ? (
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">Your Score</span>
-                        <span className="text-sm font-black text-slate-700 dark:text-slate-200">{submission.score} / {submission.totalPoints}</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">Status</span>
-                        <span className="text-sm font-black text-amber-500">Available</span>
-                      </div>
-                    )}
 
-                    {limitReached ? (
-                      <Link
-                        to="/student/performance"
-                        className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 border border-slate-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-900 transition-all shadow-sm"
-                      >
-                        Review
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    ) : quiz.deadline && new Date(quiz.deadline) < new Date() ? (
-                      <div className="px-5 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-600 font-bold text-[11px] uppercase tracking-widest rounded-xl border border-slate-200 dark:border-slate-700 opacity-60 flex items-center gap-2">
-                        Expired
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setSelectedQuizId(quiz.id)}
-                        className="flex items-center gap-2 rounded-xl bg-indigo-600 dark:bg-indigo-700 px-6 py-3 text-[11px] font-bold uppercase tracking-widest text-white shadow-[0_10px_20px_rgba(79,70,229,0.15)] hover:shadow-[0_15px_30px_rgba(79,70,229,0.3)] hover:bg-indigo-700 transition-all active:scale-95 group/btn"
-                      >
-                        {submission ? 'Retake Test' : 'Take Test'}
-                        <ArrowRight className="h-4 w-4 transform group-hover/btn:translate-x-0.5 transition-transform" />
-                      </button>
-                    )}
+                      {limitReached ? (
+                        <Link
+                          to="/student/performance"
+                          className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 border border-slate-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-900 transition-all shadow-sm"
+                        >
+                          Review
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
+                      ) : quiz.deadline && new Date(quiz.deadline) < new Date() ? (
+                        <div className="px-5 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-600 font-bold text-[11px] uppercase tracking-widest rounded-xl border border-slate-200 dark:border-slate-700 opacity-60 flex items-center gap-2">
+                          Expired
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setSelectedQuizId(quiz.id)}
+                          className={cn(
+                            "flex items-center gap-2 rounded-xl px-6 py-3 text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95 group/btn",
+                            theme.buttonBg
+                          )}
+                        >
+                          {submission ? 'Retake Test' : 'Take Test'}
+                          <ArrowRight className="h-4 w-4 transform group-hover/btn:translate-x-0.5 transition-transform" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               );

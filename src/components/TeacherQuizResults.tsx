@@ -5,7 +5,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission, Question, UserProfile } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download, FileText, Plus, Minus, Search, Presentation } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download, FileText, Plus, Minus, Search, Presentation, ShieldAlert, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
 import { jsPDF } from 'jspdf';
@@ -231,11 +231,13 @@ export default function TeacherQuizResults() {
       a.studentName.localeCompare(b.studentName)
     );
 
-    const headers = ['Full Name', 'Score', 'Total Score'];
+    const headers = ['Full Name', 'Score', 'Total Score', 'Anti-Cheating Status', 'Breach Incidents'];
     const rows = sortedForExport.map(s => [
       `"${s.studentName}"`,
       s.score,
-      s.totalPoints
+      s.totalPoints,
+      `"${(s.antiCheatTriggered || (s.breachCount && s.breachCount > 0)) ? 'TRIGGERED (Flagged)' : 'CLEAN'}"`,
+      s.breachCount || 0
     ]);
 
     const csvContent = [
@@ -314,12 +316,13 @@ export default function TeacherQuizResults() {
       s.studentId.substring(0, 8).toUpperCase(),
       s.studentName,
       s.score,
-      `${Math.round((s.score / s.totalPoints) * 100)}%`
+      `${Math.round((s.score / s.totalPoints) * 100)}%`,
+      (s.antiCheatTriggered || (s.breachCount && s.breachCount > 0)) ? `TRIGGERED (${s.breachCount || 1}x)` : 'CLEAN'
     ]);
 
     autoTable(doc, {
       startY: 55,
-      head: [['#', 'User ID', 'Name', 'Score', 'Percentage']],
+      head: [['#', 'User ID', 'Name', 'Score', 'Percentage', 'Anti-Cheat']],
       body: tableData,
       theme: 'grid',
       headStyles: { 
@@ -338,10 +341,11 @@ export default function TeacherQuizResults() {
       },
       columnStyles: {
         0: { halign: 'center', cellWidth: 10 },
-        1: { halign: 'center', cellWidth: 30 },
+        1: { halign: 'center', cellWidth: 28 },
         2: { halign: 'left' },
-        3: { halign: 'center', cellWidth: 30 },
-        4: { halign: 'center', cellWidth: 30 }
+        3: { halign: 'center', cellWidth: 22 },
+        4: { halign: 'center', cellWidth: 24 },
+        5: { halign: 'center', cellWidth: 32 }
       }
     });
 
@@ -506,8 +510,21 @@ export default function TeacherQuizResults() {
                             )}
                           </div>
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <p className="font-bold text-slate-700 dark:text-slate-200 tracking-tight">{sub.studentName}</p>
+                              
+                              {/* Anti-Cheating Protocol Status Indicator (Marked in Red if triggered) */}
+                              {(sub.antiCheatTriggered || (sub.breachCount && sub.breachCount > 0)) && (
+                                <span 
+                                  id={`anti-cheat-badge-${sub.id}`}
+                                  className="inline-flex items-center gap-1 text-[8px] font-black uppercase text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/60 px-2 py-0.5 rounded-full border border-red-200 dark:border-red-900/60 shadow-sm"
+                                  title={sub.breachReason || `Anti-cheating violation detected${sub.breachCount ? ` (${sub.breachCount} breach event${sub.breachCount > 1 ? 's' : ''})` : ''}`}
+                                >
+                                  <AlertTriangle className="h-2.5 w-2.5 text-red-600 dark:text-red-400 shrink-0" />
+                                  <span>Anti-Cheat Triggered{sub.breachCount && sub.breachCount > 1 ? ` (${sub.breachCount}x)` : ''}</span>
+                                </span>
+                              )}
+
                               {sub.status === 'in-progress' && (
                                 <span className="text-[8px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded border border-amber-100 dark:border-amber-900 animate-pulse">In Progress</span>
                               )}
@@ -610,6 +627,33 @@ export default function TeacherQuizResults() {
                 </header>
 
                 <div className="p-8 overflow-y-auto space-y-8 custom-scrollbar flex-1">
+                  {/* Anti-Cheating Protocol Status Alert Banner */}
+                  {(selectedSubmission.antiCheatTriggered || (selectedSubmission.breachCount && selectedSubmission.breachCount > 0)) && (
+                    <div 
+                      id={`anti-cheat-alert-${selectedSubmission.id}`}
+                      className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xl flex items-start gap-3.5 text-red-700 dark:text-red-300 shadow-sm"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0 text-red-600 dark:text-red-400">
+                        <ShieldAlert className="h-5 w-5" />
+                      </div>
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <h4 className="text-xs font-black uppercase tracking-wider text-red-700 dark:text-red-300">
+                            Anti-Cheating Protocol Status: Triggered
+                          </h4>
+                          {selectedSubmission.breachCount ? (
+                            <span className="text-[10px] font-black uppercase bg-red-100 dark:bg-red-900/70 text-red-800 dark:text-red-200 px-2 py-0.5 rounded-full border border-red-200 dark:border-red-800">
+                              {selectedSubmission.breachCount} Incident{selectedSubmission.breachCount > 1 ? 's' : ''} Logged
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="text-xs text-red-600 dark:text-red-300 font-medium leading-relaxed">
+                          {selectedSubmission.breachReason || "Integrity breach logged: Student shifted window focus, attempted screen capture, or exited fullscreen during assessment."}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {draftResponses.map((res, idx) => {
                     const q = getQuestion(res.questionId);
                     if (!q) return null;

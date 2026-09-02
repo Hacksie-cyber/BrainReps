@@ -43,6 +43,9 @@ export default function QuizSession() {
   const [isBlurred, setIsBlurred] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [breachCount, setBreachCount] = useState(0);
+  const breachCountRef = useRef(0);
+  const breachReasonRef = useRef<string | null>(null);
+  const wasForcedRef = useRef(false);
   const [showBreachWarning, setShowBreachWarning] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
   const lastBreachTimeRef = useRef<number>(0);
@@ -186,6 +189,10 @@ export default function QuizSession() {
 
     const triggerFullBreach = (message: string) => {
       console.warn("Anti-cheating triggered: Integrity breach detected. Auto-submitting...");
+      wasForcedRef.current = true;
+      if (!breachReasonRef.current) {
+        breachReasonRef.current = "Anti-cheating protocol triggered: Multiple security breaches detected";
+      }
       
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
@@ -222,6 +229,8 @@ export default function QuizSession() {
       if ((document.visibilityState === 'hidden' || !document.hasFocus()) && !finishedRef.current) {
         if (profile?.role === 'student') {
           lastBreachTimeRef.current = now;
+          breachCountRef.current += 1;
+          breachReasonRef.current = "Window focus loss / Tab switch detected during assessment";
           setBreachCount(prev => {
             const nextCount = prev + 1;
             if (nextCount === 1) {
@@ -258,6 +267,8 @@ export default function QuizSession() {
 
         if (e.key === 'PrintScreen' && profile?.role === 'student') {
           lastBreachTimeRef.current = now;
+          breachCountRef.current += 1;
+          breachReasonRef.current = "Unauthorized screen capture attempt detected";
           setBreachCount(prev => {
             const nextCount = prev + 1;
             if (nextCount === 1) {
@@ -361,7 +372,10 @@ export default function QuizSession() {
         submittedAt: submissionAt,
         graded: isFinal,
         status: isFinal ? 'completed' : 'in-progress',
-        timeTaken: timeTaken
+        timeTaken: timeTaken,
+        antiCheatTriggered: breachCountRef.current > 0 || wasForcedRef.current || wasForced || breachCount > 0,
+        breachCount: breachCountRef.current || breachCount || 0,
+        breachReason: breachReasonRef.current || (breachCountRef.current > 0 || breachCount > 0 ? 'Window focus / Tab switch detected during assessment' : undefined),
       };
 
       const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
