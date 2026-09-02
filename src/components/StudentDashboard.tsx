@@ -506,16 +506,16 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_8_px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] group">
+        <div className="bg-white dark:bg-slate-900 p-7 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_8_px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] group flex flex-col justify-between">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Top Achievement</p>
-            <Trophy className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform" />
+            <Trophy className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform shrink-0" />
           </div>
-          <div className="max-w-full overflow-hidden">
-            <h3 className="text-xl font-black font-display text-slate-900 dark:text-slate-50 leading-tight truncate uppercase">
+          <div className="w-full">
+            <h3 className="text-base sm:text-lg lg:text-xl font-black font-display text-slate-900 dark:text-slate-50 leading-snug uppercase break-words" title={topAchiever || undefined}>
               {topAchiever || "---"}
             </h3>
-            <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mt-1">Institutional Peak</p>
+            <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mt-1.5">Institutional Peak</p>
           </div>
         </div>
         
