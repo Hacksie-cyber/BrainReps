@@ -196,8 +196,10 @@ export default function TeacherAssessments() {
                               toggleHide(quiz.id, !!quiz.isHidden);
                             }}
                             className={cn(
-                              "p-2.5 rounded-xl transition-all shadow-sm border opacity-0 group-hover:opacity-100 active:scale-90",
-                              quiz.isHidden ? "bg-amber-50 dark:bg-amber-900/20 text-amber-500 dark:text-amber-400 border-amber-100 dark:border-amber-800/50" : "bg-white dark:bg-slate-800 text-slate-300 dark:text-slate-600 hover:text-indigo-500 dark:hover:text-indigo-400 border-slate-100 dark:border-slate-700"
+                              "p-2.5 rounded-xl transition-all shadow-sm border active:scale-90",
+                              quiz.isHidden 
+                                ? "bg-amber-50 dark:bg-amber-900/20 text-amber-500 dark:text-amber-400 border-amber-200 dark:border-amber-800/50" 
+                                : "bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 border-slate-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800"
                             )}
                             title={quiz.isHidden ? "Show Module" : "Hide Module"}
                           >
@@ -208,7 +210,7 @@ export default function TeacherAssessments() {
                               e.stopPropagation();
                               navigate(`/teacher/edit/${quiz.id}`);
                             }}
-                            className="p-2.5 bg-white dark:bg-slate-800 text-slate-300 dark:text-slate-600 hover:text-indigo-500 dark:hover:text-indigo-400 border border-slate-100 dark:border-slate-700 rounded-xl transition-all shadow-sm opacity-0 group-hover:opacity-100 active:scale-90"
+                            className="p-2.5 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800 rounded-xl transition-all shadow-sm active:scale-90"
                             title="Configuration Settings"
                           >
                             <Settings className="h-4 w-4" />
@@ -220,9 +222,10 @@ export default function TeacherAssessments() {
                             }}
                             disabled={isDeleting === quiz.id}
                             className={cn(
-                              "p-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl transition-all shadow-sm opacity-0 group-hover:opacity-100 active:scale-90",
-                              isDeleting === quiz.id ? "text-slate-200 animate-pulse" : "text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400"
+                              "p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl transition-all shadow-sm active:scale-90",
+                              isDeleting === quiz.id ? "text-slate-200 animate-pulse" : "text-slate-400 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-900/50"
                             )}
+                            title="Delete Assessment"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
