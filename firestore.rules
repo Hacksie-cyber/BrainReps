@@ -90,7 +90,8 @@ service cloud.firestore {
              data.createdAt is string &&
              (data.get('deadline', '') == '' || data.deadline is string) &&
              data.get('isPublic', false) is bool &&
-             data.get('isHidden', false) is bool;
+             data.get('isHidden', false) is bool &&
+             data.get('showAnswerKey', false) is bool;
     }
 
     match /quizzes/{quizId} {

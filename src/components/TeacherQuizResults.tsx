@@ -5,7 +5,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission, Question, UserProfile } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download, FileText, Plus, Minus, Search, Presentation, ShieldAlert, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download, FileText, Plus, Minus, Search, Presentation, ShieldAlert, AlertTriangle, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
 import { jsPDF } from 'jspdf';
@@ -219,6 +219,20 @@ export default function TeacherQuizResults() {
     }
   };
 
+  const toggleAnswerKey = async () => {
+    if (!quiz || !id) return;
+    try {
+      const newStatus = !quiz.showAnswerKey;
+      await updateDoc(doc(db, 'quizzes', id), {
+        showAnswerKey: newStatus
+      });
+      setQuiz(prev => prev ? { ...prev, showAnswerKey: newStatus } : null);
+    } catch (error) {
+      console.error("Failed to toggle answer key:", error);
+      handleFirestoreError(error, OperationType.UPDATE, `quizzes/${id}`);
+    }
+  };
+
   const getQuestion = (qId: string): Question | undefined => {
     return quiz?.questions.find(q => q.id === qId);
   };
@@ -369,6 +383,20 @@ export default function TeacherQuizResults() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={toggleAnswerKey}
+            className={cn(
+              "p-2.5 rounded-xl border text-xs font-bold transition-all shadow-sm flex items-center gap-2 active:scale-95",
+              quiz.showAnswerKey
+                ? "bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/60"
+                : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
+            )}
+            title="Toggle whether students can view the answer key in their results"
+          >
+            {quiz.showAnswerKey ? <Eye className="w-4 h-4 text-purple-600 dark:text-purple-400" /> : <EyeOff className="w-4 h-4 text-slate-400" />}
+            <span className="hidden sm:inline">Answer Key:</span>
+            <span>{quiz.showAnswerKey ? 'Visible' : 'Hidden'}</span>
+          </button>
           <button
             onClick={() => navigate(`/teacher/present/${quiz.id}`)}
             className="p-2.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2 text-xs font-bold active:scale-95"

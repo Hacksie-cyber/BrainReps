@@ -88,6 +88,19 @@ export default function TeacherAssessments() {
     }
   };
 
+  const toggleAnswerKey = async (quizId: string, currentShowAnswerKey: boolean) => {
+    try {
+      await updateDoc(doc(db, 'quizzes', quizId), {
+        showAnswerKey: !currentShowAnswerKey
+      });
+      setQuizzes(quizzes.map(q => 
+        q.id === quizId ? { ...q, showAnswerKey: !currentShowAnswerKey } : q
+      ));
+    } catch (error) {
+      console.error("Failed to toggle answer key visibility:", error);
+    }
+  };
+
   const filteredQuizzes = quizzes.filter(q => 
     q.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     q.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -279,6 +292,24 @@ export default function TeacherAssessments() {
                                <ShieldCheck className="w-2.5 h-2.5" /> 
                                {quiz.isPublic ? 'Institutional' : `Secure: ${quiz.allowedStudentIds?.length || 0}`}
                             </span>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleAnswerKey(quiz.id, !!quiz.showAnswerKey);
+                              }}
+                              className={cn(
+                                "text-[9px] px-2 py-0.5 rounded-md border font-black uppercase tracking-tighter flex items-center gap-1 transition-all active:scale-95 cursor-pointer",
+                                quiz.showAnswerKey 
+                                  ? "bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/60 hover:bg-purple-100 dark:hover:bg-purple-900/40" 
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700"
+                              )}
+                              title={`Click to ${quiz.showAnswerKey ? 'hide' : 'show'} answer key for students`}
+                            >
+                              {quiz.showAnswerKey ? <Eye className="w-2.5 h-2.5 text-purple-600 dark:text-purple-400" /> : <EyeOff className="w-2.5 h-2.5 text-slate-400" />} 
+                              <span>Key: {quiz.showAnswerKey ? 'Shown' : 'Hidden'}</span>
+                            </button>
                           </div>
                         </div>
                       </div>

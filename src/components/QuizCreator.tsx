@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz, Question, QuestionType, UserProfile } from '../types';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Save, Plus, Trash2, ArrowLeft, GripVertical, CheckCircle2, Settings, Clock, Users, X, UserPlus, ShieldCheck, Search, ShieldAlert } from 'lucide-react';
+import { Save, Plus, Trash2, ArrowLeft, GripVertical, CheckCircle2, Settings, Clock, Users, X, UserPlus, ShieldCheck, Search, ShieldAlert, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
 
@@ -20,6 +20,7 @@ export default function QuizCreator() {
   const [timeLimit, setTimeLimit] = useState(0);
   const [isUnlimited, setIsUnlimited] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
+  const [showAnswerKey, setShowAnswerKey] = useState(false);
   const [allowedStudentIds, setAllowedStudentIds] = useState<string[]>([]);
   const [students, setStudents] = useState<UserProfile[]>([]);
   const [studentSearch, setStudentSearch] = useState('');
@@ -63,6 +64,7 @@ export default function QuizCreator() {
           setOriginalAllowedIds(data.allowedStudentIds || []);
           setIsPublic(data.isPublic || false);
           setOriginalIsPublic(data.isPublic || false);
+          setShowAnswerKey(data.showAnswerKey ?? false);
           // If 0, treat as unlimited
           if (data.retakeLimit === 0) {
             setIsUnlimited(true);
@@ -131,6 +133,7 @@ export default function QuizCreator() {
         deadline,
         allowedStudentIds,
         isPublic,
+        showAnswerKey,
         updatedAt: new Date().toISOString()
       };
       
@@ -497,7 +500,7 @@ export default function QuizCreator() {
               Settings & Assessment Policies
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Attempts Card */}
               <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800/60 flex flex-col justify-between space-y-4">
                 <div className="space-y-1">
@@ -567,6 +570,47 @@ export default function QuizCreator() {
                     <span className="text-xs font-bold text-slate-600 dark:text-slate-350">{timeLimit > 0 ? `${timeLimit} Minutes limit` : 'No time limit'}</span>
                     <span className="text-[10px] text-slate-450 dark:text-slate-500">Enable quiz duration countdown</span>
                   </div>
+                </div>
+              </div>
+
+              {/* Answer Key Visibility Card */}
+              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800/60 flex flex-col justify-between space-y-4">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Answer Key</h4>
+                    <span className={cn(
+                      "text-[9px] font-black uppercase px-2 py-0.5 rounded-full border",
+                      showAnswerKey 
+                        ? "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800"
+                        : "bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700"
+                    )}>
+                      {showAnswerKey ? 'Show Key' : 'Hide Key'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 leading-normal">
+                    Teacher's choice to reveal or conceal correct answers & solutions.
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showAnswerKey}
+                      onChange={(e) => setShowAnswerKey(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                    <span className="ms-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      {showAnswerKey ? <Eye className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" /> : <EyeOff className="w-3.5 h-3.5 text-slate-400" />}
+                      {showAnswerKey ? 'Show to Students' : 'Hidden from Students'}
+                    </span>
+                  </label>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-snug">
+                    {showAnswerKey 
+                      ? '✓ Students can review question solutions after completion.' 
+                      : '🔒 Answer key is sealed to prevent unauthorized leakage.'}
+                  </p>
                 </div>
               </div>
             </div>
