@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
-import { LogOut, BookOpen, User as UserIcon, LayoutDashboard, Database, GraduationCap, BarChart3, Settings, Brain, Menu, X, Sun, Moon, Bell, ShieldAlert, Users } from 'lucide-react';
+import { LogOut, BookOpen, User as UserIcon, LayoutDashboard, Database, GraduationCap, BarChart3, Settings, Brain, Menu, X, Sun, Moon, Bell, ShieldAlert, Users, Maximize, Minimize } from 'lucide-react';
 import { useTheme } from '../lib/ThemeContext';
 import { cn } from '../lib/utils';
 import NotificationCenter from './NotificationCenter';
@@ -12,6 +12,90 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    const doc = document as any;
+    const docEl = document.documentElement as any;
+
+    const activeFs = doc.fullscreenElement || 
+                     doc.webkitFullscreenElement || 
+                     doc.mozFullScreenElement || 
+                     doc.msFullscreenElement;
+
+    if (!activeFs) {
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(() => {});
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen().catch?.(() => {});
+      } else if (docEl.mozRequestFullScreen) {
+        docEl.mozRequestFullScreen().catch?.(() => {});
+      } else if (docEl.msRequestFullscreen) {
+        docEl.msRequestFullscreen().catch?.(() => {});
+      }
+    } else {
+      if (doc.exitFullscreen) {
+        doc.exitFullscreen().catch(() => {});
+      } else if (doc.webkitExitFullscreen) {
+        doc.webkitExitFullscreen().catch?.(() => {});
+      } else if (doc.mozCancelFullScreen) {
+        doc.mozCancelFullScreen().catch?.(() => {});
+      } else if (doc.msExitFullscreen) {
+        doc.msExitFullscreen().catch?.(() => {});
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const doc = document as any;
+      const activeFs = doc.fullscreenElement || 
+                       doc.webkitFullscreenElement || 
+                       doc.mozFullScreenElement || 
+                       doc.msFullscreenElement;
+      setIsFullscreen(Boolean(activeFs));
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Trigger only when 'f' or 'F' is pressed
+      if (e.key.toLowerCase() !== 'f') return;
+
+      // Ignore if modifier keys (Ctrl, Meta/Cmd, Alt) are pressed
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      // Ignore if user is currently typing in an editable field or input
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tagName = target.tagName;
+        if (
+          tagName === 'INPUT' ||
+          tagName === 'TEXTAREA' ||
+          tagName === 'SELECT' ||
+          target.isContentEditable ||
+          target.getAttribute('contenteditable') === 'true'
+        ) {
+          return;
+        }
+      }
+
+      e.preventDefault();
+      toggleFullscreen();
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   useEffect(() => {
     setIsSidebarOpen(false);
@@ -155,7 +239,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               {location.pathname.includes('teacher') ? 'Teacher Console' : 'Learning Hub'}
             </h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+             <button
+                onClick={toggleFullscreen}
+                className={cn(
+                  "p-2 rounded-lg transition-all active:scale-95 flex items-center gap-1.5",
+                  isFullscreen
+                    ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50"
+                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                )}
+                title={isFullscreen ? "Exit Fullscreen (Press 'F')" : "Enter Fullscreen (Press 'F')"}
+             >
+                {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                <kbd className="hidden sm:inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] font-black uppercase font-mono bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-500 dark:text-slate-400 shadow-2xs">
+                  F
+                </kbd>
+             </button>
              <NotificationCenter />
              <button
                 onClick={toggleTheme}
