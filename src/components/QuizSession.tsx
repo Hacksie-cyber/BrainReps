@@ -6,7 +6,7 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
-import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAlert, AlertTriangle, Trophy, Medal, Star } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAlert, AlertTriangle, Trophy, Medal, Star, Eye, EyeOff } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 import { studentCache } from '../lib/studentCache';
 import { addLocalNotification } from '../lib/localNotifications';
@@ -359,29 +359,54 @@ export default function QuizSession() {
 
       finalScore = Math.round(currentScore * 10) / 10;
       const submissionAt = new Date().toISOString();
-      const submissionData = {
+      const hasBreached = Boolean(breachCountRef.current > 0 || wasForcedRef.current || wasForced || breachCount > 0);
+      const resolvedBreachReason = String(breachReasonRef.current || (hasBreached ? 'Window focus / Tab switch detected during assessment' : ''));
+
+      const rawSubmissionData: Record<string, any> = {
         quizId: quiz.id,
-        quizTitle: quiz.title,
+        quizTitle: quiz.title || 'Assessment',
         teacherId: quiz.teacherId,
         studentId: profile.uid,
         studentName: profile.name || 'Anonymous Student',
         studentRole: profile.role || 'student',
         responses: gradedResponses,
-        score: finalScore,
-        totalPoints,
+        score: Number(finalScore) || 0,
+        totalPoints: Number(totalPoints) || 0,
         submittedAt: submissionAt,
-        graded: isFinal,
+        graded: Boolean(isFinal),
         status: isFinal ? 'completed' : 'in-progress',
-        timeTaken: timeTaken,
-        antiCheatTriggered: breachCountRef.current > 0 || wasForcedRef.current || wasForced || breachCount > 0,
-        breachCount: breachCountRef.current || breachCount || 0,
-        breachReason: breachReasonRef.current || (breachCountRef.current > 0 || breachCount > 0 ? 'Window focus / Tab switch detected during assessment' : undefined),
+        timeTaken: Number(timeTaken) || 0,
+        antiCheatTriggered: hasBreached,
+        breachCount: Number(breachCountRef.current || breachCount || 0),
+        breachReason: resolvedBreachReason,
       };
 
       const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
       
-      await setDoc(doc(db, 'submissions', sessionDocId), {
-        ...submissionData,
+      // Deep clean out any undefined values so Firestore never throws "Unsupported field value: undefined"
+      const sanitizeObject = (obj: any): any => {
+        if (obj === undefined) return null;
+        if (obj === null || typeof obj !== 'object') return obj;
+        if (Array.isArray(obj)) {
+          return obj.map(item => sanitizeObject(item));
+        }
+        const cleaned: Record<string, any> = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if (value !== undefined) {
+            cleaned[key] = sanitizeObject(value);
+          }
+        }
+        return cleaned;
+      };
+
+      const cleanSubmissionData = sanitizeObject(rawSubmissionData);
+      const targetDocId = sessionDocId || crypto.randomUUID();
+      if (!sessionDocId) {
+        setSessionDocId(targetDocId);
+      }
+
+      await setDoc(doc(db, 'submissions', targetDocId), {
+        ...cleanSubmissionData,
         serverTimestamp: serverTimestamp()
       }, { merge: true });
       
@@ -470,14 +495,16 @@ export default function QuizSession() {
         setRankStatus('success');
 
         // Permanently record rank metrics into the submission document
-        const { doc, setDoc } = await import('firebase/firestore');
-        try {
-          await setDoc(doc(db, 'submissions', sessionDocId!), {
-            rank,
-            totalParticipants: sortedScores.length
-          }, { merge: true });
-        } catch (syncErr) {
-          console.warn("Rank persistence failed but state updated locally:", syncErr);
+        if (sessionDocId) {
+          const { doc, setDoc } = await import('firebase/firestore');
+          try {
+            await setDoc(doc(db, 'submissions', sessionDocId), {
+              rank: Number(rank) || 1,
+              totalParticipants: Number(sortedScores.length) || 1
+            }, { merge: true });
+          } catch (syncErr) {
+            console.warn("Rank persistence failed but state updated locally:", syncErr);
+          }
         }
 
         // If they get a high score or perfect score, notify them via local browser storage!
@@ -669,6 +696,35 @@ export default function QuizSession() {
           </div>
         </motion.div>
       )}
+
+        {/* Answer Key Release Status Card */}
+        {quiz && (
+          <div className="mb-8 p-4 rounded-2xl border max-w-md mx-auto transition-all text-left flex items-start gap-3.5 bg-slate-50/80 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800">
+            <div className={cn(
+              "p-2.5 rounded-xl shrink-0 mt-0.5",
+              quiz.showAnswerKey ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400" : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+            )}>
+              {quiz.showAnswerKey ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  "text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border",
+                  quiz.showAnswerKey 
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" 
+                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700"
+                )}>
+                  {quiz.showAnswerKey ? 'Answer Key Released' : 'Answer Key Concealed'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 font-medium leading-relaxed">
+                {quiz.showAnswerKey 
+                  ? 'The educator has released verified answer keys. You can review detailed question solutions in your Performance Log.'
+                  : 'The educator has restricted answer key visibility to uphold academic integrity.'}
+              </p>
+            </div>
+          </div>
+        )}
 
         <p className="mb-10 text-lg text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto leading-relaxed">
           Your metrics have been recorded. You can now review your score and detailed performance breakdown in your dashboard.

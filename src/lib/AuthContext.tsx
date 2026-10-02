@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name,
       email: auth.currentUser.email || '',
       role,
-      photoURL: auth.currentUser.photoURL || undefined,
+      photoURL: auth.currentUser.photoURL || '',
       createdAt: new Date().toISOString(),
     };
     

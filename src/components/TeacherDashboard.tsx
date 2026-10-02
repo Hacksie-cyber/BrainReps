@@ -6,7 +6,7 @@ import { Quiz, QuizSubmission, UserProfile } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { cn, formatDeadline } from '../lib/utils';
-import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2, UserX, ShieldAlert, Edit, Database, Presentation } from 'lucide-react';
+import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2, UserX, ShieldAlert, Edit, Database, Presentation, Upload } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import DeleteModal from './DeleteModal';
 
@@ -219,13 +219,21 @@ export default function TeacherDashboard() {
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 font-display tracking-tight">Dashboard Overview</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight italic">Monitor institutional performance and questionnaire management.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             to="/teacher/handouts"
-            className="flex items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-6 py-3 text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm active:scale-95"
+            className="flex items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-5 py-3 text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm active:scale-95"
           >
             <Database className="h-4 w-4 text-indigo-500" />
             Study Materials
+          </Link>
+          <Link
+            to="/teacher/create?import=true"
+            className="flex items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-5 py-3 text-xs font-bold uppercase tracking-widest text-slate-700 dark:text-slate-300 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-indigo-300 hover:text-indigo-600 shadow-sm active:scale-95"
+            title="Batch upload summative assessment or formatted quiz"
+          >
+            <Upload className="h-4 w-4 text-indigo-500" />
+            Upload Assessment
           </Link>
           <Link
             to="/teacher/create"

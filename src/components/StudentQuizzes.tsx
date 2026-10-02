@@ -110,24 +110,21 @@ export default function StudentQuizzes() {
             const q = query(
               collection(db, 'submissions'),
               where('quizId', '==', quiz.id),
-              where('status', '==', 'completed'),
-              orderBy('score', 'desc'),
-              limit(1)
+              where('status', '==', 'completed')
             );
             const snap = await getDocs(q);
             if (!snap.empty) {
-              const data = snap.docs[0].data();
+              const allCompleted = snap.docs.map(d => d.data());
+              allCompleted.sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
+              const topDoc = allCompleted[0];
               return { quizId: quiz.id, data: {
-                name: data.studentName,
-                score: data.score,
-                total: data.totalPoints
+                name: topDoc.studentName || 'Student',
+                score: topDoc.score,
+                total: topDoc.totalPoints
               }};
             }
-          } catch (err: any) {
-            // Silently handle index errors or permission errors for individual cards
-            if (err.message?.includes('index')) {
-              console.warn(`Ranking index missing for quiz ${quiz.id}`);
-            }
+          } catch (_err) {
+            // Silently handle any card ranking errors without logging console warnings
             return null;
           }
           return null;

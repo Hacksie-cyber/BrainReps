@@ -3,16 +3,18 @@ import { collection, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, ge
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, Question, QuestionType, UserProfile } from '../types';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Save, Plus, Trash2, ArrowLeft, GripVertical, CheckCircle2, Settings, Clock, Users, X, UserPlus, ShieldCheck, Search, ShieldAlert, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { Save, Plus, Trash2, ArrowLeft, GripVertical, CheckCircle2, Settings, Clock, Users, X, UserPlus, ShieldCheck, Search, ShieldAlert, Eye, EyeOff, KeyRound, Upload } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
+import QuizImportModal from './QuizImportModal';
 
 export default function QuizCreator() {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
@@ -28,6 +30,7 @@ export default function QuizCreator() {
   const [loading, setLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(searchParams.get('import') === 'true');
   const [isFetching, setIsFetching] = useState(false);
 
   const [originalTitle, setOriginalTitle] = useState('');
@@ -294,6 +297,15 @@ export default function QuizCreator() {
               <Trash2 className="w-5 h-5" />
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setShowUploadModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300 dark:hover:border-indigo-700 rounded-lg font-bold text-xs transition-all shadow-sm active:scale-95"
+            title="Upload formatted quiz from file or text"
+          >
+            <Upload className="w-4 h-4 text-indigo-500" />
+            <span className="hidden sm:inline">Upload Questions</span>
+          </button>
           <button
             onClick={handleSave}
             disabled={loading || isFetching || isDeleting || !title || questions.length === 0}
@@ -618,6 +630,41 @@ export default function QuizCreator() {
         </div>
 
         <div className="space-y-6">
+          {questions.length === 0 && (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 md:p-12 border-2 border-dashed border-indigo-200 dark:border-indigo-900/60 text-center space-y-6 shadow-sm">
+              <div className="w-16 h-16 rounded-3xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 mx-auto flex items-center justify-center shadow-inner">
+                <Upload className="w-8 h-8" />
+              </div>
+              <div className="max-w-md mx-auto space-y-2">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                  Upload Assessment or Add Questions
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                  Fast-track your module creation by uploading a formatted summative exam file or pasting multiple-choice questions in the 5-row format:
+                </p>
+                <div className="inline-block p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 text-[11px] font-mono text-slate-600 dark:text-slate-400 text-left space-y-1">
+                  <p className="text-indigo-600 dark:text-indigo-400 font-bold mb-1.5 flex items-center gap-1.5 font-sans uppercase text-[10px] tracking-wider">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> 5-Row Consecutive Format:
+                  </p>
+                  <div>Row 1: Question Text</div>
+                  <div>Row 2: Choice 1 (*Choice to set answer key)</div>
+                  <div>Row 3: Choice 2</div>
+                  <div>Row 4: Choice 3</div>
+                  <div>Row 5: Choice 4 (repeats for each question)</div>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowUploadModal(true)}
+                  className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition-all hover:scale-105 active:scale-95"
+                >
+                  <Upload className="w-4 h-4" /> Upload Assessment File (.txt / .csv)
+                </button>
+              </div>
+            </div>
+          )}
+
           <AnimatePresence>
             {questions.map((q, index) => (
               <motion.div
@@ -794,10 +841,31 @@ export default function QuizCreator() {
               >
                 <Plus className="w-3.5 h-3.5" /> Short Answer
               </button>
+              <button
+                type="button"
+                onClick={() => setShowUploadModal(true)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-xs font-bold shadow-sm border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all hover:-translate-y-0.5 active:translate-y-0"
+                title="Batch upload multiple choice and summative questions"
+              >
+                <Upload className="w-3.5 h-3.5" /> Upload Formatted Assessment
+              </button>
             </div>
           </div>
         </div>
       </section>
+
+      <QuizImportModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onImport={(importedQuestions, append) => {
+          if (append) {
+            setQuestions(prev => [...prev, ...importedQuestions]);
+          } else {
+            setQuestions(importedQuestions);
+          }
+        }}
+        currentQuestionCount={questions.length}
+      />
 
       <DeleteModal
         isOpen={showDeleteModal}

@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, BookOpen, Trash2, BarChart3, Settings, MoreVertical, Edit, Eye, EyeOff, ShieldCheck, Clock, Presentation, Tv } from 'lucide-react';
+import { Plus, Search, BookOpen, Trash2, BarChart3, Settings, MoreVertical, Edit, Eye, EyeOff, ShieldCheck, Clock, Presentation, Tv, Upload } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 import { getQuizColorTheme } from '../lib/quizThemes';
 import DeleteModal from './DeleteModal';
@@ -115,13 +115,23 @@ export default function TeacherAssessments() {
           <h1 className="text-3xl font-bold font-display text-slate-800 dark:text-slate-100 tracking-tight">Assessment Inventory</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight">Manage and monitor your higher-order curriculum evaluation modules.</p>
         </div>
-        <Link
-          to="/teacher/create"
-          className="flex items-center justify-center gap-3 rounded-xl bg-indigo-600 dark:bg-indigo-500 px-8 py-3.5 text-[11px] font-bold uppercase tracking-widest text-white transition-all hover:bg-indigo-700 dark:hover:bg-indigo-600 shadow-[0_10px_20px_rgba(79,70,229,0.15)] hover:shadow-[0_15px_30px_rgba(79,70,229,0.3)] active:scale-95 group"
-        >
-          <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
-          Create New Module
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            to="/teacher/create?import=true"
+            className="flex items-center justify-center gap-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-6 py-3.5 text-[11px] font-bold uppercase tracking-widest text-slate-700 dark:text-slate-300 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm active:scale-95 group"
+            title="Batch upload summative assessment or formatted quiz"
+          >
+            <Upload className="h-4 w-4 text-indigo-500 transition-transform group-hover:-translate-y-0.5" />
+            Upload Assessment
+          </Link>
+          <Link
+            to="/teacher/create"
+            className="flex items-center justify-center gap-3 rounded-xl bg-indigo-600 dark:bg-indigo-500 px-8 py-3.5 text-[11px] font-bold uppercase tracking-widest text-white transition-all hover:bg-indigo-700 dark:hover:bg-indigo-600 shadow-[0_10px_20px_rgba(79,70,229,0.15)] hover:shadow-[0_15px_30px_rgba(79,70,229,0.3)] active:scale-95 group"
+          >
+            <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
+            Create New Module
+          </Link>
+        </div>
       </header>
 
       <section className="space-y-8">
