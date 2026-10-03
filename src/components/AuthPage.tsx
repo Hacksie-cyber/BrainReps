@@ -135,6 +135,12 @@ export default function AuthPage() {
   const aboutRef = useRef<HTMLDivElement>(null);
   const homeRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (auth.currentUser?.displayName && !name) {
+      setName(auth.currentUser.displayName);
+    }
+  }, [auth.currentUser]);
+
   const scrollToAbout = () => {
     setActiveSection('about');
     setIsMenuOpen(false);
@@ -195,15 +201,54 @@ export default function AuthPage() {
   };
 
   if (auth.currentUser && !profile) {
+    const userPhoto = auth.currentUser.photoURL;
+    const userDisplayName = auth.currentUser.displayName || name || 'Learner';
+    const userEmail = auth.currentUser.email;
+
     return (
-      <div className="flex min-h-[80vh] items-center justify-center p-4">
+      <div className="flex min-h-[85vh] items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-8 shadow-xl border border-slate-200 dark:border-slate-800 transition-colors"
+          className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 p-8 shadow-2xl border border-slate-200 dark:border-slate-800 transition-colors"
         >
+          {/* Welcoming User with Profile Image Card */}
+          <div className="flex flex-col items-center text-center mb-8 pb-6 border-b border-slate-100 dark:border-slate-800">
+            <div className="relative mb-4 group">
+              <div className="w-24 h-24 rounded-3xl p-1 bg-gradient-to-tr from-indigo-500 via-indigo-600 to-emerald-400 shadow-xl shadow-indigo-500/20">
+                <div className="w-full h-full rounded-[1.35rem] overflow-hidden bg-slate-900 flex items-center justify-center border-2 border-white dark:border-slate-900">
+                  {userPhoto ? (
+                    <img 
+                      src={userPhoto} 
+                      alt={userDisplayName} 
+                      className="w-full h-full object-cover" 
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center text-3xl font-black text-white">
+                      {userDisplayName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center text-white shadow-md">
+                <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
+              </div>
+            </div>
+
+            <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-1">
+              Google Account Connected
+            </span>
+            <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+              Welcome, {userDisplayName}!
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-1">
+              {userEmail}
+            </p>
+          </div>
+
           <div className="mb-6">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100">Identify your role</h2>
+            <h3 className="text-lg font-bold tracking-tight text-slate-800 dark:text-slate-100">Select Your Role</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Configure your profile as a student or educator.</p>
           </div>
 

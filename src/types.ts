@@ -1,5 +1,17 @@
 export type UserRole = 'teacher' | 'student' | 'admin';
 
+export interface UserPresence {
+  uid: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  photoURL?: string;
+  lastSeen: string;
+  status: 'online' | 'idle' | 'offline';
+  currentPath?: string;
+  currentActivity?: string;
+}
+
 export interface UserProfile {
   uid: string;
   name: string;

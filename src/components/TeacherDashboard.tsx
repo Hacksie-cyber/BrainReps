@@ -6,12 +6,13 @@ import { Quiz, QuizSubmission, UserProfile } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { cn, formatDeadline } from '../lib/utils';
-import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2, UserX, ShieldAlert, Edit, Database, Presentation, Upload } from 'lucide-react';
+import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2, UserX, ShieldAlert, Edit, Database, Presentation, Upload, Radio, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import DeleteModal from './DeleteModal';
+import { useActiveUsers } from '../lib/usePresence';
 
 export default function TeacherDashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const navigate = useNavigate();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
@@ -20,6 +21,8 @@ export default function TeacherDashboard() {
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [quizToDelete, setQuizToDelete] = useState<string | null>(null);
+
+  const { activeUsers, onlineCount, studentCount, quizParticipantCount } = useActiveUsers();
 
   useEffect(() => {
     if (!profile) return;
@@ -216,11 +219,11 @@ export default function TeacherDashboard() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
-          {profile?.photoURL ? (
+          {profile?.photoURL || user?.photoURL ? (
             <div className="w-14 h-14 rounded-2xl overflow-hidden ring-2 ring-indigo-500/20 shadow-sm shrink-0 bg-slate-100 dark:bg-slate-800">
               <img 
-                src={profile.photoURL} 
-                alt={profile.name} 
+                src={profile?.photoURL || user?.photoURL} 
+                alt={profile?.name || 'Educator'} 
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
               />
@@ -296,6 +299,114 @@ export default function TeacherDashboard() {
           <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-2 font-sans">Faculty Peers</p>
           <h3 className="text-3xl font-bold font-display text-slate-900 dark:text-slate-50 leading-none">{teacherCount}</h3>
           <p className="text-slate-400 dark:text-slate-500 text-[11px] mt-4 font-medium italic">Expert verified collaborators</p>
+        </div>
+      </section>
+
+      {/* Currently Active on Website - Live Radar Section */}
+      <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 md:p-8 shadow-sm transition-all overflow-hidden relative">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3.5">
+            <div className="relative shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-100 dark:border-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-xs">
+                <Radio className="w-6 h-6 animate-pulse" />
+              </div>
+              <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900"></span>
+              </span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-lg font-bold font-display text-slate-900 dark:text-slate-50">
+                  Currently Active on Website
+                </h2>
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  {onlineCount} Online
+                </span>
+                {quizParticipantCount > 0 && (
+                  <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60">
+                    <BookOpen className="w-3 h-3" />
+                    {quizParticipantCount} in Assessment
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                Live presence stream showing learners and staff currently active across the platform.
+              </p>
+            </div>
+          </div>
+
+          <Link
+            to="/teacher/active-users"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition-all active:scale-95 border border-indigo-100 dark:border-indigo-900/40 uppercase tracking-wider shrink-0"
+          >
+            <Activity className="w-3.5 h-3.5" />
+            Live Presence Monitor
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {/* Live Users Grid or Empty Notice */}
+        <div className="pt-6">
+          {activeUsers.length === 0 ? (
+            <p className="text-xs text-slate-400 font-medium italic">No active participants detected at this moment.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {activeUsers.slice(0, 8).map((u) => {
+                const isInQuiz = u.currentPath?.startsWith('/student/quiz/');
+                const isIdle = u.status === 'idle';
+                return (
+                  <div
+                    key={u.uid}
+                    className="flex items-center gap-3 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group"
+                  >
+                    <div className="relative shrink-0">
+                      {u.photoURL ? (
+                        <img
+                          src={u.photoURL}
+                          alt={u.name}
+                          className="w-10 h-10 rounded-xl object-cover ring-2 ring-white dark:ring-slate-800 shadow-xs"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-xs">
+                          {u.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span
+                        className={cn(
+                          "absolute -bottom-0.5 -right-0.5 w-3 h-3 border-2 border-white dark:border-slate-900 rounded-full",
+                          isIdle ? "bg-amber-400" : "bg-emerald-500"
+                        )}
+                        title={isIdle ? 'Idle tab' : 'Online'}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          {u.name}
+                        </p>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                          {u.role}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5 font-medium">
+                        {isInQuiz ? (
+                          <span className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
+                            <BookOpen className="w-2.5 h-2.5" />
+                            Taking Quiz
+                          </span>
+                        ) : (
+                          u.currentActivity || 'Active'
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 

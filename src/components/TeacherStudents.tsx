@@ -4,9 +4,10 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { QuizSubmission } from '../types';
 import { motion } from 'motion/react';
-import { Mail, Calendar, Search, User, Download, ShieldAlert, UserMinus, UserCheck, Trash2 } from 'lucide-react';
+import { Mail, Calendar, Search, User, Download, ShieldAlert, UserMinus, UserCheck, Trash2, Radio } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
+import { useActiveUsers } from '../lib/usePresence';
 
 interface StudentMetric {
   uid: string;
@@ -29,6 +30,8 @@ export default function TeacherStudents() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<StudentMetric | null>(null);
+
+  const { activeUsers } = useActiveUsers();
 
   const isSuperAdmin = profile?.email === 'bamuyahacksie@gmail.com';
 
@@ -340,7 +343,9 @@ export default function TeacherStudents() {
               No active participants detected in the assessment logs.
             </div>
           ) : (
-            filteredStudents.map((student, i) => (
+            filteredStudents.map((student, i) => {
+              const isOnline = activeUsers.some(u => u.uid === student.uid && u.status !== 'offline');
+              return (
               <motion.div
                 key={student.uid}
                 initial={{ opacity: 0, x: -10 }}
@@ -349,21 +354,34 @@ export default function TeacherStudents() {
                 className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-start justify-between group hover:border-indigo-200 dark:hover:border-indigo-900 hover:shadow-md transition-all"
               >
                 <div className="flex items-start gap-4">
-                  <div className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center transition-colors overflow-hidden",
-                    student.isBanned 
-                      ? "bg-red-50 dark:bg-red-900/20 text-red-400" 
-                      : "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-600 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/30 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
-                  )}>
-                    {student.photoURL ? (
-                      <img src={student.photoURL} alt={student.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <User className="h-6 w-6" />
+                  <div className="relative shrink-0">
+                    <div className={cn(
+                      "w-12 h-12 rounded-full flex items-center justify-center transition-colors overflow-hidden",
+                      student.isBanned 
+                        ? "bg-red-50 dark:bg-red-900/20 text-red-400" 
+                        : "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-600 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/30 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
+                    )}>
+                      {student.photoURL ? (
+                        <img src={student.photoURL} alt={student.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        <User className="h-6 w-6" />
+                      )}
+                    </div>
+                    {isOnline && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full flex items-center justify-center shadow-xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                      </span>
                     )}
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-slate-800 dark:text-slate-100 tracking-tight">{student.name}</h3>
+                      {isOnline && (
+                        <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-emerald-200 dark:border-emerald-800/60">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          Online Now
+                        </span>
+                      )}
                       {student.isBanned && (
                         <span className="px-1.5 py-0.5 bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 rounded text-[8px] font-black uppercase tracking-tighter flex items-center gap-0.5 border border-red-200 dark:border-red-900">
                           <ShieldAlert className="w-2.5 h-2.5" /> Restricted
@@ -423,8 +441,9 @@ export default function TeacherStudents() {
                     </div>
                   </div>
               </motion.div>
-            ))
-          )}
+            );
+          })
+        )}
         </div>
 
         {totalMatches > filteredStudents.length && (

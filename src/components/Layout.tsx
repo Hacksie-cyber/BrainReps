@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
-import { LogOut, BookOpen, User as UserIcon, LayoutDashboard, Database, GraduationCap, BarChart3, Settings, Brain, Menu, X, Sun, Moon, Bell, ShieldAlert, Users, Maximize, Minimize } from 'lucide-react';
+import { LogOut, BookOpen, User as UserIcon, LayoutDashboard, Database, GraduationCap, BarChart3, Settings, Brain, Menu, X, Sun, Moon, Bell, ShieldAlert, Users, Maximize, Minimize, Activity } from 'lucide-react';
 import { useTheme } from '../lib/ThemeContext';
 import { cn } from '../lib/utils';
 import NotificationCenter from './NotificationCenter';
+import { usePresencePublisher, useActiveUsers } from '../lib/usePresence';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useAuth();
@@ -13,6 +14,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Broadcast presence heartbeat for current logged-in user
+  usePresencePublisher();
+
+  // Listen to active users in real-time
+  const { onlineCount } = useActiveUsers();
 
   const toggleFullscreen = () => {
     const doc = document as any;
@@ -111,6 +118,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const menuItems = isAdmin ? [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/teacher' },
+    { label: 'Active Users', icon: Activity, path: '/teacher/active-users', badge: onlineCount },
     { label: 'Assessments', icon: BookOpen, path: '/teacher/assessments' },
     { label: 'Study Materials', icon: Database, path: '/teacher/handouts' },
     { label: 'Teachers', icon: Users, path: '/admin/faculty' },
@@ -118,6 +126,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { label: 'Analytics', icon: BarChart3, path: '/teacher/analytics' },
   ] : profile?.role === 'teacher' ? [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/teacher' },
+    { label: 'Active Users', icon: Activity, path: '/teacher/active-users', badge: onlineCount },
     { label: 'Assessments', icon: BookOpen, path: '/teacher/assessments' },
     { label: 'Study Materials', icon: Database, path: '/teacher/handouts' },
     { label: 'Students', icon: GraduationCap, path: '/teacher/students' },
@@ -171,7 +180,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
         
         <nav className="flex-1 p-4 space-y-1">
-          {menuItems.map((item) => {
+          {menuItems.map((item: any) => {
             const isActive = item.path === '/student' || item.path === '/teacher' 
               ? location.pathname === item.path 
               : location.pathname.startsWith(item.path);
@@ -180,14 +189,25 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md transition-all text-sm font-medium",
+                  "flex items-center gap-3 px-3 py-2 rounded-md transition-all text-sm font-medium group",
                   isActive 
                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" 
                     : "hover:bg-slate-800 text-slate-400 hover:text-white"
                 )}
               >
                 <item.icon className={cn("w-5 h-5", isActive ? "opacity-100" : "opacity-60")} />
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {typeof item.badge === 'number' && item.badge > 0 && (
+                  <span className={cn(
+                    "flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-black transition-all",
+                    isActive
+                      ? "bg-white/20 text-white"
+                      : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  )}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -204,7 +224,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             >
               <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-white text-xs font-bold ring-2 ring-indigo-500/20 overflow-hidden">
                 {profile.photoURL ? (
-                  <img src={profile.photoURL} alt={profile.name} className="w-full h-full object-cover" />
+                  <img src={profile.photoURL} alt={profile.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
                   profile.name.charAt(0)
                 )}

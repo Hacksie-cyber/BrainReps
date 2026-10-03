@@ -31,10 +31,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (user) {
-        const { onSnapshot, doc } = await import('firebase/firestore');
+        const { onSnapshot, doc, updateDoc } = await import('firebase/firestore');
         unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
           if (docSnap.exists()) {
-            setProfile(docSnap.data() as UserProfile);
+            const data = docSnap.data() as UserProfile;
+            const resolvedPhotoURL = data.photoURL || user.photoURL || '';
+            const resolvedProfile: UserProfile = {
+              ...data,
+              photoURL: resolvedPhotoURL,
+            };
+            setProfile(resolvedProfile);
+
+            // Auto-sync photoURL to Firestore if profile didn't store it yet
+            if (!data.photoURL && user.photoURL) {
+              updateDoc(doc(db, 'users', user.uid), { photoURL: user.photoURL }).catch(() => {});
+            }
           } else {
             setProfile(null);
           }
@@ -72,7 +83,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(newProfile);
   };
 
-  const signOut = () => auth.signOut();
+  const signOut = async () => {
+    if (auth.currentUser) {
+      try {
+        const { setDoc, doc } = await import('firebase/firestore');
+        await setDoc(doc(db, 'presence', auth.currentUser.uid), {
+          status: 'offline',
+          lastSeen: new Date().toISOString(),
+        }, { merge: true });
+      } catch (e) {
+        // ignore
+      }
+    }
+    return auth.signOut();
+  };
 
   return (
     <AuthContext.Provider value={{ user, profile, loading, signInAs, signOut }}>

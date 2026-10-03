@@ -114,7 +114,7 @@ function QuizRankings({ quizId, currentStudentId }: { quizId: string, currentStu
 }
 
 export default function StudentDashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const navigate = useNavigate();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([]);
@@ -395,11 +395,11 @@ export default function StudentDashboard() {
           className="max-w-md space-y-6"
         >
           <div className="relative mx-auto w-20 h-20">
-            {profile?.photoURL ? (
+            {profile?.photoURL || user?.photoURL ? (
               <div className="w-20 h-20 rounded-2xl overflow-hidden ring-4 ring-indigo-500/30 shadow-xl shadow-indigo-600/20 bg-slate-900">
                 <img 
-                  src={profile.photoURL} 
-                  alt={profile.name} 
+                  src={profile?.photoURL || user?.photoURL} 
+                  alt={profile?.name || 'Student'} 
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                 />
@@ -477,11 +477,11 @@ export default function StudentDashboard() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
-          {profile?.photoURL ? (
+          {profile?.photoURL || user?.photoURL ? (
             <div className="w-14 h-14 rounded-2xl overflow-hidden ring-2 ring-indigo-500/20 shadow-sm shrink-0 bg-slate-100 dark:bg-slate-800">
               <img 
-                src={profile.photoURL} 
-                alt={profile.name} 
+                src={profile?.photoURL || user?.photoURL} 
+                alt={profile?.name || 'Student'} 
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
               />

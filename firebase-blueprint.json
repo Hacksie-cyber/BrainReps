@@ -96,9 +96,30 @@
         "count": { "type": "number" }
       },
       "required": ["userId", "date", "count"]
+    },
+    "Presence": {
+      "title": "User Presence",
+      "description": "Real-time presence and activity tracking for online users.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["student", "teacher", "admin"] },
+        "photoURL": { "type": "string" },
+        "lastSeen": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["online", "idle", "offline"] },
+        "currentPath": { "type": "string" },
+        "currentActivity": { "type": "string" }
+      },
+      "required": ["uid", "name", "email", "role", "lastSeen", "status"]
     }
   },
   "firestore": {
+    "presence/{userId}": {
+      "schema": "Presence",
+      "description": "Real-time user heartbeat and active state."
+    },
     "usage/{usageId}": {
       "schema": "AIUsage",
       "description": "Daily AI request counters."

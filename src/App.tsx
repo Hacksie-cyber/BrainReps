@@ -21,6 +21,7 @@ import StudentProfile from './components/StudentProfile';
 import HandoutManager from './components/HandoutManager';
 import NeuralAssistant from './components/NeuralAssistant';
 import TeacherSlidePresentation from './components/TeacherSlidePresentation';
+import TeacherActiveUsers from './components/TeacherActiveUsers';
 
 import { BookOpen } from 'lucide-react';
 import { doc, getDocFromCache, getDocFromServer } from 'firebase/firestore';
@@ -68,7 +69,7 @@ function RequireAuth({ children, role }: { children: React.ReactNode, role?: 'te
       <IntroScreen 
         userRole={effectiveRole} 
         userName={profile.name} 
-        userPhotoURL={profile.photoURL}
+        userPhotoURL={profile.photoURL || user?.photoURL}
         onComplete={() => {
           setShowIntro(false);
           setIntroStepCompleted(true);
@@ -128,6 +129,9 @@ export default function App() {
             } />
             <Route path="/teacher/students" element={
               <RequireAuth role="teacher"><TeacherStudents /></RequireAuth>
+            } />
+            <Route path="/teacher/active-users" element={
+              <RequireAuth role="teacher"><TeacherActiveUsers /></RequireAuth>
             } />
             <Route path="/teacher/analytics" element={
               <RequireAuth role="teacher"><TeacherAnalytics /></RequireAuth>
