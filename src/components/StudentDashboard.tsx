@@ -394,8 +394,21 @@ export default function StudentDashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md space-y-6"
         >
-          <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white mx-auto shadow-xl shadow-indigo-600/20 animate-pulse">
-            <BookOpen className="h-8 w-8" />
+          <div className="relative mx-auto w-20 h-20">
+            {profile?.photoURL ? (
+              <div className="w-20 h-20 rounded-2xl overflow-hidden ring-4 ring-indigo-500/30 shadow-xl shadow-indigo-600/20 bg-slate-900">
+                <img 
+                  src={profile.photoURL} 
+                  alt={profile.name} 
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            ) : (
+              <div className="w-20 h-20 bg-indigo-600 rounded-2xl flex items-center justify-center text-white mx-auto shadow-xl shadow-indigo-600/20 animate-pulse">
+                <BookOpen className="h-8 w-8" />
+              </div>
+            )}
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Welcome back, {profile?.name}</h2>
@@ -463,9 +476,27 @@ export default function StudentDashboard() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Active Learning Dashboard</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Review your progress and explore upcoming assessments.</p>
+        <div className="flex items-center gap-4">
+          {profile?.photoURL ? (
+            <div className="w-14 h-14 rounded-2xl overflow-hidden ring-2 ring-indigo-500/20 shadow-sm shrink-0 bg-slate-100 dark:bg-slate-800">
+              <img 
+                src={profile.photoURL} 
+                alt={profile.name} 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          ) : (
+            <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xl shrink-0">
+              {profile?.name ? profile.name.charAt(0).toUpperCase() : 'S'}
+            </div>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">
+              Welcome back, {profile?.name || 'Student'}
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Review your progress and explore upcoming assessments.</p>
+          </div>
         </div>
       </header>
 

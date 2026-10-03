@@ -68,6 +68,7 @@ function RequireAuth({ children, role }: { children: React.ReactNode, role?: 'te
       <IntroScreen 
         userRole={effectiveRole} 
         userName={profile.name} 
+        userPhotoURL={profile.photoURL}
         onComplete={() => {
           setShowIntro(false);
           setIntroStepCompleted(true);

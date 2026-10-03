@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Brain, Zap, Shield, Target, Sparkles, Loader2, Fingerprint } from 'lucide-react';
+import { Brain, Zap, Shield, Target, Sparkles, Loader2, Fingerprint, CheckCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface IntroScreenProps {
   onComplete: () => void;
   userRole: 'teacher' | 'student' | 'admin';
   userName: string;
+  userPhotoURL?: string | null;
 }
 
-export default function IntroScreen({ onComplete, userRole, userName }: IntroScreenProps) {
+export default function IntroScreen({ onComplete, userRole, userName, userPhotoURL }: IntroScreenProps) {
   const [isInitiated, setIsInitiated] = useState(false);
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -203,12 +204,34 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
             animate={{ scale: 1, opacity: 1 }}
             className="flex flex-col items-center gap-8 py-12"
           >
-            <div className="w-24 h-24 bg-indigo-600/20 rounded-full flex items-center justify-center border border-indigo-500/30">
-              <Shield className="w-10 h-10 text-indigo-400 animate-pulse" />
+            <div className="relative group">
+              <div className="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-indigo-500 via-indigo-600 to-emerald-400 shadow-[0_0_35px_rgba(99,102,241,0.4)]">
+                <div className="w-full h-full rounded-full overflow-hidden bg-slate-900 flex items-center justify-center border-2 border-slate-950">
+                  {userPhotoURL ? (
+                    <img 
+                      src={userPhotoURL} 
+                      alt={userName} 
+                      className="w-full h-full object-cover" 
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center text-3xl font-black text-white">
+                      {userName ? userName.charAt(0).toUpperCase() : <Shield className="w-10 h-10 text-indigo-400" />}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-emerald-500 rounded-full border-2 border-slate-950 flex items-center justify-center text-white shadow-lg">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-center space-y-2">
-              <h1 className="text-xl font-black text-white tracking-tight uppercase">User Identity Confirmed</h1>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Synchronize neural interface to proceed</p>
+            <div className="text-center space-y-1.5">
+              <h1 className="text-xl font-black text-white tracking-tight uppercase">
+                {userName ? `Welcome, ${userName}` : 'User Identity Confirmed'}
+              </h1>
+              <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-[0.2em]">
+                Verified {userRole} Account • Synchronize interface to proceed
+              </p>
             </div>
             <div className="flex flex-col items-center gap-6">
               <motion.div 
@@ -361,9 +384,33 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
               <motion.div 
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="w-32 h-32 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center text-white shadow-[0_0_50px_rgba(79,70,229,0.4)] relative z-10"
+                className={cn(
+                  "w-32 h-32 rounded-[2.5rem] flex items-center justify-center text-white shadow-[0_0_50px_rgba(79,70,229,0.5)] relative z-10 transition-all duration-700 overflow-hidden",
+                  step === 3 
+                    ? "bg-slate-900 border-2 border-indigo-400/80 ring-4 ring-indigo-500/30" 
+                    : "bg-indigo-600"
+                )}
               >
-                <Brain className="w-16 h-16" />
+                {step === 3 ? (
+                  userPhotoURL ? (
+                    <motion.img 
+                      key="user-photo"
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.5 }}
+                      src={userPhotoURL} 
+                      alt={userName} 
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center text-4xl font-black text-white">
+                      {userName ? userName.charAt(0).toUpperCase() : <Brain className="w-16 h-16" />}
+                    </div>
+                  )
+                ) : (
+                  <Brain className="w-16 h-16" />
+                )}
                 
                 {/* Orbits */}
                 <motion.div 
@@ -389,14 +436,26 @@ export default function IntroScreen({ onComplete, userRole, userName }: IntroScr
                   exit={{ y: -20, opacity: 0 }}
                   className="space-y-2"
                 >
-                  <div className="flex justify-center text-indigo-400 mb-4 h-12">
-                    {icons[step]}
+                  <div className="flex justify-center text-indigo-400 mb-4 h-12 items-center">
+                    {step === 3 && userPhotoURL ? (
+                      <div className="relative">
+                        <img 
+                          src={userPhotoURL} 
+                          alt={userName} 
+                          className="w-12 h-12 rounded-full object-cover ring-2 ring-emerald-400 shadow-lg"
+                          referrerPolicy="no-referrer"
+                        />
+                        <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-950 rounded-full shadow-xs" />
+                      </div>
+                    ) : (
+                      icons[step]
+                    )}
                   </div>
                   <h2 className="text-2xl font-black text-white tracking-tight">
                     {step === 3 ? `Welcome, ${userName}` : messages[step]}
                   </h2>
                   <p className="text-slate-500 text-xs font-black uppercase tracking-[0.3em]">
-                    {step === 3 ? "Access Granted" : "Neural Link Established"}
+                    {step === 3 ? "Access Granted • Interface Ready" : "Neural Link Established"}
                   </p>
                 </motion.div>
               </AnimatePresence>

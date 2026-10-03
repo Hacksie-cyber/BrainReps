@@ -215,9 +215,27 @@ export default function TeacherDashboard() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 font-display tracking-tight">Dashboard Overview</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight italic">Monitor institutional performance and questionnaire management.</p>
+        <div className="flex items-center gap-4">
+          {profile?.photoURL ? (
+            <div className="w-14 h-14 rounded-2xl overflow-hidden ring-2 ring-indigo-500/20 shadow-sm shrink-0 bg-slate-100 dark:bg-slate-800">
+              <img 
+                src={profile.photoURL} 
+                alt={profile.name} 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          ) : (
+            <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xl shrink-0 font-display">
+              {profile?.name ? profile.name.charAt(0).toUpperCase() : 'T'}
+            </div>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 font-display tracking-tight">
+              Welcome back, {profile?.name || 'Educator'}
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight italic">Monitor institutional performance and questionnaire management.</p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Link

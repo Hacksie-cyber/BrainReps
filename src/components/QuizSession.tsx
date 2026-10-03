@@ -226,6 +226,13 @@ export default function QuizSession() {
       const now = Date.now();
       if (now - lastBreachTimeRef.current < COOLDOWN_MS) return;
 
+      // Ignore momentary blur during fullscreen transitions
+      const doc = document as any;
+      const isFullscreen = doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement;
+      if (isFullscreen && document.visibilityState === 'visible') {
+        return;
+      }
+
       if ((document.visibilityState === 'hidden' || !document.hasFocus()) && !finishedRef.current) {
         if (profile?.role === 'student') {
           lastBreachTimeRef.current = now;
@@ -636,22 +643,13 @@ export default function QuizSession() {
   if (finished) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in zoom-in-95 duration-500 px-4">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={cn(
-          "mb-4 w-20 h-20 rounded-2xl flex items-center justify-center text-white shadow-2xl transition-all",
-          wasForced ? "bg-amber-500 shadow-amber-500/30" : "bg-emerald-500 shadow-emerald-500/30"
-        )}>
-          {wasForced ? <ShieldAlert className="h-10 w-10" /> : <CheckCircle2 className="h-10 w-10" />}
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mb-4 w-20 h-20 rounded-2xl flex items-center justify-center text-white shadow-2xl transition-all bg-emerald-500 shadow-emerald-500/30">
+          <CheckCircle2 className="h-10 w-10" />
         </motion.div>
         
         <h2 className="mb-2 text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-          {wasForced ? "Security Finalization" : "Submission Confirmed"}
+          Submission Confirmed
         </h2>
-        {wasForced && (
-          <p className="mb-6 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-bold rounded-lg border border-amber-100 dark:border-amber-800/50 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            Assessment terminated due to window focus loss. Academic integrity protocols enforced.
-          </p>
-        )}
         
       {!lastScore && (
         <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 animate-pulse">
