@@ -15,15 +15,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const SUPER_ADMIN_EMAIL = 'bamuyahacksie@gmail.com';
-  const isAdmin = profile?.email === SUPER_ADMIN_EMAIL || profile?.role === 'admin';
-  const isTeacherOrAdmin = Boolean(profile && (isAdmin || profile.role === 'teacher'));
-
   // Broadcast presence heartbeat for current logged-in user
   usePresencePublisher();
 
-  // Listen to active users (strictly gated to teachers/admins; 0 Firestore reads for students)
-  const { onlineCount } = useActiveUsers(isTeacherOrAdmin);
+  // Listen to active users in real-time
+  const { onlineCount } = useActiveUsers();
 
   const toggleFullscreen = () => {
     const doc = document as any;
@@ -116,6 +112,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     await signOut();
     navigate('/');
   };
+
+  const SUPER_ADMIN_EMAIL = 'bamuyahacksie@gmail.com';
+  const isAdmin = profile?.email === SUPER_ADMIN_EMAIL || profile?.role === 'admin';
 
   const menuItems = isAdmin ? [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/teacher' },
