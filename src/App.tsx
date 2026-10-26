@@ -22,6 +22,7 @@ import HandoutManager from './components/HandoutManager';
 import NeuralAssistant from './components/NeuralAssistant';
 import TeacherSlidePresentation from './components/TeacherSlidePresentation';
 import TeacherActiveUsers from './components/TeacherActiveUsers';
+import TeacherAquarium from './components/TeacherAquarium';
 
 import { BookOpen } from 'lucide-react';
 import { doc, getDocFromCache, getDocFromServer } from 'firebase/firestore';
@@ -132,6 +133,9 @@ export default function App() {
             } />
             <Route path="/teacher/active-users" element={
               <RequireAuth role="teacher"><TeacherActiveUsers /></RequireAuth>
+            } />
+            <Route path="/teacher/aquarium" element={
+              <RequireAuth role="teacher"><TeacherAquarium /></RequireAuth>
             } />
             <Route path="/teacher/analytics" element={
               <RequireAuth role="teacher"><TeacherAnalytics /></RequireAuth>

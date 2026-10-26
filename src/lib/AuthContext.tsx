@@ -87,7 +87,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (auth.currentUser) {
       try {
         const { setDoc, doc } = await import('firebase/firestore');
-        await setDoc(doc(db, 'presence', auth.currentUser.uid), {
+        const userUid = auth.currentUser.uid;
+        const userName = profile?.name || auth.currentUser.displayName || auth.currentUser.email?.split('@')[0] || 'User';
+        const userRole = (profile?.role || 'student').toLowerCase();
+        await setDoc(doc(db, 'presence', userUid), {
+          uid: userUid,
+          name: userName,
+          role: userRole,
           status: 'offline',
           lastSeen: new Date().toISOString(),
         }, { merge: true });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
-import { LogOut, BookOpen, User as UserIcon, LayoutDashboard, Database, GraduationCap, BarChart3, Settings, Brain, Menu, X, Sun, Moon, Bell, ShieldAlert, Users, Maximize, Minimize, Activity } from 'lucide-react';
+import { LogOut, BookOpen, User as UserIcon, LayoutDashboard, Database, GraduationCap, BarChart3, Settings, Brain, Menu, X, Sun, Moon, Bell, ShieldAlert, Users, Maximize, Minimize, Activity, Fish } from 'lucide-react';
 import { useTheme } from '../lib/ThemeContext';
 import { cn } from '../lib/utils';
 import NotificationCenter from './NotificationCenter';
@@ -118,6 +118,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const menuItems = isAdmin ? [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/teacher' },
+    { label: 'Fish Tank', icon: Fish, path: '/teacher/aquarium' },
     { label: 'Active Users', icon: Activity, path: '/teacher/active-users', badge: onlineCount },
     { label: 'Assessments', icon: BookOpen, path: '/teacher/assessments' },
     { label: 'Study Materials', icon: Database, path: '/teacher/handouts' },
@@ -126,6 +127,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { label: 'Analytics', icon: BarChart3, path: '/teacher/analytics' },
   ] : profile?.role === 'teacher' ? [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/teacher' },
+    { label: 'Fish Tank', icon: Fish, path: '/teacher/aquarium' },
     { label: 'Active Users', icon: Activity, path: '/teacher/active-users', badge: onlineCount },
     { label: 'Assessments', icon: BookOpen, path: '/teacher/assessments' },
     { label: 'Study Materials', icon: Database, path: '/teacher/handouts' },

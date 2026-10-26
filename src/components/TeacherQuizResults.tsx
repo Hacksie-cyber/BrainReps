@@ -5,7 +5,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission, Question, UserProfile } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download, FileText, Plus, Minus, Search, Presentation, ShieldAlert, AlertTriangle, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download, FileText, Plus, Minus, Search, Presentation, ShieldAlert, AlertTriangle, ShieldCheck, Eye, EyeOff, Fish } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
 import { jsPDF } from 'jspdf';
@@ -455,6 +455,14 @@ export default function TeacherQuizResults() {
                />
              </div>
             <div className="flex items-center gap-2">
+              <button 
+                onClick={() => navigate(`/teacher/aquarium?quizId=${id}`)}
+                className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-teal-600 text-white rounded-lg text-xs font-bold hover:brightness-110 transition-all flex items-center gap-2 shadow-sm active:scale-95"
+                title="View students who took this assessment as swimming fish"
+              >
+                <Fish className="w-3.5 h-3.5" />
+                Fish Tank
+              </button>
               <button 
                 onClick={() => setShowGrantModal(true)}
                 className="px-4 py-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30 rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all flex items-center gap-2 shadow-sm active:scale-95"

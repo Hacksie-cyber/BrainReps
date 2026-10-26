@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext';
 import { Quiz } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, BookOpen, Trash2, BarChart3, Settings, MoreVertical, Edit, Eye, EyeOff, ShieldCheck, Clock, Presentation, Tv, Upload } from 'lucide-react';
+import { Plus, Search, BookOpen, Trash2, BarChart3, Settings, MoreVertical, Edit, Eye, EyeOff, ShieldCheck, Clock, Presentation, Tv, Upload, Fish } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 import { getQuizColorTheme } from '../lib/quizThemes';
 import DeleteModal from './DeleteModal';
@@ -212,6 +212,16 @@ export default function TeacherAssessments() {
                             title="Launch Classroom Slide Presentation (Projector Mode)"
                           >
                             <Presentation className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/teacher/aquarium?quizId=${quiz.id}`);
+                            }}
+                            className="p-2.5 rounded-xl transition-all shadow-sm active:scale-90 border bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800/60 hover:bg-cyan-100 dark:hover:bg-cyan-900/60"
+                            title="View Students in Fish Tank Aquarium"
+                          >
+                            <Fish className="h-4 w-4" />
                           </button>
                           <button 
                             onClick={(e) => {

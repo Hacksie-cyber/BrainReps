@@ -6,7 +6,7 @@ import { Quiz, QuizSubmission, UserProfile } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { cn, formatDeadline } from '../lib/utils';
-import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2, UserX, ShieldAlert, Edit, Database, Presentation, Upload, Radio, Activity } from 'lucide-react';
+import { Plus, BarChart3, Clock, Users, ArrowRight, BookCheck, BookOpen, Trash2, UserX, ShieldAlert, Edit, Database, Presentation, Upload, Radio, Activity, Fish } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import DeleteModal from './DeleteModal';
 import { useActiveUsers } from '../lib/usePresence';
@@ -241,6 +241,14 @@ export default function TeacherDashboard() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <Link
+            to="/teacher/aquarium"
+            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 via-teal-600 to-indigo-600 px-5 py-3 text-xs font-bold uppercase tracking-widest text-white transition-all hover:brightness-110 shadow-lg shadow-cyan-600/20 active:scale-95 group"
+            title="Interactive Student Fish Tank Aquarium"
+          >
+            <Fish className="h-4 w-4 transition-transform group-hover:scale-125 group-hover:-rotate-12" />
+            Fish Tank
+          </Link>
           <Link
             to="/teacher/handouts"
             className="flex items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-5 py-3 text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 transition-all hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm active:scale-95"
@@ -502,6 +510,16 @@ export default function TeacherDashboard() {
                         </td>
                         <td className="px-8 py-7 text-right pr-12">
                            <div className="flex items-center justify-end gap-3 transition-opacity">
+                             <button 
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 navigate(`/teacher/aquarium?quizId=${quiz.id}`);
+                               }}
+                               className="p-2.5 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-100 dark:hover:bg-cyan-900/60 border border-cyan-200 dark:border-cyan-800/60 rounded-xl transition-all shadow-sm active:scale-90"
+                               title="View Students in Fish Tank Aquarium"
+                             >
+                                <Fish className="h-4 w-4" />
+                             </button>
                              <button 
                                onClick={(e) => {
                                  e.stopPropagation();
