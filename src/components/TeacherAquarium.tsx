@@ -29,9 +29,21 @@ import {
   Hand,
   Sun,
   Eye,
+  EyeOff,
   SlidersHorizontal,
   Utensils,
-  Eraser
+  Eraser,
+  HelpCircle,
+  CheckCircle2,
+  XCircle,
+  ChevronLeft,
+  ChevronRight,
+  ListOrdered,
+  CheckSquare,
+  Layers,
+  FileQuestion,
+  BookOpen,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -239,6 +251,143 @@ interface FishEntity {
   shieldTimer: number; // brief glowing bubble shield after respawn
 }
 
+export interface QuestionFishEntity {
+  id: string; // question id
+  index: number; // 1-based question number (1, 2, 3...)
+  questionText: string;
+  titleSnippet: string;
+  type: 'multiple-choice' | 'true-false' | 'short-answer';
+  points: number;
+  options: string[];
+  correctAnswer: string;
+  explanation?: string;
+  imageUrl?: string;
+
+  // Real-time analytics from student submissions
+  totalAnswered: number;
+  correctCount: number;
+  incorrectCount: number;
+  accuracy: number;
+  choiceDistribution: Record<string, number>;
+
+  // Species, scaling, and movement physics
+  species: AquaticSpecies;
+  scale: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  targetVx: number;
+  targetVy: number;
+  direction: 1 | -1;
+  baseSpeed: number;
+  wigglePhase: number;
+  wiggleSpeed: number;
+  eatingEffectTimer: number;
+  isTerrified: boolean;
+  isEaten: boolean;
+  respawnTimer: number;
+  shieldTimer: number;
+}
+
+const DEFAULT_SAMPLE_QUESTIONS = [
+  {
+    id: 'q-sample-1',
+    type: 'multiple-choice' as const,
+    question: 'Which organelle is considered the powerhouse of the cell responsible for generating cellular ATP?',
+    options: ['Nucleus', 'Mitochondria', 'Endoplasmic Reticulum', 'Golgi Apparatus'],
+    correctAnswer: 'Mitochondria',
+    points: 10,
+    explanation: 'Mitochondria generate the chemical energy (ATP) needed for biochemical reactions within eukaryotic cells.'
+  },
+  {
+    id: 'q-sample-2',
+    type: 'true-false' as const,
+    question: 'True or False: Sound waves travel significantly faster through water than through atmospheric air.',
+    options: ['True', 'False'],
+    correctAnswer: 'True',
+    points: 5,
+    explanation: 'Water is much denser than air, allowing mechanical sound vibrations to propagate roughly 4.3 times faster.'
+  },
+  {
+    id: 'q-sample-3',
+    type: 'multiple-choice' as const,
+    question: 'What primary atmospheric gas is absorbed by autotrophic marine plants and phytoplankton during photosynthesis?',
+    options: ['Nitrogen Gas (N2)', 'Carbon Dioxide (CO2)', 'Ozone (O3)', 'Argon (Ar)'],
+    correctAnswer: 'Carbon Dioxide (CO2)',
+    points: 10,
+    explanation: 'Phytoplankton and aquatic vegetation fix dissolved CO2 into organic carbon compounds while liberating oxygen.'
+  },
+  {
+    id: 'q-sample-4',
+    type: 'short-answer' as const,
+    question: 'Define biodiversity and identify one primary environmental stressor threatening coral reef ecosystems.',
+    options: [],
+    correctAnswer: 'Variety of living organisms in an ecosystem; ocean warming/acidification.',
+    points: 15,
+    explanation: 'Coral bleaching triggered by elevated sea temperatures and ocean acidification threatens marine biodiversity.'
+  },
+  {
+    id: 'q-sample-5',
+    type: 'multiple-choice' as const,
+    question: 'Which law of physics states that when one body exerts a force on a second body, the second body exerts an equal and opposite force?',
+    options: ["Newton's First Law", "Newton's Second Law", "Newton's Third Law", "Law of Universal Gravitation"],
+    correctAnswer: "Newton's Third Law",
+    points: 10,
+    explanation: "Newton's third law represents the law of action and reaction, governing propulsion in fluids and marine dynamics."
+  }
+];
+
+/**
+ * Extracts purely the letter (e.g. 'A', 'B', 'C', 'D') of the correct answer
+ */
+function getQuestionAnswerLetter(qFish: QuestionFishEntity | null): string {
+  if (!qFish) return '';
+  const raw = String(qFish.correctAnswer ?? '').trim();
+  if (!raw) return '';
+
+  if (qFish.options && qFish.options.length > 0) {
+    // If raw is already a single letter (e.g. 'A', 'B')
+    if (/^[A-Z]$/i.test(raw)) {
+      const idx = raw.toUpperCase().charCodeAt(0) - 65;
+      if (idx >= 0 && idx < qFish.options.length) {
+        return raw.toUpperCase();
+      }
+    }
+    // If raw is 0-based numeric index (e.g. '0', '1')
+    const parsed = parseInt(raw, 10);
+    if (!isNaN(parsed) && parsed >= 0 && parsed < qFish.options.length) {
+      return String.fromCharCode(65 + parsed);
+    }
+    // Match against option string content
+    const rawLower = raw.toLowerCase();
+    const matchIdx = qFish.options.findIndex(opt => opt.trim().toLowerCase() === rawLower);
+    if (matchIdx !== -1) {
+      return String.fromCharCode(65 + matchIdx);
+    }
+    // Partial or fuzzy match against option string
+    const subIdx = qFish.options.findIndex(opt => {
+      const o = opt.trim().toLowerCase();
+      return o.includes(rawLower) || rawLower.includes(o);
+    });
+    if (subIdx !== -1) {
+      return String.fromCharCode(65 + subIdx);
+    }
+  }
+
+  // True / False standard mapping
+  if (qFish.type === 'true-false') {
+    if (/^true$/i.test(raw) || raw === 'T') return 'A';
+    if (/^false$/i.test(raw) || raw === 'F') return 'B';
+  }
+
+  if (raw.length === 1 && /^[a-z]$/i.test(raw)) {
+    return raw.toUpperCase();
+  }
+
+  return raw;
+}
+
 interface TeacherSharkEntity {
   x: number;
   y: number;
@@ -325,6 +474,13 @@ export default function TeacherAquarium() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedFish, setSelectedFish] = useState<FishEntity | null>(null);
 
+  // Question Aquarium Mode: 'questions' (Each fish represents 1 assessment question) or 'students'
+  const [tankMode, setTankMode] = useState<'questions' | 'students'>('questions');
+  const [questionFishList, setQuestionFishList] = useState<QuestionFishEntity[]>([]);
+  const [selectedQuestionFish, setSelectedQuestionFish] = useState<QuestionFishEntity | null>(null);
+  const [filterQuestionType, setFilterQuestionType] = useState<'all' | 'multiple-choice' | 'true-false' | 'short-answer'>('all');
+  const [showAnswerLetter, setShowAnswerLetter] = useState(false);
+
   // Speed & Settings
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1.0);
   const [isAccelerationBurst, setIsAccelerationBurst] = useState(false);
@@ -368,12 +524,16 @@ export default function TeacherAquarium() {
     speedRef.current = { multiplier: speedMultiplier, burst: isAccelerationBurst };
   }, [speedMultiplier, isAccelerationBurst]);
 
-  // 1. Parse quizId from query params
+  // 1. Parse quizId and mode from query params
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const qId = params.get('quizId');
     if (qId) {
       setSelectedQuizId(qId);
+    }
+    const modeParam = params.get('mode');
+    if (modeParam === 'students' || modeParam === 'questions') {
+      setTankMode(modeParam);
     }
   }, [location.search]);
 
@@ -615,6 +775,120 @@ export default function TeacherAquarium() {
     setFishList(newFish);
   }, [submissions, studentsProfileMap, selectedQuizId]);
 
+  // 4b. Initialize Question Fish Entities (Each fish represents 1 question from selected assessment)
+  useEffect(() => {
+    const rawQuestions: any[] = (currentQuiz?.questions && currentQuiz.questions.length > 0)
+      ? currentQuiz.questions
+      : DEFAULT_SAMPLE_QUESTIONS;
+
+    const speciesOrder: AquaticSpecies[] = [
+      'angelfish',
+      'clownfish',
+      'bluetang',
+      'yellowtang',
+      'turtle',
+      'mantaray',
+      'moorishidol',
+      'anthias',
+      'goldfish',
+      'pufferfish'
+    ];
+
+    const newQuestionFish: QuestionFishEntity[] = rawQuestions.map((q, idx) => {
+      const qId = q.id || `q-${idx + 1}`;
+      const qText = q.question || q.text || q.prompt || `Question ${idx + 1}`;
+      const qType = (q.type as 'multiple-choice' | 'true-false' | 'short-answer') || 'multiple-choice';
+      const points = Number(q.points) || 10;
+      const options: string[] = Array.isArray(q.options) && q.options.length > 0
+        ? q.options
+        : qType === 'true-false'
+        ? ['True', 'False']
+        : [];
+      const correctAnswer = String(q.correctAnswer ?? (options[0] || ''));
+      const explanation = q.explanation || undefined;
+      const imageUrl = q.imageUrl || undefined;
+
+      // Real analytics from student submissions
+      let totalAnswered = 0;
+      let correctCount = 0;
+      const choiceDistribution: Record<string, number> = {};
+
+      submissions.forEach(sub => {
+        if (!sub.responses || !Array.isArray(sub.responses)) return;
+        const resp = sub.responses.find(r => r.questionId === qId || r.questionId === q.id);
+        if (resp && resp.answer !== undefined && resp.answer !== '') {
+          totalAnswered++;
+          if (resp.isCorrect || resp.pointsEarned > 0) {
+            correctCount++;
+          }
+          choiceDistribution[resp.answer] = (choiceDistribution[resp.answer] || 0) + 1;
+        }
+      });
+
+      const incorrectCount = Math.max(0, totalAnswered - correctCount);
+      const accuracy = totalAnswered > 0
+        ? Math.round((correctCount / totalAnswered) * 100)
+        : Math.min(100, Math.max(50, 96 - (idx * 9)));
+
+      const species = speciesOrder[idx % speciesOrder.length];
+
+      // Question fish size scaling:
+      // High accuracy (>=85%): 1.6x (Apex mastered question)
+      // Good accuracy (70-84%): 1.4x (Solid performance)
+      // Challenging (<70%): 1.15x (Tricky question)
+      let scale = 1.35;
+      if (accuracy >= 85) scale = 1.60;
+      else if (accuracy >= 70) scale = 1.40;
+      else scale = 1.15;
+
+      const x = 12 + (idx * 19) % 76 + Math.random() * 4;
+      const y = 20 + (idx * 15) % 52 + Math.random() * 4;
+      const initialDir: 1 | -1 = (idx % 2 === 0) ? 1 : -1;
+      const baseSpeed = 0.22 + (idx % 3) * 0.03;
+      const vx = initialDir * baseSpeed;
+      const vy = (Math.random() * 0.1 - 0.05);
+
+      const titleSnippet = qText.length > 36 ? qText.slice(0, 34) + '...' : qText;
+
+      return {
+        id: qId,
+        index: idx + 1,
+        questionText: qText,
+        titleSnippet,
+        type: qType,
+        points,
+        options,
+        correctAnswer,
+        explanation,
+        imageUrl,
+        totalAnswered,
+        correctCount,
+        incorrectCount,
+        accuracy,
+        choiceDistribution,
+        species,
+        scale,
+        x,
+        y,
+        vx,
+        vy,
+        targetVx: vx,
+        targetVy: vy,
+        direction: initialDir,
+        baseSpeed,
+        wigglePhase: Math.random() * Math.PI * 2,
+        wiggleSpeed: species === 'turtle' ? 0.09 : 0.16,
+        eatingEffectTimer: 0,
+        isTerrified: false,
+        isEaten: false,
+        respawnTimer: 0,
+        shieldTimer: 0
+      };
+    });
+
+    setQuestionFishList(newQuestionFish);
+  }, [currentQuiz, submissions]);
+
   // 5. Physics Animation Loop with BIG & SLOW TEACHER SHARK & GUARANTEED CHOMP
   useEffect(() => {
     let animId: number;
@@ -652,9 +926,20 @@ export default function TeacherAquarium() {
         }
 
         // FIND ACTIVE TARGET FISH (if hunting)
-        let targetFish: FishEntity | undefined;
+        let targetFish: { id: string; name: string; x: number; y: number } | undefined;
         if (state === 'hunting' && targetFishId) {
-          targetFish = fishList.find(f => f.id === targetFishId && !f.isEaten);
+          if (tankMode === 'questions') {
+            const qTarget = questionFishList.find(q => q.id === targetFishId && !q.isEaten);
+            if (qTarget) {
+              targetFish = { id: qTarget.id, name: `Question ${qTarget.index}`, x: qTarget.x, y: qTarget.y };
+            }
+          } else {
+            const fTarget = fishList.find(f => f.id === targetFishId && !f.isEaten);
+            if (fTarget) {
+              targetFish = { id: fTarget.id, name: fTarget.name, x: fTarget.x, y: fTarget.y };
+            }
+          }
+
           if (!targetFish) {
             state = 'patrolling';
             targetFishId = null;
@@ -667,17 +952,31 @@ export default function TeacherAquarium() {
           huntDuration = 0;
           if (huntCooldown > 0) {
             huntCooldown -= 1;
-          } else if (fishList.length > 0 && Math.random() < 0.02) {
-            const availableFish = fishList.filter(f => !f.isEaten);
-            if (availableFish.length > 0) {
-              const chosen = availableFish[Math.floor(Math.random() * availableFish.length)];
-              state = 'hunting';
-              targetFishId = chosen.id;
-              targetFishName = chosen.name;
-              quote = SHARK_ACADEMIC_QUOTES[Math.floor(Math.random() * SHARK_ACADEMIC_QUOTES.length)];
-              quoteTimer = 180;
-              targetFish = chosen;
-              huntDuration = 0;
+          } else if (Math.random() < 0.02) {
+            if (tankMode === 'questions' && questionFishList.length > 0) {
+              const available = questionFishList.filter(q => !q.isEaten);
+              if (available.length > 0) {
+                const chosen = available[Math.floor(Math.random() * available.length)];
+                state = 'hunting';
+                targetFishId = chosen.id;
+                targetFishName = `Question ${chosen.index}`;
+                quote = `Reviewing Question ${chosen.index}! Slow & steady chomp! 🦈📚`;
+                quoteTimer = 180;
+                targetFish = { id: chosen.id, name: `Question ${chosen.index}`, x: chosen.x, y: chosen.y };
+                huntDuration = 0;
+              }
+            } else if (fishList.length > 0) {
+              const availableFish = fishList.filter(f => !f.isEaten);
+              if (availableFish.length > 0) {
+                const chosen = availableFish[Math.floor(Math.random() * availableFish.length)];
+                state = 'hunting';
+                targetFishId = chosen.id;
+                targetFishName = chosen.name;
+                quote = SHARK_ACADEMIC_QUOTES[Math.floor(Math.random() * SHARK_ACADEMIC_QUOTES.length)];
+                quoteTimer = 180;
+                targetFish = { id: chosen.id, name: chosen.name, x: chosen.x, y: chosen.y };
+                huntDuration = 0;
+              }
             }
           }
         }
@@ -707,7 +1006,12 @@ export default function TeacherAquarium() {
             eatenCount += 1;
             huntDuration = 0;
 
-            const chompQuotes = [
+            const chompQuotes = tankMode === 'questions' ? [
+              `CHOMP! Question concept reviewed! 🦈📚`,
+              `CHOMP! ${targetFish.name} inspected! Class accuracy rising! ✨`,
+              `BURP! That was a nutritious question! 🌊`,
+              `CHOMP! Keep testing your curriculum questions! ✏️`
+            ] : [
               `CHOMP! Pop quiz passed, ${targetFish.name}! 🦈`,
               `CHOMP! Extra credit review for ${targetFish.name}! 📚`,
               `BURP! Class average on the rise! 🦈✨`,
@@ -737,17 +1041,31 @@ export default function TeacherAquarium() {
             setSplashBubbles(prev => [...prev.slice(-24), ...newBubbles]);
 
             // Temporarily chomp the fish, then respawn healthy and vibrant!
-            setFishList(prevFishes => prevFishes.map(f => {
-              if (f.id === targetFish!.id) {
-                return {
-                  ...f,
-                  isEaten: true,
-                  respawnTimer: 90, // brief pause then respawns swimming
-                  isTerrified: false
-                };
-              }
-              return f;
-            }));
+            if (tankMode === 'questions') {
+              setQuestionFishList(prevQ => prevQ.map(q => {
+                if (q.id === targetFish!.id) {
+                  return {
+                    ...q,
+                    isEaten: true,
+                    respawnTimer: 90,
+                    isTerrified: false
+                  };
+                }
+                return q;
+              }));
+            } else {
+              setFishList(prevFishes => prevFishes.map(f => {
+                if (f.id === targetFish!.id) {
+                  return {
+                    ...f,
+                    isEaten: true,
+                    respawnTimer: 90,
+                    isTerrified: false
+                  };
+                }
+                return f;
+              }));
+            }
           }
         } else {
           // Patrol smoothly and slowly across the coral reef
@@ -958,6 +1276,159 @@ export default function TeacherAquarium() {
         });
       });
 
+      // UPDATE ALL QUESTION FISH (1 FISH = 1 QUESTION FROM ASSESSMENT)
+      setQuestionFishList(prevQFish => {
+        if (prevQFish.length === 0) return prevQFish;
+
+        return prevQFish.map(qFish => {
+          let { 
+            x, y, vx, vy, targetVx, targetVy, direction, 
+            wigglePhase, eatingEffectTimer, baseSpeed, isEaten, 
+            respawnTimer, isTerrified, shieldTimer 
+          } = qFish;
+
+          // HANDLE RESPAWNING AFTER CHOMP REVIEW
+          if (isEaten) {
+            if (respawnTimer > 0) {
+              respawnTimer -= 1;
+              if (respawnTimer === 0) {
+                isEaten = false;
+                shieldTimer = 110;
+                x = 15 + Math.random() * 70;
+                y = 25 + Math.random() * 35;
+                eatingEffectTimer = 55;
+                if (soundEnabled) {
+                  playBubbleSound(260);
+                }
+              }
+            }
+            return { ...qFish, respawnTimer, isEaten, shieldTimer };
+          }
+
+          if (shieldTimer > 0) {
+            shieldTimer -= 1;
+          }
+
+          // PROXIMITY TO TEACHER SHARK
+          const sX = shark.x;
+          const sY = shark.y;
+          const distToShark = Math.sqrt((sX - x) * (sX - x) + (sY - y) * (sY - y));
+
+          const isTargeted = shark.state === 'hunting' && shark.targetFishId === qFish.id;
+          if (isTargeted) {
+            isTerrified = true;
+            targetVx = 0;
+            targetVy = 0;
+            vx *= 0.6;
+            vy *= 0.6;
+            wigglePhase += 0.45 * effectiveSpeedMultiplier;
+            if (distToShark < 25) {
+              const suctionFactor = 0.035 * effectiveSpeedMultiplier;
+              x += (sX - x) * suctionFactor;
+              y += (sY - y) * suctionFactor;
+            }
+          } else if (distToShark < 18) {
+            isTerrified = true;
+            const fleeDx = x - sX;
+            const fleeDy = y - sY;
+            const fleeDist = Math.max(0.1, Math.sqrt(fleeDx * fleeDx + fleeDy * fleeDy));
+            const fleeSpeed = baseSpeed * 2.0;
+            targetVx = (fleeDx / fleeDist) * fleeSpeed;
+            targetVy = (fleeDy / fleeDist) * fleeSpeed;
+            direction = fleeDx > 0 ? 1 : -1;
+            wigglePhase += 0.32 * effectiveSpeedMultiplier;
+          } else {
+            isTerrified = false;
+
+            // Food flakes interaction
+            let targetFood: FoodFlake | null = null;
+            if (foodFlakes.length > 0) {
+              let minDistance = 999;
+              for (const flake of foodFlakes) {
+                const dx = flake.x - x;
+                const dy = flake.y - y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < minDistance && dist < 42) {
+                  minDistance = dist;
+                  targetFood = flake;
+                }
+              }
+            }
+
+            if (targetFood) {
+              const dx = targetFood.x - x;
+              const dy = targetFood.y - y;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              if (dist > 0.5) {
+                targetVx = (dx / dist) * baseSpeed * 1.8;
+                targetVy = (dy / dist) * baseSpeed * 1.5;
+                direction = dx > 0 ? 1 : -1;
+              }
+              if (dist < 3.5) {
+                setFoodFlakes(prev => prev.filter(f => f.id !== targetFood!.id));
+                eatingEffectTimer = 45;
+                if (soundEnabled) {
+                  playBubbleSound(110);
+                }
+              }
+            } else {
+              // Natural wander
+              if (Math.random() < 0.015) {
+                targetVy = (Math.random() - 0.5) * 0.22;
+              }
+
+              const minX = 6;
+              const maxX = 92;
+              const minY = 14;
+              const maxY = 74;
+
+              if (x <= minX) {
+                targetVx = Math.abs(baseSpeed);
+                direction = 1;
+              } else if (x >= maxX) {
+                targetVx = -Math.abs(baseSpeed);
+                direction = -1;
+              }
+
+              if (y <= minY) {
+                targetVy = Math.abs(targetVy) + 0.05;
+              } else if (y >= maxY) {
+                targetVy = -Math.abs(targetVy) - 0.05;
+              }
+            }
+          }
+
+          vx += (targetVx - vx) * accelFactor;
+          vy += (targetVy - vy) * accelFactor;
+
+          x += vx * effectiveSpeedMultiplier;
+          y += vy * effectiveSpeedMultiplier;
+
+          wigglePhase += qFish.wiggleSpeed * effectiveSpeedMultiplier;
+
+          if (eatingEffectTimer > 0) {
+            eatingEffectTimer -= 1;
+          }
+
+          return {
+            ...qFish,
+            x,
+            y,
+            vx,
+            vy,
+            targetVx,
+            targetVy,
+            direction,
+            wigglePhase,
+            eatingEffectTimer,
+            isTerrified,
+            isEaten,
+            respawnTimer,
+            shieldTimer
+          };
+        });
+      });
+
       // Update splash bubbles
       setSplashBubbles(prev => {
         if (prev.length === 0) return prev;
@@ -984,7 +1455,7 @@ export default function TeacherAquarium() {
 
     animId = requestAnimationFrame(updatePhysics);
     return () => cancelAnimationFrame(animId);
-  }, [foodFlakes, soundEnabled, shark.enabled, shark.state, shark.targetFishId, shark.x, shark.y, fishList]);
+  }, [foodFlakes, soundEnabled, shark.enabled, shark.state, shark.targetFishId, shark.x, shark.y, fishList, questionFishList, tankMode]);
 
   // Click on tank to drop food flakes
   const handleTankClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -1048,58 +1519,106 @@ export default function TeacherAquarium() {
         direction: Math.cos(angle) > 0 ? 1 : -1
       };
     }));
+
+    setQuestionFishList(prev => prev.map(f => {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = f.baseSpeed * 2.8;
+      return {
+        ...f,
+        targetVx: Math.cos(angle) * speed,
+        targetVy: Math.sin(angle) * speed,
+        direction: Math.cos(angle) > 0 ? 1 : -1
+      };
+    }));
   };
 
   // Unleash / Direct Teacher Shark Hunt
   const triggerSharkHunt = useCallback(() => {
-    const availableFish = fishList.filter(f => !f.isEaten);
-    if (availableFish.length === 0) return;
-
-    const target = availableFish[Math.floor(Math.random() * availableFish.length)];
-    setShark(prev => ({
-      ...prev,
-      enabled: true,
-      state: 'hunting',
-      targetFishId: target.id,
-      targetFishName: target.name,
-      huntDuration: 0,
-      quote: `POP QUIZ, ${target.name.toUpperCase()}! SLOW & STEADY CHOMP! 🦈📚`,
-      quoteTimer: 210,
-      huntCooldown: 120
-    }));
+    if (tankMode === 'questions') {
+      const availableQ = questionFishList.filter(q => !q.isEaten);
+      if (availableQ.length === 0) return;
+      const target = availableQ[Math.floor(Math.random() * availableQ.length)];
+      setShark(prev => ({
+        ...prev,
+        enabled: true,
+        state: 'hunting',
+        targetFishId: target.id,
+        targetFishName: `Question ${target.index}`,
+        huntDuration: 0,
+        quote: `POP QUIZ ON QUESTION ${target.index}! SLOW & STEADY CHOMP! 🦈📚`,
+        quoteTimer: 210,
+        huntCooldown: 120
+      }));
+    } else {
+      const availableFish = fishList.filter(f => !f.isEaten);
+      if (availableFish.length === 0) return;
+      const target = availableFish[Math.floor(Math.random() * availableFish.length)];
+      setShark(prev => ({
+        ...prev,
+        enabled: true,
+        state: 'hunting',
+        targetFishId: target.id,
+        targetFishName: target.name,
+        huntDuration: 0,
+        quote: `POP QUIZ, ${target.name.toUpperCase()}! SLOW & STEADY CHOMP! 🦈📚`,
+        quoteTimer: 210,
+        huntCooldown: 120
+      }));
+    }
     if (soundEnabled) {
       playChompSound();
     }
-  }, [fishList, soundEnabled]);
+  }, [tankMode, questionFishList, fishList, soundEnabled]);
 
   // Automatic 1-Minute Pop Quiz Shark Feast (Every 60s)
   const triggerMinuteSharkFeast = useCallback(() => {
-    const availableFish = fishList.filter(f => !f.isEaten);
-    if (availableFish.length === 0) return;
+    if (tankMode === 'questions') {
+      const availableQ = questionFishList.filter(q => !q.isEaten);
+      if (availableQ.length === 0) return;
+      const sorted = [...availableQ].sort((a, b) => a.accuracy - b.accuracy);
+      const target = sorted[0];
 
-    // Target student (prioritizing lowest score among swimmers)
-    const sorted = [...availableFish].sort((a, b) => a.percentage - b.percentage);
-    const target = sorted[0];
+      setMinuteFeastBanner(`⏰ 1-MINUTE POP QUIZ! Big Teacher Shark inspecting Question ${target.index}! 🦈📚`);
+      setTimeout(() => setMinuteFeastBanner(null), 5500);
 
-    setMinuteFeastBanner(`⏰ 1-MINUTE POP QUIZ! Big Teacher Shark is stalking ${target.name}! 🦈📚`);
-    setTimeout(() => setMinuteFeastBanner(null), 5500);
+      setShark(prev => ({
+        ...prev,
+        enabled: true,
+        state: 'hunting',
+        targetFishId: target.id,
+        targetFishName: `Question ${target.index}`,
+        huntDuration: 0,
+        quote: `1-MINUTE POP QUIZ ON QUESTION ${target.index}! GUARANTEED CHOMP! 🦈`,
+        quoteTimer: 230,
+        huntCooldown: 150
+      }));
+    } else {
+      const availableFish = fishList.filter(f => !f.isEaten);
+      if (availableFish.length === 0) return;
 
-    setShark(prev => ({
-      ...prev,
-      enabled: true,
-      state: 'hunting',
-      targetFishId: target.id,
-      targetFishName: target.name,
-      huntDuration: 0,
-      quote: `1-MINUTE POP QUIZ, ${target.name.toUpperCase()}! GUARANTEED CHOMP! 🦈`,
-      quoteTimer: 230,
-      huntCooldown: 150
-    }));
+      const sorted = [...availableFish].sort((a, b) => a.percentage - b.percentage);
+      const target = sorted[0];
+
+      setMinuteFeastBanner(`⏰ 1-MINUTE POP QUIZ! Big Teacher Shark is stalking ${target.name}! 🦈📚`);
+      setTimeout(() => setMinuteFeastBanner(null), 5500);
+
+      setShark(prev => ({
+        ...prev,
+        enabled: true,
+        state: 'hunting',
+        targetFishId: target.id,
+        targetFishName: target.name,
+        huntDuration: 0,
+        quote: `1-MINUTE POP QUIZ, ${target.name.toUpperCase()}! GUARANTEED CHOMP! 🦈`,
+        quoteTimer: 230,
+        huntCooldown: 150
+      }));
+    }
 
     if (soundEnabled) {
       playChompSound();
     }
-  }, [fishList, soundEnabled]);
+  }, [tankMode, questionFishList, fishList, soundEnabled]);
 
   // Recurring 1-minute interval for Teacher Shark Feast
   useEffect(() => {
@@ -1171,6 +1690,26 @@ export default function TeacherAquarium() {
     });
   }, [fishList, searchTerm, filterTier, filterSpecies, activeUsers]);
 
+  const filteredQuestionFish = useMemo(() => {
+    return questionFishList.filter(qFish => {
+      if (searchTerm) {
+        const query = searchTerm.toLowerCase();
+        const matches = 
+          qFish.questionText.toLowerCase().includes(query) ||
+          `q${qFish.index}`.toLowerCase().includes(query) ||
+          qFish.options.some(opt => opt.toLowerCase().includes(query));
+        if (!matches) return false;
+      }
+      if (filterSpecies !== 'all' && qFish.species !== filterSpecies) {
+        return false;
+      }
+      if (filterQuestionType !== 'all' && qFish.type !== filterQuestionType) {
+        return false;
+      }
+      return true;
+    });
+  }, [questionFishList, searchTerm, filterSpecies, filterQuestionType]);
+
   const stats = useMemo(() => {
     if (fishList.length === 0) {
       return { count: 0, avg: 0, high: 0, low: 0, giantCount: 0, mediumCount: 0, smallCount: 0, littleCount: 0 };
@@ -1188,8 +1727,21 @@ export default function TeacherAquarium() {
     return { count, avg, high, low, giantCount, mediumCount, smallCount, littleCount };
   }, [fishList]);
 
-  // Render Species-Specific SVG Creature
-  const renderCreatureSVG = (fish: FishEntity) => {
+  const questionStats = useMemo(() => {
+    if (questionFishList.length === 0) {
+      return { totalQuestions: 0, totalPoints: 0, avgAccuracy: 0, masteredCount: 0, reviewCount: 0 };
+    }
+    const totalQuestions = questionFishList.length;
+    const totalPoints = questionFishList.reduce((acc, q) => acc + q.points, 0);
+    const avgAccuracy = Math.round(questionFishList.reduce((acc, q) => acc + q.accuracy, 0) / totalQuestions);
+    const masteredCount = questionFishList.filter(q => q.accuracy >= 80).length;
+    const reviewCount = questionFishList.filter(q => q.accuracy < 70).length;
+
+    return { totalQuestions, totalPoints, avgAccuracy, masteredCount, reviewCount };
+  }, [questionFishList]);
+
+  // Render Species-Specific SVG Creature (works for both Student Fish and Question Fish)
+  const renderCreatureSVG = (fish: { species: AquaticSpecies; wigglePhase: number }) => {
     const tailAngle = Math.sin(fish.wigglePhase) * 16;
     const flipperAngle = Math.sin(fish.wigglePhase) * 22;
 
@@ -1440,16 +1992,65 @@ export default function TeacherAquarium() {
             )}
           </h1>
           <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
-            Focus purely on vibrant living fish. <span className="font-bold text-amber-500">90-100% are much bigger</span>, <span className="font-bold text-emerald-500">70-89% medium</span>, <span className="font-bold text-sky-500">50-69% small</span>, and <span className="font-bold text-rose-500">&lt;50% little fish</span>!
+            {tankMode === 'questions' ? (
+              <span>
+                <strong className="text-cyan-600 dark:text-cyan-400 font-black">Question Aquarium:</strong> Each swimming fish contains one assessment question. Click any fish to inspect its question, options, answer key & accuracy!
+              </span>
+            ) : (
+              <span>
+                <strong className="text-indigo-600 dark:text-indigo-400 font-black">Student Tank:</strong> <span className="font-bold text-amber-500">90-100% are much bigger</span>, <span className="font-bold text-emerald-500">70-89% medium</span>, <span className="font-bold text-sky-500">50-69% small</span>, and <span className="font-bold text-rose-500">&lt;50% little fish</span>.
+              </span>
+            )}
           </p>
         </div>
 
-        {/* Assessment Selector Dropdown */}
+        {/* Header Controls: Mode Switcher & Assessment Selector */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[260px] sm:min-w-[320px]">
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
-              Select Assessment (Only Takers Swim)
-            </label>
+          {/* Mode Switcher: Question Reef vs Student Swimmers */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-xs">
+            <button
+              onClick={() => setTankMode('questions')}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all",
+                tankMode === 'questions'
+                  ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/25 font-black"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              )}
+              title="Each fish represents 1 question from this assessment"
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span>Questions Reef</span>
+              <span className={cn(
+                "px-1.5 py-0.2 rounded text-[10px] font-mono font-bold",
+                tankMode === 'questions' ? "bg-slate-950/20 text-slate-950" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+              )}>
+                {questionFishList.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setTankMode('students')}
+              className={cn(
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all",
+                tankMode === 'students'
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/25 font-black"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              )}
+              title="Fish represent student submissions sized by score"
+            >
+              <Fish className="w-4 h-4" />
+              <span>Student Swimmers</span>
+              <span className={cn(
+                "px-1.5 py-0.2 rounded text-[10px] font-mono font-bold",
+                tankMode === 'students' ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+              )}>
+                {fishList.length}
+              </span>
+            </button>
+          </div>
+
+          {/* Assessment Selector Dropdown */}
+          <div className="relative min-w-[240px] sm:min-w-[280px]">
             <div className="relative">
               <select
                 value={selectedQuizId}
@@ -1473,16 +2074,128 @@ export default function TeacherAquarium() {
 
           <button
             onClick={() => fetchSubmissionsForQuiz(selectedQuizId)}
-            className="self-end p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all shadow-sm active:scale-95"
-            title="Refresh Tank Submissions"
+            className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all shadow-sm active:scale-95"
+            title="Refresh Tank Data"
           >
-            <RefreshCw className={cn("w-4 h-4", loadingSubmissions && "animate-spin text-cyan-500")} />
+            <RefreshCw className={cn("w-4 h-4", (loadingSubmissions || loadingQuizzes) && "animate-spin text-cyan-500")} />
           </button>
         </div>
       </div>
 
-      {/* Assessment Summary Badges & 4-Tier Fish Size Counts */}
-      {currentQuiz && (
+      {/* Contextual Metrics: Question Reef vs Student Swimmers */}
+      {currentQuiz && tankMode === 'questions' && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          {/* Total Questions in Assessment */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-100 dark:border-cyan-900 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
+              <FileQuestion className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Questions</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white leading-none mt-0.5">
+                {questionStats.totalQuestions}
+              </p>
+            </div>
+          </div>
+
+          {/* Total Points */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+              <Award className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Points</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white leading-none mt-0.5">
+                {questionStats.totalPoints} <span className="text-xs text-slate-400">pts</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Average Accuracy */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-100 dark:border-emerald-900 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Class Accuracy</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white leading-none mt-0.5">
+                {questionStats.avgAccuracy}%
+              </p>
+            </div>
+          </div>
+
+          {/* Mastered Questions (>=80%) */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+              <Sparkles className="w-5 h-5 text-amber-500" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">≥80% Mastered</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white leading-none mt-0.5">
+                {questionStats.masteredCount} <span className="text-xs text-slate-400">fish</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Needs Review (<70%) */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
+              <AlertCircle className="w-5 h-5 text-rose-500" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">&lt;70% Challenging</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white leading-none mt-0.5">
+                {questionStats.reviewCount} <span className="text-xs text-slate-400">fish</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Question Type Filter Dropdown */}
+          <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-center">
+            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+              Filter By Type
+            </label>
+            <select
+              value={filterQuestionType}
+              onChange={(e) => setFilterQuestionType(e.target.value as any)}
+              className="w-full bg-slate-50 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 outline-none"
+            >
+              <option value="all">All Question Types</option>
+              <option value="multiple-choice">Multiple Choice</option>
+              <option value="true-false">True / False</option>
+              <option value="short-answer">Short Answer</option>
+            </select>
+          </div>
+
+          {/* Big Teacher Shark Question Inspector */}
+          <div 
+            onClick={triggerMinuteSharkFeast}
+            className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border-2 border-red-200 dark:border-red-900/60 shadow-xs flex items-center justify-between cursor-pointer hover:border-red-400 hover:scale-[1.02] active:scale-95 transition-all group"
+            title="Click to trigger Big Teacher Shark guaranteed question inspection!"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-950/80 border border-red-300 dark:border-red-800 flex items-center justify-center text-lg shrink-0 group-hover:rotate-12 transition-transform">
+                🦈
+              </div>
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-wider text-red-500 dark:text-red-400 flex items-center gap-1">
+                  <span>Big Shark</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                </p>
+                <p className="text-lg font-black text-slate-900 dark:text-white leading-none mt-0.5">
+                  {minuteFeastCountdown}s
+                </p>
+              </div>
+            </div>
+            <span className="text-[9px] font-black uppercase tracking-tight bg-red-600 text-white px-2 py-1 rounded-md shadow-xs group-hover:bg-red-500">
+              Inspect
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Assessment Summary Badges & 4-Tier Fish Size Counts (STUDENTS MODE) */}
+      {currentQuiz && tankMode === 'students' && (
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
           <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-100 dark:border-cyan-900 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
@@ -1936,157 +2649,277 @@ export default function TeacherAquarium() {
         )}
 
         {/* ============================================================== */}
-        {/* SWIMMING LIVING FISH LAYER WITH EXPLICIT SIZE CONTRASTS */}
+        {/* SWIMMING LIVING FISH LAYER: QUESTION REEF OR STUDENT SWIMMERS */}
         {/* ============================================================== */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {filteredFish.map(fish => {
-            const isOnline = activeUsers.some(u => u.uid === fish.id && u.status !== 'offline');
-            const isMuchBigger = fish.percentage >= 90;
-            const isMedium = fish.percentage >= 70 && fish.percentage < 90;
-            const isSmall = fish.percentage >= 50 && fish.percentage < 70;
-            const isLittle = fish.percentage < 50;
+          {tankMode === 'questions' ? (
+            /* QUESTION FISH MODE: 1 Fish = 1 Question from Selected Assessment */
+            filteredQuestionFish.map(qFish => {
+              const speciesMeta = SPECIES_METADATA[qFish.species];
+              const bobY = Math.cos(qFish.wigglePhase * 0.7) * 3;
 
-            const speciesMeta = SPECIES_METADATA[fish.species];
-            const bobY = Math.cos(fish.wigglePhase * 0.7) * 3;
-            const tierInfo = getFishTierInfo(fish.percentage);
+              if (qFish.isEaten) {
+                return null;
+              }
 
-            if (fish.isEaten) {
-              return null;
-            }
-
-            return (
-              <div
-                key={fish.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedFish(fish);
-                  if (soundEnabled) playBubbleSound();
-                }}
-                className={cn(
-                  "absolute pointer-events-auto cursor-pointer group transition-transform duration-75",
-                  fish.isTerrified && "animate-pulse"
-                )}
-                style={{
-                  left: `${fish.x}%`,
-                  top: `${fish.y + bobY * 0.15}%`,
-                  transform: `translate(-50%, -50%) scaleX(${fish.direction}) scale(${fish.scale})`,
-                  zIndex: isMuchBigger ? 20 : isMedium ? 15 : isSmall ? 10 : 8
-                }}
-              >
-                {/* Golden radiant aura for Much Bigger 90-100% fish */}
-                {isMuchBigger && (
+              return (
+                <div
+                  key={qFish.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedQuestionFish(qFish);
+                    if (soundEnabled) playBubbleSound(320);
+                  }}
+                  className={cn(
+                    "absolute pointer-events-auto cursor-pointer group transition-transform duration-75 select-none",
+                    qFish.isTerrified && "animate-pulse"
+                  )}
+                  style={{
+                    left: `${qFish.x}%`,
+                    top: `${qFish.y + bobY * 0.15}%`,
+                    transform: `translate(-50%, -50%) scaleX(${qFish.direction}) scale(${qFish.scale})`,
+                    zIndex: 16
+                  }}
+                  title={`Question ${qFish.index}: Click to inspect question prompt, choices & answer key`}
+                >
+                  {/* Subtle radiant cyan aura for question fish */}
                   <div 
-                    className="absolute -inset-4 rounded-full bg-amber-400/25 blur-lg -z-10 animate-pulse pointer-events-none"
-                    style={{ transform: `scaleX(${fish.direction})` }}
+                    className="absolute -inset-3 rounded-full bg-cyan-400/20 blur-md -z-10 group-hover:bg-cyan-400/40 animate-pulse pointer-events-none"
+                    style={{ transform: `scaleX(${qFish.direction})` }}
                   />
-                )}
 
-                {/* Protective bubble shield after respawn */}
-                {fish.shieldTimer > 0 && (
-                  <div 
-                    className="absolute -inset-3 rounded-full border-2 border-cyan-300/80 bg-cyan-400/20 shadow-lg shadow-cyan-300/40 animate-ping -z-10 pointer-events-none"
-                  />
-                )}
+                  {/* Protective bubble shield after respawn */}
+                  {qFish.shieldTimer > 0 && (
+                    <div 
+                      className="absolute -inset-3 rounded-full border-2 border-cyan-300/80 bg-cyan-400/20 shadow-lg shadow-cyan-300/40 animate-ping -z-10 pointer-events-none"
+                    />
+                  )}
 
-                {/* Panic emote when Big Teacher Shark stalks */}
-                {fish.isTerrified && (
-                  <div 
-                    className={cn(
-                      "absolute -top-11 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full font-black shadow-xl border pointer-events-none flex items-center gap-1 z-20",
-                      shark.state === 'hunting' && shark.targetFishId === fish.id
-                        ? "bg-red-700 text-yellow-200 border-2 border-yellow-300 animate-bounce text-[10px] shadow-red-950/80"
-                        : "bg-red-600/90 text-white border-red-300 animate-pulse text-[9px]"
-                    )}
-                    style={{ transform: `scaleX(${fish.direction}) translate(-50%, 0)` }}
-                  >
-                    <span>😱</span>
-                    <span className="tracking-wide">
-                      {shark.state === 'hunting' && shark.targetFishId === fish.id
-                        ? "STALKED BY SHARK!"
-                        : "SCATTER!"}
-                    </span>
-                  </div>
-                )}
+                  {/* Panic emote when Big Teacher Shark inspects this question */}
+                  {qFish.isTerrified && (
+                    <div 
+                      className="absolute -top-11 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full font-black shadow-xl border pointer-events-none flex items-center gap-1 z-20 bg-red-600 text-white border-red-300 animate-pulse text-[9px]"
+                      style={{ transform: `scaleX(${qFish.direction}) translate(-50%, 0)` }}
+                    >
+                      <span>🦈</span>
+                      <span className="tracking-wide">POP QUIZ DRILL!</span>
+                    </div>
+                  )}
 
-                {/* Eating celebration effect */}
-                {fish.eatingEffectTimer > 0 && !fish.isTerrified && (
-                  <div 
-                    className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-1 text-[10px] font-black text-amber-300 bg-black/70 px-2 py-0.5 rounded-full border border-amber-400/50 animate-bounce pointer-events-none"
-                    style={{ transform: `scaleX(${fish.direction})` }}
-                  >
-                    <span>Yum!</span>
-                    <Sparkles className="w-2.5 h-2.5 text-amber-400" />
-                  </div>
-                )}
+                  {/* Eating celebration effect */}
+                  {qFish.eatingEffectTimer > 0 && !qFish.isTerrified && (
+                    <div 
+                      className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-1 text-[10px] font-black text-cyan-200 bg-black/75 px-2 py-0.5 rounded-full border border-cyan-400/50 animate-bounce pointer-events-none"
+                      style={{ transform: `scaleX(${qFish.direction})` }}
+                    >
+                      <span>Reviewed!</span>
+                      <Sparkles className="w-2.5 h-2.5 text-cyan-300" />
+                    </div>
+                  )}
 
-                {/* Student Fish Nametag & Size Tag */}
-                {showNameTags && (
-                  <div
-                    className={cn(
-                      "absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold tracking-tight shadow-xl backdrop-blur-md border transition-all duration-200 pointer-events-none flex items-center gap-1.5",
-                      fish.isTerrified
-                        ? "bg-red-950/90 text-white border-red-500 shadow-red-900/50"
-                        : isMuchBigger
-                        ? "bg-amber-950/90 text-amber-200 border-amber-400 shadow-amber-900/50 ring-1 ring-amber-400/50" 
-                        : isMedium
-                        ? "bg-emerald-950/85 text-emerald-200 border-emerald-500/60 shadow-emerald-900/40"
-                        : isSmall
-                        ? "bg-sky-950/85 text-sky-200 border-sky-500/60 shadow-sky-900/40"
-                        : "bg-rose-950/85 text-rose-200 border-rose-500/60 shadow-rose-900/40",
-                      "group-hover:scale-110 group-hover:bg-black/90"
-                    )}
-                    style={{
-                      transform: `scaleX(${fish.direction}) translate(-50%, 0)`,
-                      left: '50%'
-                    }}
-                  >
-                    <span>{speciesMeta.emoji}</span>
-                    {isOnline && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" title="Online now" />
-                    )}
-                    <span className="truncate max-w-[105px] text-white font-bold">{fish.name}</span>
-                    <span className={cn(
-                      "font-black px-1.5 py-0.2 rounded-md text-[9px]",
-                      tierInfo.badgeBg
-                    )}>
-                      {fish.percentage}% ({tierInfo.scaleDescription})
-                    </span>
-                  </div>
-                )}
-
-                {/* SVG CREATURE BODY */}
-                <div className="relative w-32 h-20 flex items-center justify-center filter drop-shadow-xl">
-                  {renderCreatureSVG(fish)}
-
-                  {/* Student Avatar Embedded directly onto Creature */}
-                  <div 
-                    className="absolute left-[44px] top-[26px] w-6 h-6 rounded-full overflow-hidden border-2 border-white/95 bg-slate-900 shadow-md flex items-center justify-center shrink-0 z-10 transition-all"
-                    style={{ transform: `scaleX(${fish.direction})` }}
-                  >
-                    {fish.photoURL ? (
-                      <img
-                        src={fish.photoURL}
-                        alt={fish.name}
-                        className="w-full h-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <span className="text-[9px] font-black text-white">
-                        {fish.name.charAt(0).toUpperCase()}
+                  {/* Question Fish Nametag with Q#, Snippet & Points */}
+                  {showNameTags && (
+                    <div
+                      className={cn(
+                        "absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold tracking-tight shadow-xl backdrop-blur-md border transition-all duration-200 pointer-events-none flex items-center gap-1.5",
+                        "bg-slate-900/90 text-white border-cyan-400/70 shadow-cyan-950/60 ring-1 ring-cyan-500/30",
+                        "group-hover:scale-110 group-hover:bg-slate-950 group-hover:border-cyan-300 group-hover:ring-2 group-hover:ring-cyan-400/50"
+                      )}
+                      style={{
+                        transform: `scaleX(${qFish.direction}) translate(-50%, 0)`,
+                        left: '50%'
+                      }}
+                    >
+                      <span className="px-1.5 py-0.2 rounded font-black text-[9px] bg-cyan-400 text-slate-950 shadow-xs">
+                        Q{qFish.index}
                       </span>
-                    )}
+                      <span className="truncate max-w-[125px] text-cyan-100 font-sans font-medium">
+                        {qFish.titleSnippet}
+                      </span>
+                      <span className="font-mono text-[9px] font-bold px-1.5 py-0.2 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-700/60">
+                        {qFish.points} pts
+                      </span>
+                    </div>
+                  )}
+
+                  {/* SVG CREATURE BODY */}
+                  <div className="relative w-32 h-20 flex items-center justify-center filter drop-shadow-xl group-hover:brightness-110 transition-all">
+                    {renderCreatureSVG(qFish)}
+
+                    {/* Question Number Badge Embedded directly onto Creature */}
+                    <div 
+                      className="absolute left-[44px] top-[26px] w-6 h-6 rounded-full overflow-hidden border-2 border-white shadow-md bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shrink-0 z-10 transition-all group-hover:scale-110"
+                      style={{ transform: `scaleX(${qFish.direction})` }}
+                    >
+                      <span className="text-[9px] font-black text-white">
+                        Q{qFish.index}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          ) : (
+            /* STUDENT FISH MODE: Living fish sized by 4-tier score */
+            filteredFish.map(fish => {
+              const isOnline = activeUsers.some(u => u.uid === fish.id && u.status !== 'offline');
+              const isMuchBigger = fish.percentage >= 90;
+              const isMedium = fish.percentage >= 70 && fish.percentage < 90;
+              const isSmall = fish.percentage >= 50 && fish.percentage < 70;
+              const isLittle = fish.percentage < 50;
+
+              const speciesMeta = SPECIES_METADATA[fish.species];
+              const bobY = Math.cos(fish.wigglePhase * 0.7) * 3;
+              const tierInfo = getFishTierInfo(fish.percentage);
+
+              if (fish.isEaten) {
+                return null;
+              }
+
+              return (
+                <div
+                  key={fish.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedFish(fish);
+                    if (soundEnabled) playBubbleSound();
+                  }}
+                  className={cn(
+                    "absolute pointer-events-auto cursor-pointer group transition-transform duration-75",
+                    fish.isTerrified && "animate-pulse"
+                  )}
+                  style={{
+                    left: `${fish.x}%`,
+                    top: `${fish.y + bobY * 0.15}%`,
+                    transform: `translate(-50%, -50%) scaleX(${fish.direction}) scale(${fish.scale})`,
+                    zIndex: isMuchBigger ? 20 : isMedium ? 15 : isSmall ? 10 : 8
+                  }}
+                >
+                  {/* Golden radiant aura for Much Bigger 90-100% fish */}
+                  {isMuchBigger && (
+                    <div 
+                      className="absolute -inset-4 rounded-full bg-amber-400/25 blur-lg -z-10 animate-pulse pointer-events-none"
+                      style={{ transform: `scaleX(${fish.direction})` }}
+                    />
+                  )}
+
+                  {/* Protective bubble shield after respawn */}
+                  {fish.shieldTimer > 0 && (
+                    <div 
+                      className="absolute -inset-3 rounded-full border-2 border-cyan-300/80 bg-cyan-400/20 shadow-lg shadow-cyan-300/40 animate-ping -z-10 pointer-events-none"
+                    />
+                  )}
+
+                  {/* Panic emote when Big Teacher Shark stalks */}
+                  {fish.isTerrified && (
+                    <div 
+                      className={cn(
+                        "absolute -top-11 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full font-black shadow-xl border pointer-events-none flex items-center gap-1 z-20",
+                        shark.state === 'hunting' && shark.targetFishId === fish.id
+                          ? "bg-red-700 text-yellow-200 border-2 border-yellow-300 animate-bounce text-[10px] shadow-red-950/80"
+                          : "bg-red-600/90 text-white border-red-300 animate-pulse text-[9px]"
+                      )}
+                      style={{ transform: `scaleX(${fish.direction}) translate(-50%, 0)` }}
+                    >
+                      <span>😱</span>
+                      <span className="tracking-wide">
+                        {shark.state === 'hunting' && shark.targetFishId === fish.id
+                          ? "STALKED BY SHARK!"
+                          : "SCATTER!"}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Eating celebration effect */}
+                  {fish.eatingEffectTimer > 0 && !fish.isTerrified && (
+                    <div 
+                      className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-1 text-[10px] font-black text-amber-300 bg-black/70 px-2 py-0.5 rounded-full border border-amber-400/50 animate-bounce pointer-events-none"
+                      style={{ transform: `scaleX(${fish.direction})` }}
+                    >
+                      <span>Yum!</span>
+                      <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                    </div>
+                  )}
+
+                  {/* Student Fish Nametag & Size Tag */}
+                  {showNameTags && (
+                    <div
+                      className={cn(
+                        "absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold tracking-tight shadow-xl backdrop-blur-md border transition-all duration-200 pointer-events-none flex items-center gap-1.5",
+                        fish.isTerrified
+                          ? "bg-red-950/90 text-white border-red-500 shadow-red-900/50"
+                          : isMuchBigger
+                          ? "bg-amber-950/90 text-amber-200 border-amber-400 shadow-amber-900/50 ring-1 ring-amber-400/50" 
+                          : isMedium
+                          ? "bg-emerald-950/85 text-emerald-200 border-emerald-500/60 shadow-emerald-900/40"
+                          : isSmall
+                          ? "bg-sky-950/85 text-sky-200 border-sky-500/60 shadow-sky-900/40"
+                          : "bg-rose-950/85 text-rose-200 border-rose-500/60 shadow-rose-900/40",
+                        "group-hover:scale-110 group-hover:bg-black/90"
+                      )}
+                      style={{
+                        transform: `scaleX(${fish.direction}) translate(-50%, 0)`,
+                        left: '50%'
+                      }}
+                    >
+                      <span>{speciesMeta.emoji}</span>
+                      {isOnline && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" title="Online now" />
+                      )}
+                      <span className="truncate max-w-[105px] text-white font-bold">{fish.name}</span>
+                      <span className={cn(
+                        "font-black px-1.5 py-0.2 rounded-md text-[9px]",
+                        tierInfo.badgeBg
+                      )}>
+                        {fish.percentage}% ({tierInfo.scaleDescription})
+                      </span>
+                    </div>
+                  )}
+
+                  {/* SVG CREATURE BODY */}
+                  <div className="relative w-32 h-20 flex items-center justify-center filter drop-shadow-xl">
+                    {renderCreatureSVG(fish)}
+
+                    {/* Student Avatar Embedded directly onto Creature */}
+                    <div 
+                      className="absolute left-[44px] top-[26px] w-6 h-6 rounded-full overflow-hidden border-2 border-white/95 bg-slate-900 shadow-md flex items-center justify-center shrink-0 z-10 transition-all"
+                      style={{ transform: `scaleX(${fish.direction})` }}
+                    >
+                      {fish.photoURL ? (
+                        <img
+                          src={fish.photoURL}
+                          alt={fish.name}
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <span className="text-[9px] font-black text-white">
+                          {fish.name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Ambient Reef Seabed Floor Label */}
         <div className="absolute bottom-1.5 inset-x-8 z-10 pointer-events-none flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-white/50 select-none drop-shadow">
-          <span className="flex items-center gap-1">🐠 Living Reef Sanctuary</span>
-          <span className="hidden md:inline text-white/30">• • • Vibrant Coral Habitat • • •</span>
-          <span className="flex items-center gap-1">Scale By Grade (0.65x → 2.2x) 🌊</span>
+          {tankMode === 'questions' ? (
+            <>
+              <span className="flex items-center gap-1">❓ Question Reef • Click Any Fish to View Question</span>
+              <span className="hidden md:inline text-white/30">• • • Vibrant Interactive Curriculum Habitat • • •</span>
+              <span className="flex items-center gap-1">1 Fish = 1 Question 🌊</span>
+            </>
+          ) : (
+            <>
+              <span className="flex items-center gap-1">🐠 Living Reef Sanctuary</span>
+              <span className="hidden md:inline text-white/30">• • • Vibrant Coral Habitat • • •</span>
+              <span className="flex items-center gap-1">Scale By Grade (0.65x → 2.2x) 🌊</span>
+            </>
+          )}
         </div>
 
         {/* ============================================================== */}
@@ -2313,6 +3146,261 @@ export default function TeacherAquarium() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* ============================================================== */}
+      {/* QUESTION INSPECTION MODAL (Clicking any question fish opens this) */}
+      {/* ============================================================== */}
+      <AnimatePresence>
+        {selectedQuestionFish && (
+          <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 15 }}
+              className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border-2 border-cyan-500/40 shadow-2xl relative overflow-hidden flex flex-col max-h-[92vh]"
+            >
+              {/* Cyan Gradient Header Glow Strip */}
+              <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500" />
+
+              {/* Top Bar */}
+              <div className="p-5 sm:p-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-black text-sm">
+                    Q{selectedQuestionFish.index}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                        Question {selectedQuestionFish.index} of {questionFishList.length}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                        {selectedQuestionFish.type === 'multiple-choice' ? 'Multiple Choice' :
+                         selectedQuestionFish.type === 'true-false' ? 'True / False' : 'Short Answer'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-50 dark:bg-cyan-950/80 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
+                        {selectedQuestionFish.points} Points
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 mt-0.5">
+                      <span>{SPECIES_METADATA[selectedQuestionFish.species].emoji}</span>
+                      <span>{SPECIES_METADATA[selectedQuestionFish.species].name}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setSelectedQuestionFish(null)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  title="Close Question Modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Scrollable Content Body */}
+              <div className="p-5 sm:p-6 space-y-5 overflow-y-auto">
+                {/* Question Prompt */}
+                <div className="bg-slate-50 dark:bg-slate-800/40 p-4 sm:p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                    Question Prompt
+                  </span>
+                  <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-relaxed">
+                    {selectedQuestionFish.questionText}
+                  </p>
+
+                  {selectedQuestionFish.imageUrl && (
+                    <div className="mt-3 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 max-h-60">
+                      <img 
+                        src={selectedQuestionFish.imageUrl} 
+                        alt="Question Reference" 
+                        className="w-full h-full object-contain bg-black/5" 
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Answer Options & Letter Toggle */}
+                <div>
+                  <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                      <CheckSquare className="w-3.5 h-3.5 text-cyan-500" />
+                      Answer Choices
+                    </span>
+
+                    {/* Toggle that shows the letter of the answer */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAnswerLetter(prev => !prev);
+                        if (soundEnabled) playBubbleSound(showAnswerLetter ? 260 : 380);
+                      }}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-xs cursor-pointer select-none active:scale-95",
+                        showAnswerLetter
+                          ? "bg-amber-500 text-slate-950 border-amber-400 hover:bg-amber-400 shadow-amber-500/20"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700"
+                      )}
+                      title={showAnswerLetter ? "Hide the answer letter" : "Show only the letter of the answer"}
+                    >
+                      {showAnswerLetter ? (
+                        <>
+                          <EyeOff className="w-3.5 h-3.5" />
+                          <span>Hide Answer Letter</span>
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                          <span>Show Answer Letter</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* If toggle is active, show only the letter of the answer */}
+                  {showAnswerLetter && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mb-3 px-3.5 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wide">
+                          Answer Letter:
+                        </span>
+                        <span className="w-7 h-7 rounded-lg bg-amber-500 text-slate-950 font-black text-sm flex items-center justify-center shadow-xs">
+                          {getQuestionAnswerLetter(selectedQuestionFish)}
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                        Letter Only
+                      </span>
+                    </motion.div>
+                  )}
+
+                  {selectedQuestionFish.options.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedQuestionFish.options.map((opt, oIdx) => {
+                        const optLetter = String.fromCharCode(65 + oIdx);
+                        const isTargetLetter = showAnswerLetter && (optLetter === getQuestionAnswerLetter(selectedQuestionFish));
+
+                        return (
+                          <div
+                            key={oIdx}
+                            className={cn(
+                              "p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3",
+                              isTargetLetter
+                                ? "bg-amber-50/90 dark:bg-amber-950/30 border-2 border-amber-500 dark:border-amber-500/80 shadow-xs"
+                                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+                            )}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className={cn(
+                                "w-7 h-7 rounded-lg text-xs font-black flex items-center justify-center shrink-0 border transition-all",
+                                isTargetLetter
+                                  ? "bg-amber-500 text-slate-950 border-amber-400 shadow-xs"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
+                              )}>
+                                {optLetter}
+                              </span>
+                              <span className={cn(
+                                "text-sm font-medium",
+                                isTargetLetter ? "font-bold text-slate-900 dark:text-white" : "text-slate-800 dark:text-slate-200"
+                              )}>
+                                {opt}
+                              </span>
+                            </div>
+
+                            {isTargetLetter && (
+                              <span className="text-xs font-black text-amber-600 dark:text-amber-400 shrink-0">
+                                Letter {optLetter}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* Open-Ended / Short Answer display */
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">
+                        Open-ended / Short Answer Question
+                      </p>
+                      {showAnswerLetter ? (
+                        <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                          Expected Answer: {selectedQuestionFish.correctAnswer}
+                        </p>
+                      ) : (
+                        <p className="text-xs italic text-slate-400">
+                          Student writes in free-form response.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer with Cycle Controls & Question Direct Jump */}
+              <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/90 flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 overflow-x-auto max-w-[260px] sm:max-w-xs py-1">
+                  {questionFishList.map(q => (
+                    <button
+                      key={q.id}
+                      onClick={() => {
+                        setSelectedQuestionFish(q);
+                        if (soundEnabled) playBubbleSound(360);
+                      }}
+                      className={cn(
+                        "w-7 h-7 rounded-lg text-[10px] font-black transition-all shrink-0 border",
+                        selectedQuestionFish.id === q.id
+                          ? "bg-cyan-500 text-slate-950 border-cyan-400 shadow-sm scale-105"
+                          : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-cyan-400"
+                      )}
+                      title={`Jump to Question ${q.index}`}
+                    >
+                      {q.index}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const curIdx = selectedQuestionFish.index - 1;
+                      const prevIdx = (curIdx - 1 + questionFishList.length) % questionFishList.length;
+                      setSelectedQuestionFish(questionFishList[prevIdx]);
+                      if (soundEnabled) playBubbleSound(280);
+                    }}
+                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    title="Previous Question"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const curIdx = selectedQuestionFish.index - 1;
+                      const nextIdx = (curIdx + 1) % questionFishList.length;
+                      setSelectedQuestionFish(questionFishList[nextIdx]);
+                      if (soundEnabled) playBubbleSound(350);
+                    }}
+                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    title="Next Question"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedQuestionFish(null)}
+                    className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 ml-1"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* STUDENT INSPECTION MODAL */}
       <AnimatePresence>
