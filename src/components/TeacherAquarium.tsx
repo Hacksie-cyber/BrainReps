@@ -117,6 +117,65 @@ function playChompSound() {
   }
 }
 
+// Web Audio Fishing Rod Whip & Reel Snap sound
+function playFishingHookSound() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+
+    // 1. Line whizzing whoosh (whip through air and water)
+    const whooshOsc = ctx.createOscillator();
+    const whooshGain = ctx.createGain();
+    whooshOsc.type = 'sine';
+    whooshOsc.frequency.setValueAtTime(850, ctx.currentTime);
+    whooshOsc.frequency.exponentialRampToValueAtTime(280, ctx.currentTime + 0.18);
+    whooshGain.gain.setValueAtTime(0.12, ctx.currentTime);
+    whooshGain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+    whooshOsc.connect(whooshGain);
+    whooshGain.connect(ctx.destination);
+    whooshOsc.start();
+    whooshOsc.stop(ctx.currentTime + 0.23);
+
+    // 2. High metallic click / hook catch snap
+    setTimeout(() => {
+      try {
+        const snapOsc = ctx.createOscillator();
+        const snapGain = ctx.createGain();
+        snapOsc.type = 'triangle';
+        snapOsc.frequency.setValueAtTime(1400, ctx.currentTime);
+        snapOsc.frequency.exponentialRampToValueAtTime(450, ctx.currentTime + 0.08);
+        snapGain.gain.setValueAtTime(0.18, ctx.currentTime);
+        snapGain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+        snapOsc.connect(snapGain);
+        snapGain.connect(ctx.destination);
+        snapOsc.start();
+        snapOsc.stop(ctx.currentTime + 0.11);
+      } catch {}
+    }, 140);
+
+    // 3. Mechanical reel ratchet z-z-zt
+    [0.18, 0.24, 0.30, 0.36].forEach((delay, idx) => {
+      setTimeout(() => {
+        try {
+          const clickOsc = ctx.createOscillator();
+          const clickGain = ctx.createGain();
+          clickOsc.type = 'square';
+          clickOsc.frequency.setValueAtTime(550 + idx * 70, ctx.currentTime);
+          clickGain.gain.setValueAtTime(0.04, ctx.currentTime);
+          clickGain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.03);
+          clickOsc.connect(clickGain);
+          clickGain.connect(ctx.destination);
+          clickOsc.start();
+          clickOsc.stop(ctx.currentTime + 0.035);
+        } catch {}
+      }, delay * 1000);
+    });
+  } catch {
+    // Ignore audio errors
+  }
+}
+
 export type AquaticSpecies = 
   | 'turtle' 
   | 'bluetang' 
@@ -433,6 +492,16 @@ interface GlassRipple {
   y: number;
 }
 
+export interface HookedFishState {
+  id: string;
+  x: number;
+  y: number;
+  type: 'question' | 'student';
+  entity: QuestionFishEntity | FishEntity;
+  phase: 'casting' | 'hooked' | 'reeling';
+  createdAt: number;
+}
+
 function determineSpecies(percentage: number, studentId: string): AquaticSpecies {
   const hash = studentId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   
@@ -480,6 +549,7 @@ export default function TeacherAquarium() {
   const [selectedQuestionFish, setSelectedQuestionFish] = useState<QuestionFishEntity | null>(null);
   const [filterQuestionType, setFilterQuestionType] = useState<'all' | 'multiple-choice' | 'true-false' | 'short-answer'>('all');
   const [showAnswerLetter, setShowAnswerLetter] = useState(false);
+  const [hookedFish, setHookedFish] = useState<HookedFishState | null>(null);
 
   // Speed & Settings
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1.0);
@@ -1476,6 +1546,99 @@ export default function TeacherAquarium() {
     if (soundEnabled) {
       playBubbleSound();
     }
+  };
+
+  // Fishing Rod Catch Handler for Question Fish
+  const handleQuestionFishClick = (qFish: QuestionFishEntity, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (hookedFish) return;
+
+    if (soundEnabled) {
+      playFishingHookSound();
+    }
+
+    const currentX = qFish.x;
+    const currentY = qFish.y;
+
+    setHookedFish({
+      id: qFish.id,
+      x: currentX,
+      y: currentY,
+      type: 'question',
+      entity: qFish,
+      phase: 'casting',
+      createdAt: Date.now()
+    });
+
+    // Spawn animated splash bubbles around the hook strike
+    setSplashBubbles(prev => [
+      ...prev.slice(-15),
+      { id: `hook-bubble-${Date.now()}-1`, x: currentX - 1.5, y: currentY, vx: -0.05, vy: -0.28, size: 9, opacity: 0.9 },
+      { id: `hook-bubble-${Date.now()}-2`, x: currentX + 1.5, y: currentY - 2, vx: 0.05, vy: -0.32, size: 7.5, opacity: 0.8 },
+      { id: `hook-bubble-${Date.now()}-3`, x: currentX, y: currentY + 1, vx: 0, vy: -0.22, size: 6, opacity: 0.75 }
+    ]);
+
+    // Phase 1: Casting down -> Hooked
+    setTimeout(() => {
+      setHookedFish(prev => prev && prev.id === qFish.id ? { ...prev, phase: 'hooked' } : prev);
+    }, 180);
+
+    // Phase 2: Hooked -> Reeling upward
+    setTimeout(() => {
+      setHookedFish(prev => prev && prev.id === qFish.id ? { ...prev, phase: 'reeling' } : prev);
+    }, 420);
+
+    // Phase 3: Inspection modal pops open
+    setTimeout(() => {
+      setSelectedQuestionFish(qFish);
+      setTimeout(() => {
+        setHookedFish(null);
+      }, 700);
+    }, 580);
+  };
+
+  // Fishing Rod Catch Handler for Student Fish
+  const handleStudentFishClick = (fish: FishEntity, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (hookedFish) return;
+
+    if (soundEnabled) {
+      playFishingHookSound();
+    }
+
+    const currentX = fish.x;
+    const currentY = fish.y;
+
+    setHookedFish({
+      id: fish.id,
+      x: currentX,
+      y: currentY,
+      type: 'student',
+      entity: fish,
+      phase: 'casting',
+      createdAt: Date.now()
+    });
+
+    setSplashBubbles(prev => [
+      ...prev.slice(-15),
+      { id: `hook-bubble-${Date.now()}-1`, x: currentX - 1.5, y: currentY, vx: -0.05, vy: -0.28, size: 9, opacity: 0.9 },
+      { id: `hook-bubble-${Date.now()}-2`, x: currentX + 1.5, y: currentY - 2, vx: 0.05, vy: -0.32, size: 7.5, opacity: 0.8 }
+    ]);
+
+    setTimeout(() => {
+      setHookedFish(prev => prev && prev.id === fish.id ? { ...prev, phase: 'hooked' } : prev);
+    }, 180);
+
+    setTimeout(() => {
+      setHookedFish(prev => prev && prev.id === fish.id ? { ...prev, phase: 'reeling' } : prev);
+    }, 420);
+
+    setTimeout(() => {
+      setSelectedFish(fish);
+      setTimeout(() => {
+        setHookedFish(null);
+      }, 700);
+    }, 580);
   };
 
   // Feed & Grow button handler
@@ -2687,25 +2850,25 @@ export default function TeacherAquarium() {
                 return null;
               }
 
+              const isThisHooked = hookedFish?.id === qFish.id;
+              const hookTugY = isThisHooked && hookedFish.phase === 'reeling' ? Math.max(12, qFish.y - 5) : qFish.y + bobY * 0.15;
+
               return (
                 <div
                   key={qFish.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedQuestionFish(qFish);
-                    if (soundEnabled) playBubbleSound(320);
-                  }}
+                  onClick={(e) => handleQuestionFishClick(qFish, e)}
                   className={cn(
-                    "absolute pointer-events-auto cursor-pointer group transition-transform duration-75 select-none",
-                    qFish.isTerrified && "animate-pulse"
+                    "absolute pointer-events-auto cursor-pointer group transition-transform duration-100 select-none",
+                    qFish.isTerrified && "animate-pulse",
+                    isThisHooked && (hookedFish.phase === 'hooked' || hookedFish.phase === 'reeling') && "animate-fish-tug filter drop-shadow-2xl brightness-125"
                   )}
                   style={{
                     left: `${qFish.x}%`,
-                    top: `${qFish.y + bobY * 0.15}%`,
-                    transform: `translate(-50%, -50%) scaleX(${qFish.direction}) scale(${qFish.scale})`,
-                    zIndex: 16
+                    top: `${hookTugY}%`,
+                    transform: `translate(-50%, -50%) scaleX(${qFish.direction}) scale(${isThisHooked ? qFish.scale * 1.15 : qFish.scale})`,
+                    zIndex: isThisHooked ? 28 : 16
                   }}
-                  title={`Question ${qFish.index}: Click to inspect question prompt, choices & answer key`}
+                  title={`Question ${qFish.index}: Click to hook with fishing rod & view question!`}
                 >
                   {/* Subtle radiant cyan aura for question fish */}
                   <div 
@@ -2801,24 +2964,25 @@ export default function TeacherAquarium() {
                 return null;
               }
 
+              const isThisHooked = hookedFish?.id === fish.id;
+              const hookTugY = isThisHooked && hookedFish.phase === 'reeling' ? Math.max(12, fish.y - 5) : fish.y + bobY * 0.15;
+
               return (
                 <div
                   key={fish.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedFish(fish);
-                    if (soundEnabled) playBubbleSound();
-                  }}
+                  onClick={(e) => handleStudentFishClick(fish, e)}
                   className={cn(
-                    "absolute pointer-events-auto cursor-pointer group transition-transform duration-75",
-                    fish.isTerrified && "animate-pulse"
+                    "absolute pointer-events-auto cursor-pointer group transition-transform duration-100",
+                    fish.isTerrified && "animate-pulse",
+                    isThisHooked && (hookedFish.phase === 'hooked' || hookedFish.phase === 'reeling') && "animate-fish-tug filter drop-shadow-2xl brightness-125"
                   )}
                   style={{
                     left: `${fish.x}%`,
-                    top: `${fish.y + bobY * 0.15}%`,
-                    transform: `translate(-50%, -50%) scaleX(${fish.direction}) scale(${fish.scale})`,
-                    zIndex: isMuchBigger ? 20 : isMedium ? 15 : isSmall ? 10 : 8
+                    top: `${hookTugY}%`,
+                    transform: `translate(-50%, -50%) scaleX(${fish.direction}) scale(${isThisHooked ? fish.scale * 1.15 : fish.scale})`,
+                    zIndex: isThisHooked ? 28 : (isMuchBigger ? 20 : isMedium ? 15 : isSmall ? 10 : 8)
                   }}
+                  title={`${fish.name} (${fish.percentage}%): Click to hook with fishing rod & view performance!`}
                 >
                   {/* Golden radiant aura for Much Bigger 90-100% fish */}
                   {isMuchBigger && (
@@ -2929,6 +3093,218 @@ export default function TeacherAquarium() {
             })
           )}
         </div>
+
+        {/* ============================================================== */}
+        {/* FISHING ROD & HOOK ANIMATION (Triggered on Fish Click) */}
+        {/* ============================================================== */}
+        <AnimatePresence>
+          {hookedFish && (
+            <div className="absolute inset-0 pointer-events-none z-30 overflow-visible select-none">
+              <svg className="w-full h-full absolute inset-0 overflow-visible pointer-events-none">
+                <defs>
+                  {/* Metallic Hook Gradient */}
+                  <linearGradient id="hookMetalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#ffffff" />
+                    <stop offset="35%" stopColor="#cbd5e1" />
+                    <stop offset="70%" stopColor="#64748b" />
+                    <stop offset="100%" stopColor="#334155" />
+                  </linearGradient>
+
+                  {/* Fishing Rod Pole Gradient */}
+                  <linearGradient id="rodPoleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#334155" />
+                    <stop offset="40%" stopColor="#0f172a" />
+                    <stop offset="75%" stopColor="#eab308" />
+                    <stop offset="100%" stopColor="#0f172a" />
+                  </linearGradient>
+
+                  {/* Cork Handle Gradient */}
+                  <linearGradient id="corkHandleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#d97706" />
+                    <stop offset="50%" stopColor="#fbbf24" />
+                    <stop offset="100%" stopColor="#b45309" />
+                  </linearGradient>
+                </defs>
+
+                {(() => {
+                  const targetX = hookedFish.x;
+                  const isLeft = targetX < 50;
+                  const rodBaseX = isLeft ? Math.max(3, targetX - 16) : Math.min(97, targetX + 16);
+                  const isUnderTension = hookedFish.phase === 'hooked' || hookedFish.phase === 'reeling';
+                  const rodTipX = isLeft ? targetX - 3.5 : targetX + 3.5;
+                  const rodTipY = isUnderTension ? 7.5 : 4.5;
+                  const hookY = hookedFish.phase === 'reeling' ? Math.max(12, hookedFish.y - 5) : hookedFish.y;
+                  const hookX = hookedFish.x;
+
+                  return (
+                    <g>
+                      {/* 1. FISHING ROD HANDLE & BLANK */}
+                      {/* Cork Handle */}
+                      <line 
+                        x1={`${rodBaseX}%`} 
+                        y1="0%" 
+                        x2={`${isLeft ? rodBaseX + 3.2 : rodBaseX - 3.2}%`} 
+                        y2="2.5%" 
+                        stroke="url(#corkHandleGrad)" 
+                        strokeWidth="8" 
+                        strokeLinecap="round" 
+                      />
+                      {/* Reel Casing */}
+                      <circle 
+                        cx={`${isLeft ? rodBaseX + 2.8 : rodBaseX - 2.8}%`} 
+                        cy="3.2%" 
+                        r="5.5" 
+                        fill="#0f172a" 
+                        stroke="#e2e8f0" 
+                        strokeWidth="1.6" 
+                      />
+                      <circle 
+                        cx={`${isLeft ? rodBaseX + 2.8 : rodBaseX - 2.8}%`} 
+                        cy="3.2%" 
+                        r="2.2" 
+                        fill="#38bdf8" 
+                      />
+
+                      {/* Carbon Flexible Rod Blank with Tension Flex */}
+                      <path
+                        d={`M ${rodBaseX} 0 Q ${isLeft ? rodBaseX + 7 : rodBaseX - 7} ${isUnderTension ? 8 : 4.5}, ${rodTipX} ${rodTipY}`}
+                        stroke="url(#rodPoleGrad)"
+                        strokeWidth={isUnderTension ? "4.2" : "3.6"}
+                        strokeLinecap="round"
+                        fill="none"
+                        style={{
+                          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))',
+                          transition: 'all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                        }}
+                      />
+
+                      {/* Rod Eyelets Guide Rings */}
+                      {[0.32, 0.65, 0.96].map((pos, idx) => {
+                        const eyeX = rodBaseX + (rodTipX - rodBaseX) * pos;
+                        const eyeY = 0 + (rodTipY - 0) * pos;
+                        return (
+                          <circle 
+                            key={`eyelet-${idx}`} 
+                            cx={`${eyeX}%`} 
+                            cy={`${eyeY}%`} 
+                            r="2.2" 
+                            fill="none" 
+                            stroke="#f8fafc" 
+                            strokeWidth="1.2" 
+                          />
+                        );
+                      })}
+
+                      {/* 2. FISHING LINE DESCENDING DIRECTLY TO FISH */}
+                      {/* Monofilament Glowing Line */}
+                      <path
+                        d={`M ${rodTipX}% ${rodTipY}% Q ${isLeft ? targetX - 0.8 : targetX + 0.8}% ${(rodTipY + hookY) / 2}%, ${hookX}% ${hookY}%`}
+                        stroke="#7dd3fc"
+                        strokeWidth="1.6"
+                        strokeOpacity="0.88"
+                        fill="none"
+                        className={isUnderTension ? "animate-pulse" : ""}
+                        style={{
+                          filter: 'drop-shadow(0 0 3px rgba(56, 189, 248, 0.75))',
+                          transition: 'd 0.12s ease-out'
+                        }}
+                      />
+                      <path
+                        d={`M ${rodTipX}% ${rodTipY}% Q ${isLeft ? targetX - 0.8 : targetX + 0.8}% ${(rodTipY + hookY) / 2}%, ${hookX}% ${hookY}%`}
+                        stroke="#ffffff"
+                        strokeWidth="0.8"
+                        strokeOpacity="0.75"
+                        fill="none"
+                      />
+
+                      {/* 3. SURFACE BOBBER (Float with Red & White halves) */}
+                      <g 
+                        transform={`translate(${targetX * 10}, 32)`}
+                        className={isUnderTension ? "animate-bounce" : ""}
+                      >
+                        <ellipse cx="0" cy="12" rx="12" ry="3.5" fill="none" stroke="#38bdf8" strokeWidth="1.2" strokeOpacity="0.6" className="animate-ping" />
+                        <path d="M -7 4 A 7 7 0 0 1 7 4 Z" fill="#ef4444" stroke="#b91c1c" strokeWidth="1" />
+                        <path d="M -7 4 A 7 7 0 0 0 7 4 Z" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1" />
+                        <line x1="0" y1="-3" x2="0" y2="12" stroke="#1e293b" strokeWidth="1.5" />
+                        <circle cx="0" cy="-3" r="1.5" fill="#facc15" />
+                      </g>
+                    </g>
+                  );
+                })()}
+              </svg>
+
+              {/* 4. METALLIC FISHING HOOK & TUG REEL AT FISH MOUTH */}
+              {(() => {
+                const hookY = hookedFish.phase === 'reeling' ? Math.max(12, hookedFish.y - 5) : hookedFish.y;
+                const isUnderTension = hookedFish.phase === 'hooked' || hookedFish.phase === 'reeling';
+
+                return (
+                  <div
+                    className="absolute pointer-events-none transition-all duration-120"
+                    style={{
+                      left: `${hookedFish.x}%`,
+                      top: `${hookY}%`,
+                      transform: 'translate(-50%, -65%)'
+                    }}
+                  >
+                    {/* Splash Water Burst Ring */}
+                    {isUnderTension && (
+                      <div className="absolute -inset-6 rounded-full border-2 border-cyan-300/80 bg-cyan-400/20 animate-ping -z-10" />
+                    )}
+
+                    {/* Fishing Hook & Lead Sinker SVG */}
+                    <div className={cn("relative transition-transform duration-100", isUnderTension ? "scale-110 rotate-6" : "")}>
+                      <svg width="40" height="48" viewBox="0 0 40 48" className="overflow-visible filter drop-shadow-xl">
+                        {/* Lead Split-Shot Sinker Weight */}
+                        <ellipse cx="20" cy="8" rx="4.5" ry="6" fill="#475569" stroke="#1e293b" strokeWidth="1.5" />
+                        <line x1="20" y1="2" x2="20" y2="14" stroke="#94a3b8" strokeWidth="1" />
+
+                        {/* Hook Eyelet */}
+                        <circle cx="20" cy="18" r="3.5" fill="none" stroke="#f1f5f9" strokeWidth="2.2" />
+                        <circle cx="20" cy="18" r="1.5" fill="#475569" />
+
+                        {/* Heavy-Gauge Curved Hook Shank */}
+                        <path 
+                          d="M 20 21.5 L 20 34 C 20 44, 34 44, 34 32 L 34 26" 
+                          fill="none" 
+                          stroke="url(#hookMetalGrad)" 
+                          strokeWidth="3.2" 
+                          strokeLinecap="round" 
+                        />
+                        {/* Sharp Hook Barb */}
+                        <path 
+                          d="M 34 26 L 30 30" 
+                          fill="none" 
+                          stroke="#ffffff" 
+                          strokeWidth="2.2" 
+                          strokeLinecap="round" 
+                        />
+                        {/* Sparkle highlight on hook tip */}
+                        <circle cx="27" cy="42" r="1.5" fill="#ffffff" className="animate-ping" />
+                      </svg>
+                    </div>
+
+                    {/* Hooked Badge Callout */}
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0, y: 10 }}
+                      animate={{ scale: [0, 1.25, 1], opacity: 1, y: -28 }}
+                      exit={{ scale: 0.8, opacity: 0 }}
+                      className="absolute -top-6 left-6 whitespace-nowrap px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-slate-950 font-black text-[11px] shadow-2xl border-2 border-white flex items-center gap-1.5 z-40 select-none animate-bounce"
+                    >
+                      <span className="text-sm">🎣</span>
+                      <span>
+                        {hookedFish.type === 'question' 
+                          ? `Q${(hookedFish.entity as QuestionFishEntity).index} Hooked!` 
+                          : `${(hookedFish.entity as FishEntity).name.split(' ')[0]} Caught!`}
+                      </span>
+                      <Sparkles className="w-3 h-3 text-slate-950 fill-slate-950" />
+                    </motion.div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* Ambient Reef Seabed Floor Label */}
         <div className="absolute bottom-1.5 inset-x-8 z-10 pointer-events-none flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-white/50 select-none drop-shadow">
@@ -3651,6 +4027,26 @@ export default function TeacherAquarium() {
         }
         .animate-squeegee-wipe {
           animation: squeegeeWipe 2.2s ease-in-out forwards;
+        }
+        @keyframes fishTug {
+          0% {
+            transform: translate(-50%, -50%) rotate(0deg);
+          }
+          25% {
+            transform: translate(-50%, -55%) rotate(-8deg);
+          }
+          50% {
+            transform: translate(-50%, -46%) rotate(7deg);
+          }
+          75% {
+            transform: translate(-50%, -54%) rotate(-6deg);
+          }
+          100% {
+            transform: translate(-50%, -50%) rotate(0deg);
+          }
+        }
+        .animate-fish-tug {
+          animation: fishTug 0.22s ease-in-out infinite;
         }
       `}</style>
     </div>
