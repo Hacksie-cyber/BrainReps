@@ -1651,11 +1651,16 @@ export default function TeacherAquarium() {
 
   const toggleTankFullscreen = () => {
     if (!tankContainerRef.current) return;
-    if (!document.fullscreenElement) {
-      tankContainerRef.current.requestFullscreen?.().catch(() => {});
+    if (!document.fullscreenElement && !isFullscreen) {
+      tankContainerRef.current.requestFullscreen?.().catch(() => {
+        // Fallback to CSS fullscreen when iframe blocks requestFullscreen
+        setIsFullscreen(true);
+      });
       setIsFullscreen(true);
     } else {
-      document.exitFullscreen?.().catch(() => {});
+      if (document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
       setIsFullscreen(false);
     }
   };
@@ -1667,6 +1672,26 @@ export default function TeacherAquarium() {
     document.addEventListener('fullscreenchange', handleFsChange);
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
+
+  // Keyboard shortcut: Escape to close modals or exit fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (selectedQuestionFish) {
+          setSelectedQuestionFish(null);
+        } else if (selectedFish) {
+          setSelectedFish(null);
+        } else if (isFullscreen) {
+          if (document.fullscreenElement) {
+            document.exitFullscreen?.().catch(() => {});
+          }
+          setIsFullscreen(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedQuestionFish, selectedFish, isFullscreen]);
 
   const filteredFish = useMemo(() => {
     return fishList.filter(fish => {
@@ -3038,8 +3063,13 @@ export default function TeacherAquarium() {
           {/* Fullscreen Button */}
           <button
             onClick={toggleTankFullscreen}
-            className="p-2 rounded-xl bg-slate-900/80 backdrop-blur-md text-slate-300 hover:text-white transition-all border border-white/20 shadow-lg"
-            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Projector Mode"}
+            className={cn(
+              "p-2 rounded-xl backdrop-blur-md transition-all border shadow-lg cursor-pointer active:scale-95",
+              isFullscreen
+                ? "bg-cyan-500/25 text-cyan-300 border-cyan-400/60 shadow-cyan-500/30 ring-1 ring-cyan-400/40"
+                : "bg-slate-900/80 text-slate-300 hover:text-white border-white/20"
+            )}
+            title={isFullscreen ? "Exit Fullscreen (Esc)" : "Fullscreen Projector Mode"}
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
@@ -3145,18 +3175,26 @@ export default function TeacherAquarium() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
 
       {/* ============================================================== */}
       {/* QUESTION INSPECTION MODAL (Clicking any question fish opens this) */}
       {/* ============================================================== */}
       <AnimatePresence>
         {selectedQuestionFish && (
-          <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div 
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedQuestionFish(null);
+            }}
+            onDoubleClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto pointer-events-auto select-auto"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.94, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.94, y: 15 }}
+              onClick={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
               className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border-2 border-cyan-500/40 shadow-2xl relative overflow-hidden flex flex-col max-h-[92vh]"
             >
               {/* Cyan Gradient Header Glow Strip */}
@@ -3189,7 +3227,10 @@ export default function TeacherAquarium() {
                 </div>
 
                 <button
-                  onClick={() => setSelectedQuestionFish(null)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedQuestionFish(null);
+                  }}
                   className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   title="Close Question Modal"
                 >
@@ -3345,7 +3386,8 @@ export default function TeacherAquarium() {
                   {questionFishList.map(q => (
                     <button
                       key={q.id}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setSelectedQuestionFish(q);
                         if (soundEnabled) playBubbleSound(360);
                       }}
@@ -3364,7 +3406,8 @@ export default function TeacherAquarium() {
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       const curIdx = selectedQuestionFish.index - 1;
                       const prevIdx = (curIdx - 1 + questionFishList.length) % questionFishList.length;
                       setSelectedQuestionFish(questionFishList[prevIdx]);
@@ -3377,7 +3420,8 @@ export default function TeacherAquarium() {
                   </button>
 
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       const curIdx = selectedQuestionFish.index - 1;
                       const nextIdx = (curIdx + 1) % questionFishList.length;
                       setSelectedQuestionFish(questionFishList[nextIdx]);
@@ -3390,7 +3434,10 @@ export default function TeacherAquarium() {
                   </button>
 
                   <button
-                    onClick={() => setSelectedQuestionFish(null)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedQuestionFish(null);
+                    }}
                     className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 ml-1"
                   >
                     Done
@@ -3405,11 +3452,20 @@ export default function TeacherAquarium() {
       {/* STUDENT INSPECTION MODAL */}
       <AnimatePresence>
         {selectedFish && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div 
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedFish(null);
+            }}
+            onDoubleClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 pointer-events-auto select-auto"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
               className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-2xl relative overflow-hidden"
             >
               <div className={cn(
@@ -3421,7 +3477,10 @@ export default function TeacherAquarium() {
               )} />
 
               <button
-                onClick={() => setSelectedFish(null)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedFish(null);
+                }}
                 className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -3529,7 +3588,10 @@ export default function TeacherAquarium() {
               {/* Actions */}
               <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
-                  onClick={() => setSelectedFish(null)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedFish(null);
+                  }}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 >
                   Close
@@ -3546,6 +3608,7 @@ export default function TeacherAquarium() {
           </div>
         )}
       </AnimatePresence>
+    </div>
 
       {/* Embedded CSS animations */}
       <style>{`
