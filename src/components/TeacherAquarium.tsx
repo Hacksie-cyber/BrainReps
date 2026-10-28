@@ -43,7 +43,9 @@ import {
   Layers,
   FileQuestion,
   BookOpen,
-  AlertCircle
+  AlertCircle,
+  RotateCcw,
+  Shuffle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -174,6 +176,27 @@ function playFishingHookSound() {
   } catch {
     // Ignore audio errors
   }
+}
+
+// Web Audio Whirlpool Shuffle sound for challenging question scramble
+function playWhirlpoolSound() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(260, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(780, ctx.currentTime + 0.25);
+    osc.frequency.exponentialRampToValueAtTime(320, ctx.currentTime + 0.45);
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.52);
+  } catch {}
 }
 
 export type AquaticSpecies = 
@@ -549,7 +572,19 @@ export default function TeacherAquarium() {
   const [selectedQuestionFish, setSelectedQuestionFish] = useState<QuestionFishEntity | null>(null);
   const [filterQuestionType, setFilterQuestionType] = useState<'all' | 'multiple-choice' | 'true-false' | 'short-answer'>('all');
   const [showAnswerLetter, setShowAnswerLetter] = useState(false);
+  const [vanishedQuestionFishIds, setVanishedQuestionFishIds] = useState<string[]>([]);
   const [hookedFish, setHookedFish] = useState<HookedFishState | null>(null);
+  const [isShuffling, setIsShuffling] = useState(false);
+
+  // Guarantee that whenever a new fish is selected, the answer is hidden by default
+  useEffect(() => {
+    setShowAnswerLetter(false);
+  }, [selectedQuestionFish?.id]);
+
+  // Reset vanished fish list if the teacher switches to another assessment
+  useEffect(() => {
+    setVanishedQuestionFishIds([]);
+  }, [selectedQuizId]);
 
   // Speed & Settings
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1.0);
@@ -1553,6 +1588,9 @@ export default function TeacherAquarium() {
     e.stopPropagation();
     if (hookedFish) return;
 
+    // By default hide the answer letter when a fish is clicked
+    setShowAnswerLetter(false);
+
     if (soundEnabled) {
       playFishingHookSound();
     }
@@ -1590,6 +1628,7 @@ export default function TeacherAquarium() {
 
     // Phase 3: Inspection modal pops open
     setTimeout(() => {
+      setShowAnswerLetter(false);
       setSelectedQuestionFish(qFish);
       setTimeout(() => {
         setHookedFish(null);
@@ -1695,10 +1734,84 @@ export default function TeacherAquarium() {
     }));
   };
 
+  // Challenge Mode: Enhanced Question Shuffle function (makes review & assessment much more challenging)
+  const handleShuffleQuestions = useCallback(() => {
+    if (questionFishList.length === 0) return;
+    setIsShuffling(true);
+
+    if (soundEnabled) {
+      playWhirlpoolSound();
+      setTimeout(() => playBubbleSound(280), 80);
+      setTimeout(() => playBubbleSound(440), 200);
+      setTimeout(() => playBubbleSound(580), 320);
+    }
+
+    // 1. Scramble question sequence using Fisher-Yates shuffle
+    const shuffledList = [...questionFishList];
+    for (let i = shuffledList.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledList[i], shuffledList[j]] = [shuffledList[j], shuffledList[i]];
+    }
+
+    // 2. Re-assign randomized question indices and also shuffle answer choices/options for multiple choice
+    const challengingFishList: QuestionFishEntity[] = shuffledList.map((qFish, newIdx) => {
+      // Scramble choices if question has multiple options (e.g. multiple-choice) for maximum challenge
+      let updatedOptions = [...qFish.options];
+      if (updatedOptions.length > 1 && qFish.type === 'multiple-choice') {
+        for (let o = updatedOptions.length - 1; o > 0; o--) {
+          const randO = Math.floor(Math.random() * (o + 1));
+          [updatedOptions[o], updatedOptions[randO]] = [updatedOptions[randO], updatedOptions[o]];
+        }
+      }
+
+      // Randomize swimming coordinate and dynamic challenge current velocity
+      const randomAngle = Math.random() * Math.PI * 2;
+      const surgeSpeed = qFish.baseSpeed * (1.9 + Math.random() * 1.5);
+
+      return {
+        ...qFish,
+        index: newIdx + 1,
+        options: updatedOptions,
+        x: 10 + Math.random() * 80,
+        y: 18 + Math.random() * 54,
+        targetVx: Math.cos(randomAngle) * surgeSpeed,
+        targetVy: Math.sin(randomAngle) * surgeSpeed,
+        vx: Math.cos(randomAngle) * surgeSpeed,
+        vy: Math.sin(randomAngle) * surgeSpeed,
+        direction: Math.cos(randomAngle) >= 0 ? 1 : -1,
+        wigglePhase: Math.random() * Math.PI * 2
+      };
+    });
+
+    setQuestionFishList(challengingFishList);
+
+    // 3. Spawn swirling whirlpool bubble burst across the aquarium
+    const whirlpoolBubbles: SplashBubble[] = Array.from({ length: 18 }).map((_, bIdx) => ({
+      id: `whirlpool-${Date.now()}-${bIdx}`,
+      x: 15 + Math.random() * 70,
+      y: 20 + Math.random() * 50,
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: -0.22 - Math.random() * 0.35,
+      size: 7 + Math.random() * 6,
+      opacity: 0.95
+    }));
+    setSplashBubbles(prev => [...prev.slice(-15), ...whirlpoolBubbles]);
+
+    // 4. Announce Challenge Shuffle in floating banner
+    setMinuteFeastBanner("🌪️ CHALLENGE SHUFFLE: Questions, swim currents & answer choices randomized! 🎲");
+    setTimeout(() => {
+      setMinuteFeastBanner(null);
+      setIsShuffling(false);
+    }, 4500);
+
+    // Conceal answer letter by default
+    setShowAnswerLetter(false);
+  }, [questionFishList, soundEnabled]);
+
   // Unleash / Direct Teacher Shark Hunt
   const triggerSharkHunt = useCallback(() => {
     if (tankMode === 'questions') {
-      const availableQ = questionFishList.filter(q => !q.isEaten);
+      const availableQ = questionFishList.filter(q => !q.isEaten && !vanishedQuestionFishIds.includes(q.id));
       if (availableQ.length === 0) return;
       const target = availableQ[Math.floor(Math.random() * availableQ.length)];
       setShark(prev => ({
@@ -1731,12 +1844,12 @@ export default function TeacherAquarium() {
     if (soundEnabled) {
       playChompSound();
     }
-  }, [tankMode, questionFishList, fishList, soundEnabled]);
+  }, [tankMode, questionFishList, fishList, soundEnabled, vanishedQuestionFishIds]);
 
   // Automatic 1-Minute Pop Quiz Shark Feast (Every 60s)
   const triggerMinuteSharkFeast = useCallback(() => {
     if (tankMode === 'questions') {
-      const availableQ = questionFishList.filter(q => !q.isEaten);
+      const availableQ = questionFishList.filter(q => !q.isEaten && !vanishedQuestionFishIds.includes(q.id));
       if (availableQ.length === 0) return;
       const sorted = [...availableQ].sort((a, b) => a.accuracy - b.accuracy);
       const target = sorted[0];
@@ -1781,7 +1894,7 @@ export default function TeacherAquarium() {
     if (soundEnabled) {
       playChompSound();
     }
-  }, [tankMode, questionFishList, fishList, soundEnabled]);
+  }, [tankMode, questionFishList, fishList, soundEnabled, vanishedQuestionFishIds]);
 
   // Recurring 1-minute interval for Teacher Shark Feast
   useEffect(() => {
@@ -1841,6 +1954,7 @@ export default function TeacherAquarium() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (selectedQuestionFish) {
+          setShowAnswerLetter(false);
           setSelectedQuestionFish(null);
         } else if (selectedFish) {
           setSelectedFish(null);
@@ -1880,6 +1994,10 @@ export default function TeacherAquarium() {
 
   const filteredQuestionFish = useMemo(() => {
     return questionFishList.filter(qFish => {
+      // Exclude fish that teacher marked 'Done' (vanished from tank)
+      if (vanishedQuestionFishIds.includes(qFish.id)) {
+        return false;
+      }
       if (searchTerm) {
         const query = searchTerm.toLowerCase();
         const matches = 
@@ -1896,7 +2014,7 @@ export default function TeacherAquarium() {
       }
       return true;
     });
-  }, [questionFishList, searchTerm, filterSpecies, filterQuestionType]);
+  }, [questionFishList, searchTerm, filterSpecies, filterQuestionType, vanishedQuestionFishIds]);
 
   const stats = useMemo(() => {
     if (fishList.length === 0) {
@@ -2274,16 +2392,37 @@ export default function TeacherAquarium() {
       {currentQuiz && tankMode === 'questions' && (
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
           {/* Total Questions in Assessment */}
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-100 dark:border-cyan-900 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
-              <FileQuestion className="w-5 h-5" />
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-100 dark:border-cyan-900 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
+                <FileQuestion className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {vanishedQuestionFishIds.length > 0 ? "Active / Total" : "Total Questions"}
+                </p>
+                <p className="text-xl font-black text-slate-900 dark:text-white leading-none mt-0.5">
+                  {questionStats.totalQuestions - vanishedQuestionFishIds.length}
+                  {vanishedQuestionFishIds.length > 0 && (
+                    <span className="text-xs font-normal text-slate-400 ml-1">/ {questionStats.totalQuestions}</span>
+                  )}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Questions</p>
-              <p className="text-xl font-black text-slate-900 dark:text-white leading-none mt-0.5">
-                {questionStats.totalQuestions}
-              </p>
-            </div>
+            {vanishedQuestionFishIds.length > 0 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setVanishedQuestionFishIds([]);
+                  if (soundEnabled) playBubbleSound(350);
+                }}
+                className="px-2 py-1 rounded-lg bg-cyan-50 dark:bg-cyan-950/80 hover:bg-cyan-100 dark:hover:bg-cyan-900 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 text-[10px] font-bold flex items-center gap-1 transition-all shadow-xs"
+                title="Restore all vanished question fish back to the aquarium"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset ({vanishedQuestionFishIds.length})</span>
+              </button>
+            )}
           </div>
 
           {/* Total Points */}
@@ -3338,19 +3477,19 @@ export default function TeacherAquarium() {
               <span>Feed & Grow</span>
             </button>
 
-            {/* Teacher Shark Button (Big & Slow Bully with Guaranteed Chomp) */}
+            {/* Challenge Mode: Shuffle Questions Button */}
             <button
-              onClick={triggerMinuteSharkFeast}
+              onClick={handleShuffleQuestions}
               className={cn(
                 "active:scale-95 px-3.5 py-2 rounded-full text-xs font-black transition-all flex items-center gap-1.5 shadow-md",
-                shark.state === 'hunting'
-                  ? "bg-red-600 text-white animate-pulse"
-                  : "bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white"
+                isShuffling
+                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white animate-pulse shadow-purple-500/30 ring-2 ring-purple-400"
+                  : "bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white shadow-indigo-600/30"
               )}
-              title="Send Big Teacher Shark for a guaranteed chomp!"
+              title="Shuffle question order, swim paths, and answer choices to make the assessment more challenging!"
             >
-              <span>🦈</span>
-              <span>{shark.state === 'hunting' ? 'Big Shark Stalking!' : `Big Shark Chomp (${minuteFeastCountdown}s)`}</span>
+              <Shuffle className={cn("w-3.5 h-3.5 text-purple-200", isShuffling && "animate-spin")} />
+              <span>{isShuffling ? 'Scrambling Reef...' : 'Shuffle Questions 🎲'}</span>
             </button>
 
             {/* Tap Glass Button */}
@@ -3560,6 +3699,7 @@ export default function TeacherAquarium() {
           <div 
             onClick={(e) => {
               e.stopPropagation();
+              setShowAnswerLetter(false);
               setSelectedQuestionFish(null);
             }}
             onDoubleClick={(e) => e.stopPropagation()}
@@ -3605,6 +3745,7 @@ export default function TeacherAquarium() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    setShowAnswerLetter(false);
                     setSelectedQuestionFish(null);
                   }}
                   className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -3759,31 +3900,38 @@ export default function TeacherAquarium() {
               {/* Modal Footer with Cycle Controls & Question Direct Jump */}
               <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/90 flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-1.5 overflow-x-auto max-w-[260px] sm:max-w-xs py-1">
-                  {questionFishList.map(q => (
-                    <button
-                      key={q.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedQuestionFish(q);
-                        if (soundEnabled) playBubbleSound(360);
-                      }}
-                      className={cn(
-                        "w-7 h-7 rounded-lg text-[10px] font-black transition-all shrink-0 border",
-                        selectedQuestionFish.id === q.id
-                          ? "bg-cyan-500 text-slate-950 border-cyan-400 shadow-sm scale-105"
-                          : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-cyan-400"
-                      )}
-                      title={`Jump to Question ${q.index}`}
-                    >
-                      {q.index}
-                    </button>
-                  ))}
+                  {questionFishList.map(q => {
+                    const isVanished = vanishedQuestionFishIds.includes(q.id);
+                    return (
+                      <button
+                        key={q.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowAnswerLetter(false);
+                          setSelectedQuestionFish(q);
+                          if (soundEnabled) playBubbleSound(360);
+                        }}
+                        className={cn(
+                          "w-7 h-7 rounded-lg text-[10px] font-black transition-all shrink-0 border relative",
+                          selectedQuestionFish.id === q.id
+                            ? "bg-cyan-500 text-slate-950 border-cyan-400 shadow-sm scale-105"
+                            : isVanished
+                            ? "bg-slate-200/60 dark:bg-slate-800/60 text-slate-400 line-through border-dashed border-slate-300 dark:border-slate-700 opacity-60"
+                            : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-cyan-400"
+                        )}
+                        title={`Jump to Question ${q.index}${isVanished ? ' (Vanished from reef)' : ''}`}
+                      >
+                        {q.index}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div className="flex items-center gap-2">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      setShowAnswerLetter(false);
                       const curIdx = selectedQuestionFish.index - 1;
                       const prevIdx = (curIdx - 1 + questionFishList.length) % questionFishList.length;
                       setSelectedQuestionFish(questionFishList[prevIdx]);
@@ -3798,6 +3946,7 @@ export default function TeacherAquarium() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      setShowAnswerLetter(false);
                       const curIdx = selectedQuestionFish.index - 1;
                       const nextIdx = (curIdx + 1) % questionFishList.length;
                       setSelectedQuestionFish(questionFishList[nextIdx]);
@@ -3812,6 +3961,25 @@ export default function TeacherAquarium() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (selectedQuestionFish) {
+                        const targetId = selectedQuestionFish.id;
+                        const vX = selectedQuestionFish.x;
+                        const vY = selectedQuestionFish.y;
+                        setVanishedQuestionFishIds(prev => prev.includes(targetId) ? prev : [...prev, targetId]);
+                        // Spawn vanish celebration splash bubbles
+                        setSplashBubbles(prev => [
+                          ...prev.slice(-15),
+                          { id: `vanish-${targetId}-1-${Date.now()}`, x: vX, y: vY, vx: -0.06, vy: -0.36, size: 10, opacity: 0.95 },
+                          { id: `vanish-${targetId}-2-${Date.now()}`, x: vX + 1.5, y: vY - 1, vx: 0.08, vy: -0.42, size: 8, opacity: 0.9 },
+                          { id: `vanish-${targetId}-3-${Date.now()}`, x: vX - 1.5, y: vY + 0.8, vx: -0.07, vy: -0.3, size: 7, opacity: 0.85 },
+                          { id: `vanish-${targetId}-4-${Date.now()}`, x: vX, y: vY - 2, vx: 0.02, vy: -0.45, size: 6, opacity: 0.8 }
+                        ]);
+                        if (soundEnabled) {
+                          playBubbleSound(440);
+                          setTimeout(() => playBubbleSound(560), 120);
+                        }
+                      }
+                      setShowAnswerLetter(false);
                       setSelectedQuestionFish(null);
                     }}
                     className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold transition-all shadow-sm active:scale-95 ml-1"

@@ -76,9 +76,23 @@ export default function QuizSession() {
             return;
           }
 
-          // Randomize questions for students to ensure assessment integrity
+          // Randomize questions and choices to ensure maximum assessment integrity and higher challenge
           if (profile.role === 'student' && quizData.questions) {
-            const shuffledQuestions = [...quizData.questions];
+            const shuffledQuestions = quizData.questions.map(q => {
+              const clone = { ...q };
+              // Shuffle choices for multiple-choice questions to increase challenge
+              if (clone.options && clone.options.length > 1 && clone.type === 'multiple-choice') {
+                const optShuffled = [...clone.options];
+                for (let o = optShuffled.length - 1; o > 0; o--) {
+                  const randO = Math.floor(Math.random() * (o + 1));
+                  [optShuffled[o], optShuffled[randO]] = [optShuffled[randO], optShuffled[o]];
+                }
+                clone.options = optShuffled;
+              }
+              return clone;
+            });
+
+            // Fisher-Yates scramble for question sequence
             for (let i = shuffledQuestions.length - 1; i > 0; i--) {
               const j = Math.floor(Math.random() * (i + 1));
               [shuffledQuestions[i], shuffledQuestions[j]] = [shuffledQuestions[j], shuffledQuestions[i]];
