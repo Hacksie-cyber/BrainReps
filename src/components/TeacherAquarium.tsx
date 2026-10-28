@@ -31,9 +31,7 @@ import {
   Eye,
   SlidersHorizontal,
   Utensils,
-  Eraser,
-  Flame,
-  AlertTriangle
+  Eraser
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -107,31 +105,6 @@ function playChompSound() {
   }
 }
 
-// Web Audio Bone Rattle / Xylophone clink sound when fish is skeletonized
-function playBoneRattleSound() {
-  try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const notes = [680, 940, 560, 820, 1150];
-    notes.forEach((freq, idx) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      const time = ctx.currentTime + idx * 0.045;
-      osc.frequency.setValueAtTime(freq, time);
-      gain.gain.setValueAtTime(0.12, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.065);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(time);
-      osc.stop(time + 0.075);
-    });
-  } catch {
-    // Ignore audio errors
-  }
-}
-
 export type AquaticSpecies = 
   | 'turtle' 
   | 'bluetang' 
@@ -162,13 +135,73 @@ const SHARK_ACADEMIC_QUOTES = [
   "Did you study for this assessment?! 📚",
   "Homework is overdue! CHOMP!",
   "Show your work on the quiz! ✏️",
-  "Zero extra credit for you! 😈",
+  "Office hours are open! 🦈",
   "No copying in my tank! 🚫",
-  "Burp! Needs improvement! 💨",
-  "Delicious... but study harder next time! 🦈",
-  "Back to Chapter 1 with you!",
+  "Burp! Keep studying hard! 💨",
+  "Good effort... but review Chapter 3! 🦈",
+  "Back to the textbooks with you! 📖",
   "Class average must go up! CHOMP!"
 ];
+
+// USER'S EXPLICIT 4-TIER FISH SIZE SCALING:
+// - 90% to 100%: Much bigger looking (Giant Apex Swimmer: 2.20x)
+// - 70% to 89%: Medium-large fish (1.45x)
+// - 50% to 69%: Small fish (1.00x)
+// - Below 50%: Little fish (0.65x)
+export function calculateScoreScale(percentage: number): number {
+  if (percentage >= 90) return 2.20; // Much bigger looking
+  if (percentage >= 70) return 1.45; // 70-80 that much (solid medium-large)
+  if (percentage >= 50) return 1.00; // 70 below get small fish
+  return 0.65;                       // 50 percent below little fish
+}
+
+export function getFishTierInfo(percentage: number): {
+  tier: 'giant' | 'medium' | 'small' | 'little';
+  label: string;
+  shortLabel: string;
+  scaleDescription: string;
+  badgeBg: string;
+  textColor: string;
+} {
+  if (percentage >= 90) {
+    return {
+      tier: 'giant',
+      label: 'Much Bigger (90-100%)',
+      shortLabel: 'Giant Fish (90-100%)',
+      scaleDescription: '2.20x (Giant)',
+      badgeBg: 'bg-amber-500 text-black',
+      textColor: 'text-amber-400'
+    };
+  }
+  if (percentage >= 70) {
+    return {
+      tier: 'medium',
+      label: 'Medium Fish (70-89%)',
+      shortLabel: 'Medium Fish (70-89%)',
+      scaleDescription: '1.45x (Medium)',
+      badgeBg: 'bg-emerald-500 text-black',
+      textColor: 'text-emerald-400'
+    };
+  }
+  if (percentage >= 50) {
+    return {
+      tier: 'small',
+      label: 'Small Fish (50-69%)',
+      shortLabel: 'Small Fish (50-69%)',
+      scaleDescription: '1.00x (Small)',
+      badgeBg: 'bg-sky-500 text-white',
+      textColor: 'text-sky-400'
+    };
+  }
+  return {
+    tier: 'little',
+    label: 'Little Fish (<50%)',
+    shortLabel: 'Little Fish (<50%)',
+    scaleDescription: '0.65x (Little)',
+    badgeBg: 'bg-rose-500 text-white',
+    textColor: 'text-rose-400'
+  };
+}
 
 interface FishEntity {
   id: string; // studentId
@@ -199,16 +232,11 @@ interface FishEntity {
   wiggleSpeed: number;
   eatingEffectTimer: number;
 
-  // Shark bullying & eating state
+  // Shark interaction & respawn (playful chomp tag)
   isTerrified: boolean;
   isEaten: boolean;
-  respawnTimer: number; // counts down when eaten
-  
-  // Skeleton & 1-minute pop quiz chomp state
-  isSkeleton?: boolean;
-  skeletonTimer?: number; // duration of skeleton form
-  skeletonPhase?: 'sinking' | 'resting' | 'regenerating';
-  skeletonAngle?: number; // tilt angle as skeleton drifts to seafloor
+  respawnTimer: number;
+  shieldTimer: number; // brief glowing bubble shield after respawn
 }
 
 interface TeacherSharkEntity {
@@ -229,18 +257,16 @@ interface TeacherSharkEntity {
   enabled: boolean;
   wigglePhase: number;
   huntCooldown: number;
-  xrayTimer?: number; // internal skeleton ribs flash during bite
+  huntDuration?: number; // tracks chase duration to guarantee chomp
 }
 
-interface BoneParticle {
+interface SplashBubble {
   id: string;
   x: number;
   y: number;
   vx: number;
   vy: number;
-  rot: number;
-  rotSpeed: number;
-  emoji: string;
+  size: number;
   opacity: number;
 }
 
@@ -264,21 +290,17 @@ function determineSpecies(percentage: number, studentId: string): AquaticSpecies
   if (percentage >= 90) {
     const pool: AquaticSpecies[] = ['turtle', 'moorishidol', 'yellowtang', 'angelfish'];
     return pool[hash % pool.length];
-  } else if (percentage >= 75) {
+  } else if (percentage >= 70) {
     const pool: AquaticSpecies[] = ['bluetang', 'yellowtang', 'anthias', 'goldfish', 'mantaray'];
     return pool[hash % pool.length];
   } else if (percentage >= 50) {
-    const pool: AquaticSpecies[] = ['clownfish', 'bluetang', 'anthias', 'turtle', 'pufferfish'];
+    const pool: AquaticSpecies[] = ['clownfish', 'bluetang', 'anthias', 'pufferfish'];
     return pool[hash % pool.length];
   } else {
+    // Little fish (<50%)
     const pool: AquaticSpecies[] = ['clownfish', 'pufferfish', 'anthias', 'goldfish'];
     return pool[hash % pool.length];
   }
-}
-
-function calculateScoreScale(percentage: number): number {
-  const ratio = Math.max(0, Math.min(1, percentage / 100));
-  return Number((0.55 + ratio * 0.90).toFixed(2));
 }
 
 export default function TeacherAquarium() {
@@ -307,26 +329,26 @@ export default function TeacherAquarium() {
   const [speedMultiplier, setSpeedMultiplier] = useState<number>(1.0);
   const [isAccelerationBurst, setIsAccelerationBurst] = useState(false);
   const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
-  const [filterTier, setFilterTier] = useState<'all' | '90+' | '75-89' | '50-74' | '<50' | 'online'>('all');
+  const [filterTier, setFilterTier] = useState<'all' | 'giant' | 'medium' | 'small' | 'little' | 'online'>('all');
   const [filterSpecies, setFilterSpecies] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Animated Entities
   const [fishList, setFishList] = useState<FishEntity[]>([]);
   const [foodFlakes, setFoodFlakes] = useState<FoodFlake[]>([]);
-  const [boneParticles, setBoneParticles] = useState<BoneParticle[]>([]);
+  const [splashBubbles, setSplashBubbles] = useState<SplashBubble[]>([]);
   const [minuteFeastCountdown, setMinuteFeastCountdown] = useState<number>(60);
   const [minuteFeastBanner, setMinuteFeastBanner] = useState<string | null>(null);
   const tankContainerRef = useRef<HTMLDivElement>(null);
 
-  // TEACHER SHARK ENTITY (The Bully Teacher Predator)
+  // TEACHER SHARK ENTITY (Big and Slow with Guaranteed Chomp)
   const [shark, setShark] = useState<TeacherSharkEntity>({
     x: 25,
     y: 35,
-    vx: 0.32,
-    vy: 0.04,
-    targetVx: 0.32,
-    targetVy: 0.04,
+    vx: 0.12,
+    vy: 0.02,
+    targetVx: 0.12,
+    targetVy: 0.02,
     direction: 1,
     state: 'patrolling',
     targetFishId: null,
@@ -338,7 +360,7 @@ export default function TeacherAquarium() {
     enabled: true,
     wigglePhase: 0,
     huntCooldown: 120,
-    xrayTimer: 0
+    huntDuration: 0
   });
 
   const speedRef = useRef({ multiplier: 1.0, burst: false });
@@ -445,29 +467,111 @@ export default function TeacherAquarium() {
     }
   }, [selectedQuizId, fetchSubmissionsForQuiz]);
 
-  // 4. Initialize Fish Entities
+  const currentQuiz = quizzes.find(q => q.id === selectedQuizId);
+
+  // 4. Initialize Fish Entities: All living, swimming fish with explicit 4-tier scaling!
   useEffect(() => {
-    if (submissions.length === 0) {
-      setFishList([]);
-      return;
+    let effectiveSubs = [...submissions];
+
+    // If no submissions exist, provide sample students across all 4 size tiers
+    if (effectiveSubs.length === 0) {
+      effectiveSubs = [
+        {
+          id: 'sample-maya-chen',
+          quizId: selectedQuizId || 'sample-quiz',
+          quizTitle: currentQuiz?.title || 'Assessment',
+          teacherId: profile?.uid || 'teacher-id',
+          studentId: 'sample-maya-chen',
+          studentName: 'Maya Chen',
+          score: 95,
+          totalPoints: 100,
+          submittedAt: new Date(Date.now() - 1800000).toISOString(),
+          graded: true,
+          studentRole: 'student',
+          responses: [],
+          timeTaken: 380
+        },
+        {
+          id: 'sample-liam-davis',
+          quizId: selectedQuizId || 'sample-quiz',
+          quizTitle: currentQuiz?.title || 'Assessment',
+          teacherId: profile?.uid || 'teacher-id',
+          studentId: 'sample-liam-davis',
+          studentName: 'Liam Davis',
+          score: 82,
+          totalPoints: 100,
+          submittedAt: new Date(Date.now() - 2400000).toISOString(),
+          graded: true,
+          studentRole: 'student',
+          responses: [],
+          timeTaken: 450
+        },
+        {
+          id: 'sample-noah-patel',
+          quizId: selectedQuizId || 'sample-quiz',
+          quizTitle: currentQuiz?.title || 'Assessment',
+          teacherId: profile?.uid || 'teacher-id',
+          studentId: 'sample-noah-patel',
+          studentName: 'Noah Patel',
+          score: 64,
+          totalPoints: 100,
+          submittedAt: new Date(Date.now() - 3200000).toISOString(),
+          graded: true,
+          studentRole: 'student',
+          responses: [],
+          timeTaken: 510
+        },
+        {
+          id: 'sample-alex-rivera',
+          quizId: selectedQuizId || 'sample-quiz',
+          quizTitle: currentQuiz?.title || 'Assessment',
+          teacherId: profile?.uid || 'teacher-id',
+          studentId: 'sample-alex-rivera',
+          studentName: 'Alex Rivera',
+          score: 38,
+          totalPoints: 100,
+          submittedAt: new Date(Date.now() - 4000000).toISOString(),
+          graded: true,
+          studentRole: 'student',
+          responses: [],
+          timeTaken: 540
+        },
+        {
+          id: 'sample-sam-taylor',
+          quizId: selectedQuizId || 'sample-quiz',
+          quizTitle: currentQuiz?.title || 'Assessment',
+          teacherId: profile?.uid || 'teacher-id',
+          studentId: 'sample-sam-taylor',
+          studentName: 'Sam Taylor',
+          score: 22,
+          totalPoints: 100,
+          submittedAt: new Date(Date.now() - 5000000).toISOString(),
+          graded: true,
+          studentRole: 'student',
+          responses: [],
+          timeTaken: 620
+        }
+      ];
     }
 
-    const newFish: FishEntity[] = submissions.map((sub, index) => {
-      const percentage = Math.round((sub.score / Math.max(sub.totalPoints, 1)) * 100);
+    const newFish: FishEntity[] = effectiveSubs.map((sub, index) => {
+      const total = Number(sub.totalPoints) || (currentQuiz?.questions?.reduce((acc, q) => acc + (q.points || 1), 0)) || 100;
+      const score = Number(sub.score) || 0;
+      const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
       const species = determineSpecies(percentage, sub.studentId);
       const scale = calculateScoreScale(percentage);
 
-      const x = 12 + (index * 16) % 76 + Math.random() * 4;
-      const y = 20 + (index * 22) % 52 + Math.random() * 4;
+      // Swimming depth and position based on tier and natural variety
+      const x = 10 + (index * 18) % 78 + Math.random() * 4;
+      const y = 18 + (index * 19) % 56 + Math.random() * 4;
       const initialDir: 1 | -1 = Math.random() > 0.5 ? 1 : -1;
-      
-      let baseSpeed = 0.26;
-      if (species === 'turtle') baseSpeed = 0.18;
-      else if (species === 'mantaray') baseSpeed = 0.22;
-      else if (species === 'yellowtang' || species === 'bluetang') baseSpeed = 0.29;
-      else if (species === 'moorishidol') baseSpeed = 0.27;
-      else if (species === 'anthias') baseSpeed = 0.28;
-      else if (species === 'pufferfish') baseSpeed = 0.20;
+
+      // Base swim speed: little fish are nimble flutterers, giant fish are grand & majestic
+      let baseSpeed = 0.25;
+      if (percentage >= 90) baseSpeed = 0.20; // majestic apex glide
+      else if (percentage >= 70) baseSpeed = 0.24;
+      else if (percentage >= 50) baseSpeed = 0.28;
+      else baseSpeed = 0.32; // cute quick little fish
 
       const vx = initialDir * baseSpeed;
       const vy = (Math.random() * 0.1 - 0.05);
@@ -499,18 +603,19 @@ export default function TeacherAquarium() {
         direction: initialDir,
         baseSpeed,
         wigglePhase: Math.random() * Math.PI * 2,
-        wiggleSpeed: species === 'turtle' ? 0.08 : 0.17,
+        wiggleSpeed: percentage < 50 ? 0.24 : species === 'turtle' ? 0.09 : 0.16,
         eatingEffectTimer: 0,
         isTerrified: false,
         isEaten: false,
-        respawnTimer: 0
+        respawnTimer: 0,
+        shieldTimer: 0
       };
     });
 
     setFishList(newFish);
-  }, [submissions, studentsProfileMap]);
+  }, [submissions, studentsProfileMap, selectedQuizId]);
 
-  // 5. Physics Animation Loop with TEACHER SHARK HUNTING & EATING PHYSICS
+  // 5. Physics Animation Loop with BIG & SLOW TEACHER SHARK & GUARANTEED CHOMP
   useEffect(() => {
     let animId: number;
 
@@ -519,7 +624,7 @@ export default function TeacherAquarium() {
       const effectiveSpeedMultiplier = multiplier * (burst ? 2.2 : 1.0);
       const accelFactor = 0.06 * effectiveSpeedMultiplier;
 
-      // UPDATE TEACHER SHARK
+      // UPDATE TEACHER SHARK (BIG AND SLOW WITH GUARANTEED CHOMP)
       setShark(prevShark => {
         if (!prevShark.enabled) return prevShark;
 
@@ -527,17 +632,14 @@ export default function TeacherAquarium() {
           x, y, vx, vy, targetVx, targetVy, direction, 
           state, targetFishId, targetFishName, chompTimer, 
           quote, quoteTimer, eatenCount, wigglePhase, huntCooldown,
-          xrayTimer = 0
+          huntDuration = 0
         } = prevShark;
 
-        wigglePhase += 0.22 * effectiveSpeedMultiplier;
+        // Big heavy tail motion
+        wigglePhase += 0.07 * effectiveSpeedMultiplier;
 
         if (quoteTimer > 0) {
           quoteTimer -= 1;
-        }
-
-        if (xrayTimer > 0) {
-          xrayTimer -= 1;
         }
 
         if (chompTimer > 0) {
@@ -545,126 +647,132 @@ export default function TeacherAquarium() {
           if (chompTimer === 0) {
             state = 'patrolling';
             huntCooldown = 140; // cool down before next target
+            huntDuration = 0;
           }
         }
 
         // FIND ACTIVE TARGET FISH (if hunting)
         let targetFish: FishEntity | undefined;
         if (state === 'hunting' && targetFishId) {
-          targetFish = fishList.find(f => f.id === targetFishId && !f.isEaten && !f.isSkeleton);
+          targetFish = fishList.find(f => f.id === targetFishId && !f.isEaten);
           if (!targetFish) {
-            // Target was eaten/skeletonized or lost, revert to patrol
             state = 'patrolling';
             targetFishId = null;
+            huntDuration = 0;
           }
         }
 
-        // DECIDE TO HUNT A STUDENT FISH
+        // INITIATE RANDOM PATROL HUNT
         if (state === 'patrolling') {
+          huntDuration = 0;
           if (huntCooldown > 0) {
             huntCooldown -= 1;
           } else if (fishList.length > 0 && Math.random() < 0.02) {
-            // Pick a student fish to bully and hunt! (Must not be currently skeletonized)
-            const availableFish = fishList.filter(f => !f.isEaten && !f.isSkeleton);
+            const availableFish = fishList.filter(f => !f.isEaten);
             if (availableFish.length > 0) {
-              // Prefer lowest scoring fish or random student to bully!
               const chosen = availableFish[Math.floor(Math.random() * availableFish.length)];
               state = 'hunting';
               targetFishId = chosen.id;
               targetFishName = chosen.name;
               quote = SHARK_ACADEMIC_QUOTES[Math.floor(Math.random() * SHARK_ACADEMIC_QUOTES.length)];
-              quoteTimer = 160;
+              quoteTimer = 180;
               targetFish = chosen;
+              huntDuration = 0;
             }
           }
         }
 
-        // SHARK BEHAVIOR & MOVEMENT
+        // BIG & SLOW SHARK HUNT BEHAVIOR WITH GUARANTEED CHOMP
         if (state === 'hunting' && targetFish) {
-          // Relentlessly chase target student fish!
+          huntDuration += 1;
           const dx = targetFish.x - x;
           const dy = targetFish.y - y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          const chaseSpeed = 0.54 * effectiveSpeedMultiplier;
+          // SLOW, STEADY CHASE (Big and Slow)
+          const chaseSpeed = 0.18 * effectiveSpeedMultiplier;
           if (dist > 0.5) {
             targetVx = (dx / dist) * chaseSpeed;
             targetVy = (dy / dist) * chaseSpeed;
             direction = dx > 0 ? 1 : -1;
           }
 
-          // CHOMP STUDENT FISH & STRIP INTO SKELETON!
-          if (dist < 4.8) {
+          // GUARANTEED CHOMP:
+          // Generous chomp reach (12.5%) or auto-trigger after 170 ticks so it is 100% guaranteed!
+          const isWithinChompReach = dist < 12.5 || huntDuration > 170;
+
+          if (isWithinChompReach) {
             state = 'chomping';
-            chompTimer = 55;
+            chompTimer = 65;
             eatenCount += 1;
-            xrayTimer = 45;
-            const skeletonQuotes = [
-              `CHOMP! 🦴 Stripped to bare bones, ${targetFish.name}!`,
-              `BURP! Studied to the bone, ${targetFish.name}! 💀`,
-              `CHOMP! 📚 Class average goes up! Bare bones!`,
-              `Pop quiz over! 🦴 Skeletal review for ${targetFish.name}!`,
-              `BURP! Delicious... but study harder next time! 🦴`
+            huntDuration = 0;
+
+            const chompQuotes = [
+              `CHOMP! Pop quiz passed, ${targetFish.name}! 🦈`,
+              `CHOMP! Extra credit review for ${targetFish.name}! 📚`,
+              `BURP! Class average on the rise! 🦈✨`,
+              `CHOMP! Excellent effort, ${targetFish.name}! ✏️`,
+              `CHOMP! Keep swimming and studying hard, ${targetFish.name}! 🌊`
             ];
-            quote = skeletonQuotes[Math.floor(Math.random() * skeletonQuotes.length)];
-            quoteTimer = 180;
+            quote = chompQuotes[Math.floor(Math.random() * chompQuotes.length)];
+            quoteTimer = 190;
+
             if (soundEnabled) {
               playChompSound();
-              playBoneRattleSound();
+              setTimeout(() => playBubbleSound(280), 100);
             }
 
-            // Spawn bursting bone fragments & skull particles!
-            const chompX = x;
-            const chompY = y;
-            const newBones: BoneParticle[] = [
-              { id: `b-${Date.now()}-1`, x: chompX + 2, y: chompY, vx: (Math.random() - 0.5) * 0.4, vy: -0.2 - Math.random() * 0.2, rot: Math.random() * 360, rotSpeed: 4, emoji: '🦴', opacity: 1 },
-              { id: `b-${Date.now()}-2`, x: chompX - 2, y: chompY + 2, vx: (Math.random() - 0.5) * 0.4, vy: -0.15 - Math.random() * 0.2, rot: Math.random() * 360, rotSpeed: -3, emoji: '🦴', opacity: 1 },
-              { id: `b-${Date.now()}-3`, x: chompX, y: chompY - 2, vx: (Math.random() - 0.5) * 0.3, vy: -0.25 - Math.random() * 0.15, rot: Math.random() * 360, rotSpeed: 5, emoji: '💀', opacity: 1 },
-              { id: `b-${Date.now()}-4`, x: chompX + 3, y: chompY - 1, vx: 0.15, vy: -0.1, rot: Math.random() * 360, rotSpeed: -4, emoji: '🦴', opacity: 1 },
-              { id: `b-${Date.now()}-5`, x: chompX - 3, y: chompY + 1, vx: -0.15, vy: -0.12, rot: Math.random() * 360, rotSpeed: 2, emoji: '✨', opacity: 1 }
-            ];
-            setBoneParticles(prev => [...prev.slice(-20), ...newBones]);
+            // Spawn bubbling celebratory splash around the chomp location
+            const chompX = targetFish.x;
+            const chompY = targetFish.y;
+            const newBubbles: SplashBubble[] = Array.from({ length: 8 }).map((_, i) => ({
+              id: `b-${Date.now()}-${i}`,
+              x: chompX + (Math.random() * 6 - 3),
+              y: chompY + (Math.random() * 6 - 3),
+              vx: (Math.random() - 0.5) * 0.35,
+              vy: -0.2 - Math.random() * 0.25,
+              size: 8 + Math.random() * 10,
+              opacity: 1
+            }));
+            setSplashBubbles(prev => [...prev.slice(-24), ...newBubbles]);
 
-            // Turn target student fish into animated sinking skeleton!
+            // Temporarily chomp the fish, then respawn healthy and vibrant!
             setFishList(prevFishes => prevFishes.map(f => {
               if (f.id === targetFish!.id) {
                 return {
                   ...f,
-                  isSkeleton: true,
-                  skeletonTimer: 320, // ~5.3 seconds of skeleton state
-                  skeletonPhase: 'sinking' as const,
-                  skeletonAngle: 18,
-                  vy: 0.12,
-                  targetVy: 0.14,
-                  isTerrified: false,
-                  isEaten: false
+                  isEaten: true,
+                  respawnTimer: 90, // brief pause then respawns swimming
+                  isTerrified: false
                 };
               }
               return f;
             }));
           }
         } else {
-          // Patrol smoothly across the coral reef
-          if (Math.random() < 0.015) {
-            targetVy = (Math.random() - 0.5) * 0.22;
+          // Patrol smoothly and slowly across the coral reef
+          if (Math.random() < 0.012) {
+            targetVy = (Math.random() - 0.5) * 0.12;
           }
 
-          const patrolSpeed = 0.32 * effectiveSpeedMultiplier;
-          if (x <= 10) {
+          // Slow cruising speed for massive shark
+          const patrolSpeed = 0.12 * effectiveSpeedMultiplier;
+          if (x <= 12) {
             targetVx = patrolSpeed;
             direction = 1;
-          } else if (x >= 88) {
+          } else if (x >= 86) {
             targetVx = -patrolSpeed;
             direction = -1;
           }
 
-          if (y <= 16) targetVy = 0.15;
-          if (y >= 74) targetVy = -0.15;
+          if (y <= 16) targetVy = 0.09;
+          if (y >= 74) targetVy = -0.09;
         }
 
-        // Smooth acceleration
-        vx += (targetVx - vx) * accelFactor;
-        vy += (targetVy - vy) * accelFactor;
+        // Heavy mass smooth acceleration
+        const sharkAccel = 0.035 * effectiveSpeedMultiplier;
+        vx += (targetVx - vx) * sharkAccel;
+        vy += (targetVy - vy) * sharkAccel;
 
         x += vx;
         y += vy;
@@ -687,11 +795,11 @@ export default function TeacherAquarium() {
           eatenCount,
           wigglePhase,
           huntCooldown,
-          xrayTimer
+          huntDuration
         };
       });
 
-      // UPDATE STUDENT FISH
+      // UPDATE ALL STUDENT LIVING FISH
       setFishList(prevFish => {
         if (prevFish.length === 0) return prevFish;
 
@@ -699,98 +807,67 @@ export default function TeacherAquarium() {
           let { 
             x, y, vx, vy, targetVx, targetVy, direction, 
             wigglePhase, eatingEffectTimer, baseSpeed, isEaten, 
-            respawnTimer, isTerrified, isSkeleton, skeletonTimer, 
-            skeletonPhase, skeletonAngle 
+            respawnTimer, isTerrified, shieldTimer 
           } = fish;
 
-          // HANDLE SKELETON STATE & REGENERATION
-          if (isSkeleton) {
-            let curTimer = (skeletonTimer ?? 320) - 1;
-            let curPhase = skeletonPhase ?? 'sinking';
-            let curAngle = skeletonAngle ?? 18;
-
-            if (curTimer > 100) {
-              // Sinking phase down to bottom seabed
-              curPhase = 'sinking';
-              if (y < 75) {
-                y += 0.08 * effectiveSpeedMultiplier;
-                targetVy = 0.08;
-                curAngle = 18 + Math.sin(wigglePhase * 0.5) * 5;
-                x += Math.sin(wigglePhase * 0.4) * 0.07;
-              } else {
-                y = 75;
-                curPhase = 'resting';
-                curAngle = 4;
-              }
-            } else if (curTimer > 0) {
-              // Resting on sand & regenerating scales
-              curPhase = 'regenerating';
-              curAngle = Math.sin(wigglePhase * 0.8) * 3;
-              y = 75;
-            } else {
-              // SKELETON REGENERATION COMPLETE!
-              isSkeleton = false;
-              eatingEffectTimer = 70; // happy celebration glow
-              curAngle = 0;
-              targetVy = -0.22; // swim back up into reef water column
-              if (soundEnabled) {
-                playBubbleSound(240);
-              }
-            }
-
-            return {
-              ...fish,
-              x,
-              y,
-              wigglePhase: wigglePhase + 0.1,
-              isSkeleton,
-              skeletonTimer: curTimer,
-              skeletonPhase: curPhase,
-              skeletonAngle: curAngle,
-              eatingEffectTimer
-            };
-          }
-
-          // HANDLE EATEN & RESPAWNING
+          // HANDLE RESPAWNING AFTER SHARK CHOMP
           if (isEaten) {
             if (respawnTimer > 0) {
               respawnTimer -= 1;
               if (respawnTimer === 0) {
-                // Respawn from the coral reef with a protective bubble shield!
+                // Respawn from coral reef with protective bubble shield and cheerful bubble pop!
                 isEaten = false;
+                shieldTimer = 110; // glowing aura shield
                 x = 15 + Math.random() * 70;
-                y = 65; // bottom coral bed
-                eatingEffectTimer = 60; // happy respawn celebration
+                y = 30 + Math.random() * 35;
+                eatingEffectTimer = 55;
                 if (soundEnabled) {
-                  playBubbleSound(200);
+                  playBubbleSound(260);
                 }
               }
             }
-            return { ...fish, respawnTimer, isEaten };
+            return { ...fish, respawnTimer, isEaten, shieldTimer };
           }
 
-          // CHECK PROXIMITY TO TEACHER SHARK (BULLY EVASION!)
+          if (shieldTimer > 0) {
+            shieldTimer -= 1;
+          }
+
+          // PROXIMITY TO TEACHER SHARK
           const sX = shark.x;
           const sY = shark.y;
           const distToShark = Math.sqrt((sX - x) * (sX - x) + (sY - y) * (sY - y));
 
-          // If shark is hunting this fish or comes very close, panic and evade!
           const isTargeted = shark.state === 'hunting' && shark.targetFishId === fish.id;
-          if (distToShark < 18 || isTargeted) {
+          if (isTargeted) {
             isTerrified = true;
-            // Flee away from shark with frantic burst speed
+            // Freezes in academic awe
+            targetVx = 0;
+            targetVy = 0;
+            vx *= 0.6;
+            vy *= 0.6;
+            wigglePhase += 0.45 * effectiveSpeedMultiplier;
+            // Gentle pull towards predator
+            if (distToShark < 25) {
+              const suctionFactor = 0.035 * effectiveSpeedMultiplier;
+              x += (sX - x) * suctionFactor;
+              y += (sY - y) * suctionFactor;
+            }
+          } else if (distToShark < 18) {
+            // Bystanders scatter
+            isTerrified = true;
             const fleeDx = x - sX;
             const fleeDy = y - sY;
             const fleeDist = Math.max(0.1, Math.sqrt(fleeDx * fleeDx + fleeDy * fleeDy));
-            const fleeSpeed = baseSpeed * 2.6;
+            const fleeSpeed = baseSpeed * 2.0;
             targetVx = (fleeDx / fleeDist) * fleeSpeed;
             targetVy = (fleeDy / fleeDist) * fleeSpeed;
             direction = fleeDx > 0 ? 1 : -1;
-            wigglePhase += 0.35 * effectiveSpeedMultiplier; // frantic flutter!
+            wigglePhase += 0.32 * effectiveSpeedMultiplier;
           } else {
             isTerrified = false;
 
-            // Check if there are food flakes to seek
+            // Check if there are food flakes to eat
             let targetFood: FoodFlake | null = null;
             if (foodFlakes.length > 0) {
               let minDistance = 999;
@@ -820,18 +897,19 @@ export default function TeacherAquarium() {
                 setFoodFlakes(prev => prev.filter(f => f.id !== targetFood!.id));
                 eatingEffectTimer = 45;
                 if (soundEnabled) {
-                  playBubbleSound(100);
+                  playBubbleSound(110);
                 }
               }
             } else {
+              // Natural wander
               if (Math.random() < 0.015) {
-                targetVy = (Math.random() - 0.5) * 0.25;
+                targetVy = (Math.random() - 0.5) * 0.22;
               }
 
               const minX = 6;
-              const maxX = 90;
-              const minY = 14;
-              const maxY = 74;
+              const maxX = 92;
+              const minY = 12;
+              const maxY = 76;
 
               if (x <= minX) {
                 targetVx = Math.abs(baseSpeed);
@@ -874,24 +952,23 @@ export default function TeacherAquarium() {
             eatingEffectTimer,
             isTerrified,
             isEaten,
-            respawnTimer
+            respawnTimer,
+            shieldTimer
           };
         });
       });
 
-      // Update bone particles floating and fading
-      setBoneParticles(prev => {
+      // Update splash bubbles
+      setSplashBubbles(prev => {
         if (prev.length === 0) return prev;
         return prev
-          .map(p => ({
-            ...p,
-            x: p.x + p.vx * effectiveSpeedMultiplier,
-            y: p.y + p.vy * effectiveSpeedMultiplier,
-            rot: p.rot + p.rotSpeed,
-            vy: p.vy + 0.003, // gravity
-            opacity: p.opacity - 0.012
+          .map(b => ({
+            ...b,
+            x: b.x + b.vx * effectiveSpeedMultiplier,
+            y: b.y + b.vy * effectiveSpeedMultiplier,
+            opacity: b.opacity - 0.02
           }))
-          .filter(p => p.opacity > 0 && p.y < 85);
+          .filter(b => b.opacity > 0);
       });
 
       // Update food flakes sinking
@@ -899,7 +976,7 @@ export default function TeacherAquarium() {
         if (prev.length === 0) return prev;
         return prev
           .map(f => ({ ...f, y: f.y + f.vy * effectiveSpeedMultiplier }))
-          .filter(f => f.y < 78);
+          .filter(f => f.y < 82);
       });
 
       animId = requestAnimationFrame(updatePhysics);
@@ -975,8 +1052,9 @@ export default function TeacherAquarium() {
 
   // Unleash / Direct Teacher Shark Hunt
   const triggerSharkHunt = useCallback(() => {
-    const availableFish = fishList.filter(f => !f.isEaten && !f.isSkeleton);
+    const availableFish = fishList.filter(f => !f.isEaten);
     if (availableFish.length === 0) return;
+
     const target = availableFish[Math.floor(Math.random() * availableFish.length)];
     setShark(prev => ({
       ...prev,
@@ -984,8 +1062,9 @@ export default function TeacherAquarium() {
       state: 'hunting',
       targetFishId: target.id,
       targetFishName: target.name,
-      quote: `POP QUIZ, ${target.name.toUpperCase()}! BARE BONES TIME! 🦈🦴`,
-      quoteTimer: 200,
+      huntDuration: 0,
+      quote: `POP QUIZ, ${target.name.toUpperCase()}! SLOW & STEADY CHOMP! 🦈📚`,
+      quoteTimer: 210,
       huntCooldown: 120
     }));
     if (soundEnabled) {
@@ -995,15 +1074,15 @@ export default function TeacherAquarium() {
 
   // Automatic 1-Minute Pop Quiz Shark Feast (Every 60s)
   const triggerMinuteSharkFeast = useCallback(() => {
-    const availableFish = fishList.filter(f => !f.isSkeleton && !f.isEaten);
+    const availableFish = fishList.filter(f => !f.isEaten);
     if (availableFish.length === 0) return;
 
-    // Target student (prioritizing lowest score to demand improvement)
+    // Target student (prioritizing lowest score among swimmers)
     const sorted = [...availableFish].sort((a, b) => a.percentage - b.percentage);
     const target = sorted[0];
 
-    setMinuteFeastBanner(`⏰ 1-MINUTE POP QUIZ! Teacher Shark is hunting to skeletonize ${target.name}! 🦈🦴`);
-    setTimeout(() => setMinuteFeastBanner(null), 5000);
+    setMinuteFeastBanner(`⏰ 1-MINUTE POP QUIZ! Big Teacher Shark is stalking ${target.name}! 🦈📚`);
+    setTimeout(() => setMinuteFeastBanner(null), 5500);
 
     setShark(prev => ({
       ...prev,
@@ -1011,9 +1090,10 @@ export default function TeacherAquarium() {
       state: 'hunting',
       targetFishId: target.id,
       targetFishName: target.name,
-      quote: `1-MINUTE POP QUIZ, ${target.name.toUpperCase()}! SKELETON TIME! 🦈🦴`,
-      quoteTimer: 220,
-      huntCooldown: 140
+      huntDuration: 0,
+      quote: `1-MINUTE POP QUIZ, ${target.name.toUpperCase()}! GUARANTEED CHOMP! 🦈`,
+      quoteTimer: 230,
+      huntCooldown: 150
     }));
 
     if (soundEnabled) {
@@ -1080,10 +1160,10 @@ export default function TeacherAquarium() {
         return false;
       }
       if (filterTier === 'all') return true;
-      if (filterTier === '90+') return fish.percentage >= 90;
-      if (filterTier === '75-89') return fish.percentage >= 75 && fish.percentage < 90;
-      if (filterTier === '50-74') return fish.percentage >= 50 && fish.percentage < 75;
-      if (filterTier === '<50') return fish.percentage < 50;
+      if (filterTier === 'giant') return fish.percentage >= 90;
+      if (filterTier === 'medium') return fish.percentage >= 70 && fish.percentage < 90;
+      if (filterTier === 'small') return fish.percentage >= 50 && fish.percentage < 70;
+      if (filterTier === 'little') return fish.percentage < 50;
       if (filterTier === 'online') {
         return activeUsers.some(u => u.uid === fish.id && u.status !== 'offline');
       }
@@ -1091,19 +1171,22 @@ export default function TeacherAquarium() {
     });
   }, [fishList, searchTerm, filterTier, filterSpecies, activeUsers]);
 
-  const currentQuiz = quizzes.find(q => q.id === selectedQuizId);
-
   const stats = useMemo(() => {
-    if (submissions.length === 0) {
-      return { count: 0, avg: 0, high: 0, low: 0 };
+    if (fishList.length === 0) {
+      return { count: 0, avg: 0, high: 0, low: 0, giantCount: 0, mediumCount: 0, smallCount: 0, littleCount: 0 };
     }
-    const scores = submissions.map(s => Math.round((s.score / Math.max(s.totalPoints, 1)) * 100));
+    const scores = fishList.map(f => f.percentage);
     const count = scores.length;
     const avg = Math.round(scores.reduce((a, b) => a + b, 0) / count);
     const high = Math.max(...scores);
     const low = Math.min(...scores);
-    return { count, avg, high, low };
-  }, [submissions]);
+    const giantCount = fishList.filter(f => f.percentage >= 90).length;
+    const mediumCount = fishList.filter(f => f.percentage >= 70 && f.percentage < 90).length;
+    const smallCount = fishList.filter(f => f.percentage >= 50 && f.percentage < 70).length;
+    const littleCount = fishList.filter(f => f.percentage < 50).length;
+
+    return { count, avg, high, low, giantCount, mediumCount, smallCount, littleCount };
+  }, [fishList]);
 
   // Render Species-Specific SVG Creature
   const renderCreatureSVG = (fish: FishEntity) => {
@@ -1202,6 +1285,84 @@ export default function TeacherAquarium() {
           </svg>
         );
 
+      case 'angelfish':
+        return (
+          <svg viewBox="0 0 100 80" className="w-full h-full overflow-visible">
+            <defs>
+              <linearGradient id="angelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#fef08a" />
+                <stop offset="50%" stopColor="#eab308" />
+                <stop offset="100%" stopColor="#ca8a04" />
+              </linearGradient>
+            </defs>
+            {/* Long trailing dorsal and pelvic filaments */}
+            <path d="M 46 22 L 32 -10" stroke="#facc15" strokeWidth="2.5" strokeLinecap="round" />
+            <path d="M 46 54 L 30 88" stroke="#facc15" strokeWidth="2.5" strokeLinecap="round" />
+            <g style={{ transformOrigin: '22px 38px', transform: `rotate(${tailAngle}deg)` }}>
+              <polygon points="22,38 2,24 6,38 2,52" fill="#fef08a" opacity="0.9" />
+            </g>
+            <ellipse cx="52" cy="38" rx="30" ry="22" fill="url(#angelGrad)" />
+            {/* Elegant vertical black stripes */}
+            <path d="M 42 20 Q 44 38, 42 56" stroke="#0f172a" strokeWidth="2.5" fill="none" />
+            <path d="M 58 18 Q 60 38, 58 58" stroke="#0f172a" strokeWidth="2.5" fill="none" />
+            <circle cx="72" cy="34" r="4" fill="#ffffff" />
+            <circle cx="73.5" cy="33.5" r="2" fill="#0f172a" />
+          </svg>
+        );
+
+      case 'mantaray':
+        return (
+          <svg viewBox="0 0 110 75" className="w-full h-full overflow-visible">
+            <defs>
+              <linearGradient id="mantaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#1e293b" />
+                <stop offset="50%" stopColor="#334155" />
+                <stop offset="100%" stopColor="#0f172a" />
+              </linearGradient>
+            </defs>
+            <path d="M 25 37 Q 8 37, 2 37" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
+            {/* Undulating diamond wings */}
+            <path 
+              d={`M 25 37 Q 52 ${10 - flipperAngle * 0.3}, 78 37 Q 52 ${64 + flipperAngle * 0.3}, 25 37 Z`} 
+              fill="url(#mantaGrad)" 
+              stroke="#64748b" 
+              strokeWidth="1.2" 
+            />
+            {/* Cephalic fins near mouth */}
+            <path d="M 78 33 Q 86 31, 84 37 Q 86 43, 78 41 Z" fill="#475569" />
+            <circle cx="74" cy="32" r="2.5" fill="#f8fafc" />
+            <circle cx="74" cy="42" r="2.5" fill="#f8fafc" />
+          </svg>
+        );
+
+      case 'pufferfish':
+        return (
+          <svg viewBox="0 0 95 65" className="w-full h-full overflow-visible">
+            <defs>
+              <linearGradient id="pufferGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#fed7aa" />
+                <stop offset="50%" stopColor="#fb923c" />
+                <stop offset="100%" stopColor="#ea580c" />
+              </linearGradient>
+            </defs>
+            <g style={{ transformOrigin: '20px 32px', transform: `rotate(${tailAngle * 1.3}deg)` }}>
+              <polygon points="20,32 6,24 8,32 6,40" fill="#f97316" />
+            </g>
+            {/* Round bubbly puffer body */}
+            <circle cx="52" cy="32" r="26" fill="url(#pufferGrad)" />
+            {/* Tiny cute prickles */}
+            {[34, 46, 58, 68].map(xP => (
+              <circle key={xP} cx={xP} cy={16} r="1.5" fill="#c2410c" />
+            ))}
+            {[34, 46, 58, 68].map(xP => (
+              <circle key={`bot-${xP}`} cx={xP} cy={48} r="1.5" fill="#c2410c" />
+            ))}
+            <circle cx="68" cy="28" r="4.5" fill="#ffffff" />
+            <circle cx="69.5" cy="27.5" r="2.4" fill="#0f172a" />
+            <ellipse cx="76" cy="35" rx="3" ry="2" fill="#ef4444" />
+          </svg>
+        );
+
       case 'bluetang':
         return (
           <svg viewBox="0 0 100 65" className="w-full h-full overflow-visible">
@@ -1224,6 +1385,7 @@ export default function TeacherAquarium() {
         );
 
       case 'clownfish':
+      case 'goldfish':
       default:
         return (
           <svg viewBox="0 0 100 65" className="w-full h-full overflow-visible">
@@ -1245,110 +1407,6 @@ export default function TeacherAquarium() {
           </svg>
         );
     }
-  };
-
-  // Render Skeleton Fish Bones SVG when student fish is chomped by Teacher Shark
-  const renderSkeletonSVG = (fish: FishEntity) => {
-    const tailAngle = Math.sin(fish.wigglePhase) * 12;
-    const isTurtle = fish.species === 'turtle';
-
-    if (isTurtle) {
-      return (
-        <svg viewBox="0 0 110 75" className="w-full h-full overflow-visible drop-shadow-lg">
-          <defs>
-            <linearGradient id="turtleBoneGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ffffff" />
-              <stop offset="60%" stopColor="#f1f5f9" />
-              <stop offset="100%" stopColor="#cbd5e1" />
-            </linearGradient>
-          </defs>
-          {/* Turtle Skeletal Shell Rim */}
-          <ellipse cx="50" cy="37.5" rx="33" ry="23" fill="none" stroke="url(#turtleBoneGrad)" strokeWidth="2.5" />
-          {/* Main Spine Column of Shell */}
-          <line x1="20" y1="37.5" x2="80" y2="37.5" stroke="#f8fafc" strokeWidth="2.4" strokeLinecap="round" />
-          {/* Shell Rib Arches */}
-          {[-16, -8, 0, 8, 16].map((offset, idx) => (
-            <path 
-              key={idx} 
-              d={`M ${50 + offset} 17 Q ${50 + offset} 37.5, ${50 + offset} 58`} 
-              stroke="#e2e8f0" 
-              strokeWidth="1.8" 
-              fill="none" 
-            />
-          ))}
-          {/* Turtle Skull */}
-          <ellipse cx="88" cy="37.5" rx="9" ry="6.5" fill="url(#turtleBoneGrad)" stroke="#94a3b8" strokeWidth="1.2" />
-          {/* Empty Eye Socket */}
-          <circle cx="91" cy="35" r="2.2" fill="#0f172a" />
-          <line x1="89.5" y1="33.5" x2="92.5" y2="36.5" stroke="#64748b" strokeWidth="0.8" />
-          <line x1="92.5" y1="33.5" x2="89.5" y2="36.5" stroke="#64748b" strokeWidth="0.8" />
-          {/* Bony flipper digits */}
-          <path d="M 66 18 L 82 8 L 88 14" stroke="#f1f5f9" strokeWidth="2" fill="none" strokeLinecap="round" />
-          <path d="M 66 57 L 82 67 L 88 61" stroke="#f1f5f9" strokeWidth="2" fill="none" strokeLinecap="round" />
-          <path d="M 28 24 L 18 18" stroke="#f1f5f9" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-          <path d="M 28 51 L 18 57" stroke="#f1f5f9" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-        </svg>
-      );
-    }
-
-    // Classic Fish Skeleton (Fishbone) with Ivory Ribs & Jawbone
-    return (
-      <svg viewBox="0 0 100 60" className="w-full h-full overflow-visible drop-shadow-xl">
-        <defs>
-          <linearGradient id="fishBoneGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="50%" stopColor="#f8fafc" />
-            <stop offset="100%" stopColor="#cbd5e1" />
-          </linearGradient>
-        </defs>
-
-        {/* Caudal Fin Fishbone Tail */}
-        <g style={{ transformOrigin: '22px 30px', transform: `rotate(${tailAngle}deg)` }}>
-          <path d="M 22 30 L 8 16 M 22 30 L 6 23 M 22 30 L 5 30 M 22 30 L 6 37 M 22 30 L 8 44" stroke="#f8fafc" strokeWidth="2" strokeLinecap="round" />
-          {/* Translucent webbing connecting tail rays */}
-          <polygon points="20,30 8,16 6,23 5,30 6,37 8,44" fill="#cbd5e1" opacity="0.35" />
-        </g>
-
-        {/* Main Spinal Vertebral Column */}
-        <line x1="22" y1="30" x2="68" y2="30" stroke="url(#fishBoneGrad)" strokeWidth="3.2" strokeLinecap="round" />
-
-        {/* Vertebrae notches along spine */}
-        {[28, 35, 42, 49, 56, 63].map((pos, idx) => (
-          <circle key={idx} cx={pos} cy="30" r="2.2" fill="#94a3b8" />
-        ))}
-
-        {/* Upper Ribs / Neural Spine Rays pointing up & back */}
-        <path d="M 28 30 L 22 17" stroke="#f8fafc" strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M 35 30 L 30 13" stroke="#f8fafc" strokeWidth="2" strokeLinecap="round" />
-        <path d="M 42 30 L 38 11" stroke="#f8fafc" strokeWidth="2.2" strokeLinecap="round" />
-        <path d="M 49 30 L 46 12" stroke="#f8fafc" strokeWidth="2.2" strokeLinecap="round" />
-        <path d="M 56 30 L 54 15" stroke="#f8fafc" strokeWidth="2" strokeLinecap="round" />
-        <path d="M 63 30 L 62 19" stroke="#f8fafc" strokeWidth="1.8" strokeLinecap="round" />
-
-        {/* Lower Curved Rib Bones pointing down & back */}
-        <path d="M 28 30 Q 24 39, 22 43" stroke="#f8fafc" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-        <path d="M 35 30 Q 30 43, 28 47" stroke="#f8fafc" strokeWidth="2" fill="none" strokeLinecap="round" />
-        <path d="M 42 30 Q 37 46, 36 50" stroke="#f8fafc" strokeWidth="2.2" fill="none" strokeLinecap="round" />
-        <path d="M 49 30 Q 45 45, 44 49" stroke="#f8fafc" strokeWidth="2.2" fill="none" strokeLinecap="round" />
-        <path d="M 56 30 Q 53 42, 52 46" stroke="#f8fafc" strokeWidth="2" fill="none" strokeLinecap="round" />
-        <path d="M 63 30 Q 61 38, 60 42" stroke="#f8fafc" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-
-        {/* Fish Skull (Cranium & Open Jaw) */}
-        <g transform="translate(64, 18)">
-          {/* Cranium dome */}
-          <path d="M 4 12 C 4 2, 18 0, 24 8 C 28 12, 27 18, 20 20 C 16 21, 6 18, 4 12 Z" fill="url(#fishBoneGrad)" stroke="#94a3b8" strokeWidth="1.2" />
-          {/* Lower jaw bone opened in shock */}
-          <path d="M 6 17 L 16 24 L 21 21" stroke="#f8fafc" strokeWidth="2" fill="none" strokeLinecap="round" />
-          {/* Hollow eye socket with humorous 'X' cartoon cross */}
-          <circle cx="16" cy="9" r="3.2" fill="#0f172a" />
-          <line x1="14.5" y1="7.5" x2="17.5" y2="10.5" stroke="#94a3b8" strokeWidth="0.8" />
-          <line x1="17.5" y1="7.5" x2="14.5" y2="10.5" stroke="#94a3b8" strokeWidth="0.8" />
-          {/* Tiny sharp teeth on skull jaw */}
-          <polygon points="12,18 13.5,21 15,18" fill="#f8fafc" />
-          <polygon points="16,18 17.5,21 19,18" fill="#f8fafc" />
-        </g>
-      </svg>
-    );
   };
 
   return (
@@ -1382,7 +1440,7 @@ export default function TeacherAquarium() {
             )}
           </h1>
           <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
-            Students swim as tropical reef creatures. <span className="font-bold text-cyan-600 dark:text-cyan-400">Scale represents their score.</span> Watch out for the Teacher Shark patrolling and bullying the tank!
+            Focus purely on vibrant living fish. <span className="font-bold text-amber-500">90-100% are much bigger</span>, <span className="font-bold text-emerald-500">70-89% medium</span>, <span className="font-bold text-sky-500">50-69% small</span>, and <span className="font-bold text-rose-500">&lt;50% little fish</span>!
           </p>
         </div>
 
@@ -1423,7 +1481,7 @@ export default function TeacherAquarium() {
         </div>
       </div>
 
-      {/* Assessment Summary Badges */}
+      {/* Assessment Summary Badges & 4-Tier Fish Size Counts */}
       {currentQuiz && (
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
           <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
@@ -1431,7 +1489,7 @@ export default function TeacherAquarium() {
               <Fish className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Swimmers</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Fish</p>
               <p className="text-xl font-black text-slate-900 dark:text-white leading-none mt-0.5">{stats.count}</p>
             </div>
           </div>
@@ -1446,40 +1504,94 @@ export default function TeacherAquarium() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-100 dark:border-amber-900 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
-              <Trophy className="w-5 h-5" />
+          {/* 90-100% Much Bigger Fish */}
+          <div 
+            onClick={() => setFilterTier(prev => prev === 'giant' ? 'all' : 'giant')}
+            className={cn(
+              "bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-xs flex items-center gap-3 cursor-pointer transition-all hover:scale-[1.02]",
+              filterTier === 'giant' ? "border-amber-500 ring-2 ring-amber-500/20" : "border-slate-200 dark:border-slate-800"
+            )}
+            title="Click to filter 90-100% Much Bigger Fish"
+          >
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 font-black text-xs">
+              2.2x
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Top Grade</p>
-              <p className="text-xl font-black text-slate-900 dark:text-white leading-none mt-0.5">{stats.high}%</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <span>90-100% Giant</span>
+                <Sparkles className="w-3 h-3 text-amber-400" />
+              </p>
+              <p className="text-xl font-black text-slate-900 dark:text-white leading-none mt-0.5">{stats.giantCount}</p>
             </div>
           </div>
 
-          {/* Teacher Shark Status */}
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-900/60 flex items-center justify-center text-2xl shrink-0">
-              🦈
+          {/* 70-89% Medium Fish */}
+          <div 
+            onClick={() => setFilterTier(prev => prev === 'medium' ? 'all' : 'medium')}
+            className={cn(
+              "bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-xs flex items-center gap-3 cursor-pointer transition-all hover:scale-[1.02]",
+              filterTier === 'medium' ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-slate-200 dark:border-slate-800"
+            )}
+            title="Click to filter 70-89% Medium Fish"
+          >
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 font-black text-xs">
+              1.45x
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Fish Chomped</p>
-              <p className="text-xl font-black text-red-600 dark:text-red-400 leading-none mt-0.5">{shark.eatenCount}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">70-89% Medium</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white leading-none mt-0.5">{stats.mediumCount}</p>
             </div>
           </div>
 
-          {/* 1-Minute Pop Quiz Skeleton Feast Timer */}
+          {/* 50-69% Small Fish */}
+          <div 
+            onClick={() => setFilterTier(prev => prev === 'small' ? 'all' : 'small')}
+            className={cn(
+              "bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-xs flex items-center gap-3 cursor-pointer transition-all hover:scale-[1.02]",
+              filterTier === 'small' ? "border-sky-500 ring-2 ring-sky-500/20" : "border-slate-200 dark:border-slate-800"
+            )}
+            title="Click to filter 50-69% Small Fish"
+          >
+            <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 font-black text-xs">
+              1.0x
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">50-69% Small</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white leading-none mt-0.5">{stats.smallCount}</p>
+            </div>
+          </div>
+
+          {/* <50% Little Fish */}
+          <div 
+            onClick={() => setFilterTier(prev => prev === 'little' ? 'all' : 'little')}
+            className={cn(
+              "bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-xs flex items-center gap-3 cursor-pointer transition-all hover:scale-[1.02]",
+              filterTier === 'little' ? "border-rose-500 ring-2 ring-rose-500/20" : "border-slate-200 dark:border-slate-800"
+            )}
+            title="Click to filter <50% Little Fish"
+          >
+            <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0 font-black text-xs">
+              0.65x
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">&lt;50% Little</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white leading-none mt-0.5">{stats.littleCount}</p>
+            </div>
+          </div>
+
+          {/* Big Teacher Shark Patrol */}
           <div 
             onClick={triggerMinuteSharkFeast}
             className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border-2 border-red-200 dark:border-red-900/60 shadow-xs flex items-center justify-between cursor-pointer hover:border-red-400 hover:scale-[1.02] active:scale-95 transition-all group"
-            title="Every 1 minute Teacher Shark hunts and skeletonizes a fish! Click to chomp now!"
+            title="Click to trigger Big Teacher Shark guaranteed chomp!"
           >
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-950/80 border border-red-300 dark:border-red-800 flex items-center justify-center text-lg shrink-0 group-hover:rotate-12 transition-transform">
-                🦴
+                🦈
               </div>
               <div>
                 <p className="text-[9px] font-black uppercase tracking-wider text-red-500 dark:text-red-400 flex items-center gap-1">
-                  <span>1-Min Feast</span>
+                  <span>Big Shark</span>
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
                 </p>
                 <p className="text-lg font-black text-slate-900 dark:text-white leading-none mt-0.5">
@@ -1490,29 +1602,6 @@ export default function TeacherAquarium() {
             <span className="text-[9px] font-black uppercase tracking-tight bg-red-600 text-white px-2 py-1 rounded-md shadow-xs group-hover:bg-red-500">
               Chomp
             </span>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-100 dark:border-purple-900 flex items-center justify-center text-2xl shrink-0">
-              🐢
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Reef Turtles</p>
-              <p className="text-xl font-black text-slate-900 dark:text-white leading-none mt-0.5">
-                {fishList.filter(f => f.species === 'turtle').length}
-              </p>
-            </div>
-          </div>
-
-          <div className="col-span-2 sm:col-span-4 lg:col-span-1 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-center">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-              <Scale className="w-3 h-3 text-cyan-500" /> Score Scale
-            </p>
-            <div className="flex items-center justify-between text-[11px] font-black text-slate-700 dark:text-slate-200 mt-1">
-              <span>0% (0.55x)</span>
-              <span>→</span>
-              <span className="text-amber-500 font-black">100% (1.45x)</span>
-            </div>
           </div>
         </div>
       )}
@@ -1537,7 +1626,7 @@ export default function TeacherAquarium() {
         {/* 1-Minute Pop Quiz Announcement Banner */}
         {minuteFeastBanner && (
           <div className="absolute top-5 left-1/2 -translate-x-1/2 z-40 px-5 py-2 rounded-full text-xs font-black bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white shadow-2xl border-2 border-white/80 animate-bounce flex items-center gap-2 pointer-events-none">
-            <span className="text-sm">🦴</span>
+            <span className="text-sm">🦈</span>
             <span className="tracking-wide drop-shadow-sm">{minuteFeastBanner}</span>
           </div>
         )}
@@ -1552,15 +1641,15 @@ export default function TeacherAquarium() {
           />
         )}
 
-        {/* Dual Vertical Bubble Aeration Columns */}
+        {/* Vertical Bubble Aeration Columns */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {/* Left Bubble Column */}
-          {Array.from({ length: 28 }).map((_, i) => (
+          {Array.from({ length: 26 }).map((_, i) => (
             <div
               key={`left-col-${i}`}
               className="absolute rounded-full border border-white/70 shadow-xs"
               style={{
-                left: `${9 + (Math.sin(i * 1.3) * 3)}%`,
+                left: `${8 + (Math.sin(i * 1.3) * 3)}%`,
                 bottom: '-20px',
                 width: `${5 + (i % 6) * 3.5}px`,
                 height: `${5 + (i % 6) * 3.5}px`,
@@ -1573,12 +1662,12 @@ export default function TeacherAquarium() {
           ))}
 
           {/* Right Bubble Column */}
-          {Array.from({ length: 28 }).map((_, i) => (
+          {Array.from({ length: 26 }).map((_, i) => (
             <div
               key={`right-col-${i}`}
               className="absolute rounded-full border border-white/70 shadow-xs"
               style={{
-                left: `${87 + (Math.cos(i * 1.3) * 3)}%`,
+                left: `${88 + (Math.cos(i * 1.3) * 3)}%`,
                 bottom: '-20px',
                 width: `${5 + (i % 6) * 3.5}px`,
                 height: `${5 + (i % 6) * 3.5}px`,
@@ -1590,7 +1679,7 @@ export default function TeacherAquarium() {
             />
           ))}
 
-          {/* Gentle ambient center bubbles */}
+          {/* Ambient center bubbles */}
           {Array.from({ length: 12 }).map((_, i) => (
             <div
               key={`center-ambient-${i}`}
@@ -1621,6 +1710,24 @@ export default function TeacherAquarium() {
               backgroundColor: flake.color,
               boxShadow: `0 0 8px ${flake.color}`,
               transform: 'translate(-50%, -50%)'
+            }}
+          />
+        ))}
+
+        {/* Splash Bubbles (Chomp effect) */}
+        {splashBubbles.map(b => (
+          <div
+            key={b.id}
+            className="absolute rounded-full border border-white/80 pointer-events-none"
+            style={{
+              left: `${b.x}%`,
+              top: `${b.y}%`,
+              width: `${b.size}px`,
+              height: `${b.size}px`,
+              backgroundColor: 'rgba(255,255,255,0.4)',
+              opacity: b.opacity,
+              transform: 'translate(-50%, -50%)',
+              boxShadow: '0 0 8px rgba(255,255,255,0.7)'
             }}
           />
         ))}
@@ -1673,7 +1780,7 @@ export default function TeacherAquarium() {
         ) : null}
 
         {/* ============================================================== */}
-        {/* TEACHER SHARK (THE BULLY EDUCATOR PREDATOR) */}
+        {/* TEACHER SHARK (BIG AND SLOW WITH GUARANTEED CHOMP) */}
         {/* ============================================================== */}
         {shark.enabled && (
           <div
@@ -1685,14 +1792,14 @@ export default function TeacherAquarium() {
             style={{
               left: `${shark.x}%`,
               top: `${shark.y}%`,
-              transform: `translate(-50%, -50%) scaleX(${shark.direction}) scale(1.35)`,
+              transform: `translate(-50%, -50%) scaleX(${shark.direction}) scale(2.35)`,
             }}
-            title="Click to unleash Teacher Shark hunt!"
+            title="Click to unleash Big Teacher Shark guaranteed chomp!"
           >
             {/* Humorous Teacher Comic Dialogue Bubble */}
             {shark.quoteTimer > 0 && (
               <div 
-                className="absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1 rounded-full text-[11px] font-black tracking-wide shadow-2xl backdrop-blur-md border border-red-500/80 bg-red-950/90 text-amber-200 animate-bounce pointer-events-none flex items-center gap-1.5 z-30"
+                className="absolute -top-16 left-1/2 -translate-x-1/2 whitespace-nowrap px-3.5 py-1 rounded-full text-[11px] font-black tracking-wide shadow-2xl backdrop-blur-md border-2 border-red-500 bg-red-950/95 text-amber-200 animate-bounce pointer-events-none flex items-center gap-1.5 z-30"
                 style={{ transform: `scaleX(${shark.direction}) translate(-50%, 0)` }}
               >
                 <span>📢</span>
@@ -1700,29 +1807,27 @@ export default function TeacherAquarium() {
               </div>
             )}
 
-            {/* Teacher Shark Nametag with Bully Badge */}
+            {/* Teacher Shark Nametag */}
             <div
-              className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-tight shadow-xl backdrop-blur-md border border-slate-700 bg-slate-900/90 text-white pointer-events-none flex items-center gap-1.5"
+              className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-tight shadow-xl backdrop-blur-md border border-slate-700 bg-slate-900/90 text-white pointer-events-none flex items-center gap-1.5"
               style={{ transform: `scaleX(${shark.direction}) translate(-50%, 0)` }}
             >
               <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
               <span>Prof. {profile?.name || 'Educator'} 🦈</span>
-              <span className="px-1.5 py-0.2 rounded bg-red-600 text-[9px] text-white">
-                {shark.state === 'hunting' ? 'HUNTING!' : shark.state === 'chomping' ? 'CHOMP!' : 'PATROL'}
+              <span className="px-1.5 py-0.2 rounded bg-red-600 text-[8px] text-white">
+                {shark.state === 'hunting' ? 'STALKING! (SLOW & STEADY)' : shark.state === 'chomping' ? 'GUARANTEED CHOMP! 🦈' : 'BIG & SLOW PATROL'}
               </span>
             </div>
 
-            {/* GREAT WHITE TEACHER SHARK SVG */}
-            <div className="relative w-40 h-24 flex items-center justify-center filter drop-shadow-2xl">
+            {/* GREAT WHITE TEACHER SHARK SVG (BIG & IMPOSING) */}
+            <div className="relative w-56 h-32 flex items-center justify-center filter drop-shadow-2xl">
               <svg viewBox="0 0 160 90" className="w-full h-full overflow-visible">
                 <defs>
-                  {/* Shark Dorsal Slate Gradient */}
                   <linearGradient id="sharkDorsalGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                     <stop offset="0%" stopColor="#1e293b" />
                     <stop offset="50%" stopColor="#334155" />
                     <stop offset="100%" stopColor="#475569" />
                   </linearGradient>
-                  {/* Shark Belly White Gradient */}
                   <linearGradient id="sharkBellyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                     <stop offset="0%" stopColor="#f8fafc" />
                     <stop offset="100%" stopColor="#cbd5e1" />
@@ -1730,18 +1835,17 @@ export default function TeacherAquarium() {
                 </defs>
 
                 {/* Powerful Crescent Caudal Shark Tail Fin */}
-                <g style={{ transformOrigin: '24px 45px', transform: `rotate(${Math.sin(shark.wigglePhase) * 22}deg)` }}>
+                <g style={{ transformOrigin: '24px 45px', transform: `rotate(${Math.sin(shark.wigglePhase) * 20}deg)` }}>
                   <path
                     d="M 24 45 C 10 15, -12 2, -4 45 C -12 88, 10 75, 24 45 Z"
                     fill="url(#sharkDorsalGrad)"
                     stroke="#0f172a"
                     strokeWidth="1.2"
                   />
-                  {/* Tail notch */}
                   <polygon points="-4,45 8,40 8,50" fill="#1e293b" />
                 </g>
 
-                {/* Sharp Iconic Dorsal Fin (Cutting through water) */}
+                {/* Sharp Iconic Dorsal Fin */}
                 <path
                   d="M 64 30 Q 76 -4, 96 28 Z"
                   fill="url(#sharkDorsalGrad)"
@@ -1772,11 +1876,8 @@ export default function TeacherAquarium() {
                   transform: shark.state === 'chomping' ? 'rotate(18deg)' : 'rotate(0deg)',
                   transition: 'transform 0.1s ease'
                 }}>
-                  {/* Open Mouth Gullet */}
                   <path d="M 124 50 Q 142 48, 148 54 Q 136 60, 124 50 Z" fill="#881337" />
-                  {/* Upper Row of Sharp Triangular Teeth */}
                   <polygon points="126,50 129,53 132,50 135,53 138,50 141,53 144,50" fill="#ffffff" />
-                  {/* Lower Row of Sharp Teeth */}
                   <polygon points="126,52 129,49 132,52 135,49 138,52 141,49 144,52" fill="#ffffff" />
                 </g>
 
@@ -1798,59 +1899,23 @@ export default function TeacherAquarium() {
                   strokeWidth="1"
                 />
 
-                {/* ======================================================= */}
-                {/* TEACHER ACADEMIC ACCESSORIES (MORTARBOARD & GLASSES) */}
-                {/* ======================================================= */}
                 {/* Professor Spectacles perched on snout */}
                 <circle cx="134" cy="38" r="5" stroke="#ca8a04" strokeWidth="1.5" fill="none" />
                 <line x1="139" y1="38" x2="144" y2="39" stroke="#ca8a04" strokeWidth="1.5" />
 
                 {/* Black Graduation Mortarboard Cap */}
                 <g transform="translate(100, 10)">
-                  {/* Skull cap */}
                   <rect x="14" y="10" width="16" height="8" rx="2" fill="#0f172a" stroke="#ca8a04" strokeWidth="1" />
-                  {/* Diamond Mortarboard top */}
                   <polygon points="22,0 42,7 22,14 2,7" fill="#090d16" stroke="#ca8a04" strokeWidth="1.2" />
-                  {/* Center gold button */}
                   <circle cx="22" cy="7" r="2" fill="#facc15" />
-                  {/* Swaying Golden Tassel */}
                   <path d="M 22 7 Q 34 10, 36 22" stroke="#facc15" strokeWidth="1.5" fill="none" />
                   <circle cx="36" cy="22" r="2" fill="#eab308" />
                 </g>
-
-                {/* Shark Internal Skeletal X-Ray Bones Flash during Chomp & Feast */}
-                {((shark.xrayTimer ?? 0) > 0 || shark.state === 'chomping') && (
-                  <g opacity={Math.min(1, ((shark.xrayTimer ?? 30) + 10) / 25)}>
-                    {/* Glowing Spinal Vertebrae */}
-                    <line x1="32" y1="45" x2="118" y2="45" stroke="#38bdf8" strokeWidth="2.5" strokeDasharray="3 2" />
-                    {/* Shark Rib bones in X-ray cyan/white */}
-                    {[46, 56, 66, 76, 86, 96, 106].map((xPos, idx) => (
-                      <path
-                        key={`xray-rib-${idx}`}
-                        d={`M ${xPos} 45 Q ${xPos - 4} ${53 + (idx % 3) * 2}, ${xPos - 7} 59`}
-                        stroke="#e0f2fe"
-                        strokeWidth="1.8"
-                        fill="none"
-                        strokeLinecap="round"
-                      />
-                    ))}
-                    {/* Upper Neural Spines */}
-                    {[50, 60, 70, 80, 90, 100].map((xPos, idx) => (
-                      <path
-                        key={`xray-spine-${idx}`}
-                        d={`M ${xPos} 45 L ${xPos - 3} 33`}
-                        stroke="#e0f2fe"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                      />
-                    ))}
-                  </g>
-                )}
               </svg>
 
-              {/* Embedded Faculty Avatar Badge on Shark */}
+              {/* Embedded Faculty Avatar Badge on Big Shark */}
               <div 
-                className="absolute left-[72px] top-[28px] w-7 h-7 rounded-full overflow-hidden border-2 border-yellow-400 shadow-xl bg-slate-900 flex items-center justify-center shrink-0 z-10"
+                className="absolute left-[100px] top-[40px] w-9 h-9 rounded-full overflow-hidden border-2 border-yellow-400 shadow-xl bg-slate-900 flex items-center justify-center shrink-0 z-10"
                 style={{ transform: `scaleX(${shark.direction})` }}
               >
                 {profile?.photoURL ? (
@@ -1861,7 +1926,7 @@ export default function TeacherAquarium() {
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <span className="text-[10px] font-black text-yellow-300">
+                  <span className="text-xs font-black text-yellow-300">
                     {(profile?.name || 'T').charAt(0).toUpperCase()}
                   </span>
                 )}
@@ -1870,35 +1935,22 @@ export default function TeacherAquarium() {
           </div>
         )}
 
-        {/* BURSTING BONE FRAGMENTS & SKULLS LAYER */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-24">
-          {boneParticles.map(p => (
-            <div
-              key={p.id}
-              className="absolute pointer-events-none text-sm select-none"
-              style={{
-                left: `${p.x}%`,
-                top: `${p.y}%`,
-                transform: `translate(-50%, -50%) rotate(${p.rot}deg)`,
-                opacity: p.opacity,
-                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))'
-              }}
-            >
-              {p.emoji}
-            </div>
-          ))}
-        </div>
-
-        {/* SWIMMING CREATURES LAYER */}
+        {/* ============================================================== */}
+        {/* SWIMMING LIVING FISH LAYER WITH EXPLICIT SIZE CONTRASTS */}
+        {/* ============================================================== */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           {filteredFish.map(fish => {
             const isOnline = activeUsers.some(u => u.uid === fish.id && u.status !== 'offline');
-            const isTopAchiever = fish.percentage >= 90;
+            const isMuchBigger = fish.percentage >= 90;
+            const isMedium = fish.percentage >= 70 && fish.percentage < 90;
+            const isSmall = fish.percentage >= 50 && fish.percentage < 70;
+            const isLittle = fish.percentage < 50;
+
             const speciesMeta = SPECIES_METADATA[fish.species];
             const bobY = Math.cos(fish.wigglePhase * 0.7) * 3;
+            const tierInfo = getFishTierInfo(fish.percentage);
 
-            // If fish is currently eaten in shark's belly (and not a skeleton)
-            if (fish.isEaten && !fish.isSkeleton) {
+            if (fish.isEaten) {
               return null;
             }
 
@@ -1912,54 +1964,52 @@ export default function TeacherAquarium() {
                 }}
                 className={cn(
                   "absolute pointer-events-auto cursor-pointer group transition-transform duration-75",
-                  fish.isTerrified && "animate-pulse",
-                  fish.isSkeleton && fish.skeletonPhase === 'regenerating' && "animate-pulse"
+                  fish.isTerrified && "animate-pulse"
                 )}
                 style={{
                   left: `${fish.x}%`,
                   top: `${fish.y + bobY * 0.15}%`,
-                  transform: `translate(-50%, -50%) scaleX(${fish.direction}) scale(${fish.scale}) rotate(${fish.isSkeleton ? (fish.skeletonAngle || 0) * fish.direction : 0}deg)`,
-                  zIndex: fish.isSkeleton ? 12 : isTopAchiever ? 15 : 10
+                  transform: `translate(-50%, -50%) scaleX(${fish.direction}) scale(${fish.scale})`,
+                  zIndex: isMuchBigger ? 20 : isMedium ? 15 : isSmall ? 10 : 8
                 }}
               >
-                {/* Terrified / Panic emote when Teacher Shark attacks */}
-                {fish.isTerrified && !fish.isSkeleton && (
+                {/* Golden radiant aura for Much Bigger 90-100% fish */}
+                {isMuchBigger && (
                   <div 
-                    className="absolute -top-11 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white shadow-xl border border-red-300 animate-bounce pointer-events-none flex items-center gap-1 z-20"
+                    className="absolute -inset-4 rounded-full bg-amber-400/25 blur-lg -z-10 animate-pulse pointer-events-none"
+                    style={{ transform: `scaleX(${fish.direction})` }}
+                  />
+                )}
+
+                {/* Protective bubble shield after respawn */}
+                {fish.shieldTimer > 0 && (
+                  <div 
+                    className="absolute -inset-3 rounded-full border-2 border-cyan-300/80 bg-cyan-400/20 shadow-lg shadow-cyan-300/40 animate-ping -z-10 pointer-events-none"
+                  />
+                )}
+
+                {/* Panic emote when Big Teacher Shark stalks */}
+                {fish.isTerrified && (
+                  <div 
+                    className={cn(
+                      "absolute -top-11 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full font-black shadow-xl border pointer-events-none flex items-center gap-1 z-20",
+                      shark.state === 'hunting' && shark.targetFishId === fish.id
+                        ? "bg-red-700 text-yellow-200 border-2 border-yellow-300 animate-bounce text-[10px] shadow-red-950/80"
+                        : "bg-red-600/90 text-white border-red-300 animate-pulse text-[9px]"
+                    )}
                     style={{ transform: `scaleX(${fish.direction}) translate(-50%, 0)` }}
                   >
                     <span>😱</span>
-                    <span className="tracking-wide">HELP!</span>
-                  </div>
-                )}
-
-                {/* Skeleton Comic Reaction Bubble */}
-                {fish.isSkeleton && (
-                  <div 
-                    className={cn(
-                      "absolute -top-11 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] font-black shadow-xl border pointer-events-none flex items-center gap-1 z-20",
-                      fish.skeletonPhase === 'regenerating'
-                        ? "bg-emerald-950/90 text-emerald-200 border-emerald-400 animate-bounce"
-                        : "bg-slate-950/90 text-slate-100 border-slate-500 animate-pulse"
-                    )}
-                    style={{ transform: `scaleX(${fish.direction}) translate(-50%, 0)` }}
-                  >
-                    {fish.skeletonPhase === 'regenerating' ? (
-                      <>
-                        <span>✨</span>
-                        <span className="tracking-wide">Regrowing scales!</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>💀</span>
-                        <span>Studied to the bone! ({Math.max(1, Math.ceil((fish.skeletonTimer ?? 0) / 60))}s)</span>
-                      </>
-                    )}
+                    <span className="tracking-wide">
+                      {shark.state === 'hunting' && shark.targetFishId === fish.id
+                        ? "STALKED BY SHARK!"
+                        : "SCATTER!"}
+                    </span>
                   </div>
                 )}
 
                 {/* Eating celebration effect */}
-                {fish.eatingEffectTimer > 0 && !fish.isTerrified && !fish.isSkeleton && (
+                {fish.eatingEffectTimer > 0 && !fish.isTerrified && (
                   <div 
                     className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-1 text-[10px] font-black text-amber-300 bg-black/70 px-2 py-0.5 rounded-full border border-amber-400/50 animate-bounce pointer-events-none"
                     style={{ transform: `scaleX(${fish.direction})` }}
@@ -1969,22 +2019,20 @@ export default function TeacherAquarium() {
                   </div>
                 )}
 
-                {/* Nametag & Score Pill */}
+                {/* Student Fish Nametag & Size Tag */}
                 {showNameTags && (
                   <div
                     className={cn(
-                      "absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-1 rounded-full text-[10px] font-bold tracking-tight shadow-xl backdrop-blur-md border transition-all duration-200 pointer-events-none flex items-center gap-1.5",
-                      fish.isSkeleton
-                        ? "bg-slate-950/90 text-slate-200 border-slate-600 shadow-slate-900/50"
-                        : fish.isTerrified
+                      "absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold tracking-tight shadow-xl backdrop-blur-md border transition-all duration-200 pointer-events-none flex items-center gap-1.5",
+                      fish.isTerrified
                         ? "bg-red-950/90 text-white border-red-500 shadow-red-900/50"
-                        : fish.percentage >= 90
-                        ? "bg-amber-950/85 text-amber-200 border-amber-500/60 shadow-amber-900/40" 
-                        : fish.percentage >= 75
+                        : isMuchBigger
+                        ? "bg-amber-950/90 text-amber-200 border-amber-400 shadow-amber-900/50 ring-1 ring-amber-400/50" 
+                        : isMedium
                         ? "bg-emerald-950/85 text-emerald-200 border-emerald-500/60 shadow-emerald-900/40"
-                        : fish.percentage >= 50
+                        : isSmall
                         ? "bg-sky-950/85 text-sky-200 border-sky-500/60 shadow-sky-900/40"
-                        : "bg-orange-950/85 text-orange-200 border-orange-500/60 shadow-orange-900/40",
+                        : "bg-rose-950/85 text-rose-200 border-rose-500/60 shadow-rose-900/40",
                       "group-hover:scale-110 group-hover:bg-black/90"
                     )}
                     style={{
@@ -1992,46 +2040,27 @@ export default function TeacherAquarium() {
                       left: '50%'
                     }}
                   >
-                    <span>{fish.isSkeleton ? '🦴' : speciesMeta.emoji}</span>
+                    <span>{speciesMeta.emoji}</span>
                     {isOnline && (
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" title="Online now" />
                     )}
-                    <span className="truncate max-w-[100px] text-white">{fish.name}</span>
+                    <span className="truncate max-w-[105px] text-white font-bold">{fish.name}</span>
                     <span className={cn(
                       "font-black px-1.5 py-0.2 rounded-md text-[9px]",
-                      fish.isSkeleton ? "bg-slate-700 text-slate-200" :
-                      fish.percentage >= 90 ? "bg-amber-500 text-black" :
-                      fish.percentage >= 75 ? "bg-emerald-500 text-black" :
-                      fish.percentage >= 50 ? "bg-sky-500 text-black" : "bg-orange-500 text-white"
+                      tierInfo.badgeBg
                     )}>
-                      {fish.percentage}% ({fish.scale}x)
+                      {fish.percentage}% ({tierInfo.scaleDescription})
                     </span>
                   </div>
                 )}
 
-                {/* SVG CREATURE BODY OR SKELETON */}
-                <div className="relative w-28 h-18 flex items-center justify-center filter drop-shadow-xl">
-                  {isTopAchiever && !fish.isSkeleton && (
-                    <div className="absolute inset-0 rounded-full bg-amber-400/25 blur-md -z-10 animate-pulse" />
-                  )}
+                {/* SVG CREATURE BODY */}
+                <div className="relative w-32 h-20 flex items-center justify-center filter drop-shadow-xl">
+                  {renderCreatureSVG(fish)}
 
-                  {fish.isSkeleton && (
-                    <div className={cn(
-                      "absolute inset-0 rounded-full -z-10 blur-sm transition-all duration-300",
-                      fish.skeletonPhase === 'regenerating'
-                        ? "bg-emerald-400/35 animate-ping"
-                        : "bg-slate-300/20"
-                    )} />
-                  )}
-
-                  {fish.isSkeleton ? renderSkeletonSVG(fish) : renderCreatureSVG(fish)}
-
-                  {/* Student Avatar Embedded directly onto Creature Body/Shell/Skull */}
+                  {/* Student Avatar Embedded directly onto Creature */}
                   <div 
-                    className={cn(
-                      "absolute left-[40px] top-[24px] w-6 h-6 rounded-full overflow-hidden border-2 shadow-md flex items-center justify-center shrink-0 z-10 transition-all",
-                      fish.isSkeleton ? "border-slate-400 bg-slate-900 grayscale brightness-90" : "border-white/95 bg-slate-900"
-                    )}
+                    className="absolute left-[44px] top-[26px] w-6 h-6 rounded-full overflow-hidden border-2 border-white/95 bg-slate-900 shadow-md flex items-center justify-center shrink-0 z-10 transition-all"
                     style={{ transform: `scaleX(${fish.direction})` }}
                   >
                     {fish.photoURL ? (
@@ -2053,6 +2082,13 @@ export default function TeacherAquarium() {
           })}
         </div>
 
+        {/* Ambient Reef Seabed Floor Label */}
+        <div className="absolute bottom-1.5 inset-x-8 z-10 pointer-events-none flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-white/50 select-none drop-shadow">
+          <span className="flex items-center gap-1">🐠 Living Reef Sanctuary</span>
+          <span className="hidden md:inline text-white/30">• • • Vibrant Coral Habitat • • •</span>
+          <span className="flex items-center gap-1">Scale By Grade (0.65x → 2.2x) 🌊</span>
+        </div>
+
         {/* ============================================================== */}
         {/* INTERACTIVE FLOATING TOOLBAR DOCK */}
         {/* ============================================================== */}
@@ -2062,25 +2098,25 @@ export default function TeacherAquarium() {
             <button
               onClick={handleFeedAndGrow}
               className="bg-[#00b4d8] hover:bg-[#38bdf8] active:scale-95 text-slate-950 font-black px-4 py-2 rounded-full shadow-lg transition-all flex items-center gap-2 text-xs"
-              title="Feed flakes to grow student creatures"
+              title="Feed flakes to grow student fish"
             >
               <Utensils className="w-3.5 h-3.5" />
               <span>Feed & Grow</span>
             </button>
 
-            {/* Teacher Shark Button (Bully & Eat fish into Skeleton) */}
+            {/* Teacher Shark Button (Big & Slow Bully with Guaranteed Chomp) */}
             <button
               onClick={triggerMinuteSharkFeast}
               className={cn(
-                "active:scale-95 px-3 py-2 rounded-full text-xs font-black transition-all flex items-center gap-1.5 shadow-md",
+                "active:scale-95 px-3.5 py-2 rounded-full text-xs font-black transition-all flex items-center gap-1.5 shadow-md",
                 shark.state === 'hunting'
                   ? "bg-red-600 text-white animate-pulse"
                   : "bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white"
               )}
-              title="Send Teacher Shark to hunt and skeletonize student fish!"
+              title="Send Big Teacher Shark for a guaranteed chomp!"
             >
               <span>🦈</span>
-              <span>{shark.state === 'hunting' ? 'Bullying Fish!' : `Shark Feast (${minuteFeastCountdown}s)`}</span>
+              <span>{shark.state === 'hunting' ? 'Big Shark Stalking!' : `Big Shark Chomp (${minuteFeastCountdown}s)`}</span>
             </button>
 
             {/* Tap Glass Button */}
@@ -2218,9 +2254,9 @@ export default function TeacherAquarium() {
               <div className="p-3 bg-slate-800/80 rounded-2xl border border-white/10 flex items-center justify-between">
                 <div>
                   <p className="font-bold text-white text-xs flex items-center gap-1">
-                    <span>🦈</span> Teacher Shark Mode
+                    <span>🦈</span> Big Teacher Shark
                   </p>
-                  <p className="text-[10px] text-slate-400">Bully and eat student fish</p>
+                  <p className="text-[10px] text-slate-400">Patrols slowly with guaranteed chomp</p>
                 </div>
                 <button
                   onClick={() => setShark(prev => ({ ...prev, enabled: !prev.enabled }))}
@@ -2233,18 +2269,18 @@ export default function TeacherAquarium() {
                 </button>
               </div>
 
-              {/* Filter by Tier */}
+              {/* Filter by Grade Tier */}
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                  Filter by Grade Tier
+                  Filter by Size Bracket
                 </label>
                 <div className="grid grid-cols-3 gap-1">
                   {[
-                    { id: 'all', label: 'All' },
-                    { id: '90+', label: '90%+' },
-                    { id: '75-89', label: '75-89%' },
-                    { id: '50-74', label: '50-74%' },
-                    { id: '<50', label: '<50%' },
+                    { id: 'all', label: 'All Fish' },
+                    { id: 'giant', label: '90-100% (2.2x)' },
+                    { id: 'medium', label: '70-89% (1.45x)' },
+                    { id: 'small', label: '50-69% (1.0x)' },
+                    { id: 'little', label: '<50% (0.65x)' },
                     { id: 'online', label: 'Online' }
                   ].map(t => (
                     <button
@@ -2291,9 +2327,9 @@ export default function TeacherAquarium() {
               <div className={cn(
                 "absolute top-0 left-0 right-0 h-2",
                 selectedFish.percentage >= 90 ? "bg-gradient-to-r from-amber-400 to-yellow-500" :
-                selectedFish.percentage >= 75 ? "bg-gradient-to-r from-emerald-400 to-teal-500" :
+                selectedFish.percentage >= 70 ? "bg-gradient-to-r from-emerald-400 to-teal-500" :
                 selectedFish.percentage >= 50 ? "bg-gradient-to-r from-sky-400 to-blue-600" :
-                "bg-gradient-to-r from-orange-400 to-red-500"
+                "bg-gradient-to-r from-rose-400 to-red-500"
               )} />
 
               <button
@@ -2360,17 +2396,17 @@ export default function TeacherAquarium() {
                   <p className={cn(
                     "text-xl font-black mt-0.5",
                     selectedFish.percentage >= 90 ? "text-amber-500" :
-                    selectedFish.percentage >= 75 ? "text-emerald-500" :
-                    selectedFish.percentage >= 50 ? "text-sky-500" : "text-orange-500"
+                    selectedFish.percentage >= 70 ? "text-emerald-500" :
+                    selectedFish.percentage >= 50 ? "text-sky-500" : "text-rose-500"
                   )}>
                     {selectedFish.percentage}%
                   </p>
                 </div>
 
                 <div className="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 text-center">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Creature Scale</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Fish Size</p>
                   <p className="text-xl font-black text-cyan-600 dark:text-cyan-400 mt-0.5">
-                    {selectedFish.scale}x
+                    {getFishTierInfo(selectedFish.percentage).scaleDescription}
                   </p>
                 </div>
 
