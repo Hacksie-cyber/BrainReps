@@ -2656,7 +2656,7 @@ export default function TeacherAquarium() {
           isFullscreen ? "fixed inset-0 z-50 rounded-none border-none h-screen w-screen" : "h-[640px] md:h-[720px]"
         )}
         style={{
-          backgroundImage: 'url(/assets/aistudio/image_reef_clean.png)',
+          backgroundImage: 'url(/assets/aistudio/cinematic_coral_aquarium.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center center'
         }}
