@@ -586,7 +586,8 @@ export default function TeacherAquarium() {
   const [showSunbeams, setShowSunbeams] = useState(true);
   const [isSqueegeeActive, setIsSqueegeeActive] = useState(false);
   const [glassRipples, setGlassRipples] = useState<GlassRipple[]>([]);
-  const [showNameTags, setShowNameTags] = useState(false);
+  const [showNameTags, setShowNameTags] = useState(true);
+
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedFish, setSelectedFish] = useState<FishEntity | null>(null);
@@ -3092,28 +3093,61 @@ export default function TeacherAquarium() {
                     </div>
                   )}
 
-                  {/* Question Fish Nametag with Q#, Snippet & Points */}
+                  {/* HOVER-ONLY PARTIAL QUESTION PREVIEW CARD */}
                   {showNameTags && (
                     <div
                       className={cn(
-                        "absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold tracking-tight shadow-xl backdrop-blur-md border transition-all duration-200 pointer-events-none flex items-center gap-1.5",
-                        "bg-slate-900/90 text-white border-cyan-400/70 shadow-cyan-950/60 ring-1 ring-cyan-500/30",
-                        "group-hover:scale-110 group-hover:bg-slate-950 group-hover:border-cyan-300 group-hover:ring-2 group-hover:ring-cyan-400/50"
+                        "absolute left-1/2 -translate-x-1/2 z-30 pointer-events-none transition-all duration-200",
+                        qFish.y < 24 ? "top-full mt-3" : "bottom-full mb-3",
+                        "opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto"
                       )}
-                      style={{
-                        transform: `scaleX(${qFish.direction}) translate(-50%, 0)`,
-                        left: '50%'
-                      }}
                     >
-                      <span className="px-1.5 py-0.2 rounded font-black text-[9px] bg-cyan-400 text-slate-950 shadow-xs">
-                        Q{qFish.index}
-                      </span>
-                      <span className="truncate max-w-[125px] text-cyan-100 font-sans font-medium">
-                        {qFish.titleSnippet}
-                      </span>
-                      <span className="font-mono text-[9px] font-bold px-1.5 py-0.2 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-700/60">
-                        {qFish.points} pts
-                      </span>
+                      <div 
+                        className="w-72 p-3 rounded-2xl bg-slate-950/95 border-2 border-cyan-400/60 shadow-2xl shadow-cyan-950/80 backdrop-blur-xl text-left cursor-pointer"
+                        style={{ transform: `scaleX(${qFish.direction})` }}
+                        onClick={(e) => handleQuestionFishClick(qFish, e)}
+                      >
+                        {/* Header: Question #, Type & Points */}
+                        <div className="flex items-center justify-between gap-1.5 mb-2 pb-1.5 border-b border-white/10">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="px-2 py-0.5 rounded-md font-black text-[10px] bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 shadow-xs shrink-0">
+                              Q{qFish.index}
+                            </span>
+                            <span className="text-[10px] font-bold text-cyan-300 uppercase tracking-wider truncate">
+                              {qFish.type === 'multiple-choice' ? 'Multiple Choice' :
+                               qFish.type === 'true-false' ? 'True / False' : 'Short Answer'}
+                            </span>
+                          </div>
+                          <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-200 border border-cyan-800/60 shrink-0">
+                            {qFish.points} pts
+                          </span>
+                        </div>
+
+                        {/* Partial Question text preview (shows snippet on hover) */}
+                        <p className="text-xs text-slate-100 font-medium line-clamp-2 leading-relaxed mb-2.5">
+                          "{qFish.questionText}"
+                        </p>
+
+                        {/* Footer: Accuracy badge & click to hook CTA */}
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-full font-bold flex items-center gap-1",
+                            qFish.accuracy >= 80 
+                              ? "bg-emerald-950/80 text-emerald-300 border border-emerald-700/60"
+                              : qFish.accuracy >= 60
+                              ? "bg-amber-950/80 text-amber-300 border border-amber-700/60"
+                              : "bg-rose-950/80 text-rose-300 border border-rose-700/60"
+                          )}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                            <span>{qFish.accuracy}% Accuracy</span>
+                          </span>
+
+                          <span className="text-cyan-400 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                            <span>Hook to View</span>
+                            <span className="text-xs">🎣</span>
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -3121,9 +3155,9 @@ export default function TeacherAquarium() {
                   <div className="relative w-32 h-20 flex items-center justify-center filter drop-shadow-xl group-hover:brightness-110 transition-all">
                     {renderCreatureSVG(qFish)}
 
-                    {/* Question Number Badge Embedded directly onto Creature */}
+                    {/* Question Number Badge Embedded directly onto Creature (Emerges on hover) */}
                     <div 
-                      className="absolute left-[44px] top-[26px] w-6 h-6 rounded-full overflow-hidden border-2 border-white shadow-md bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shrink-0 z-10 transition-all group-hover:scale-110"
+                      className="absolute left-[44px] top-[26px] w-6 h-6 rounded-full overflow-hidden border-2 border-white shadow-md bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shrink-0 z-10 transition-all opacity-0 group-hover:opacity-100 group-hover:scale-110 duration-150"
                       style={{ transform: `scaleX(${qFish.direction})` }}
                     >
                       <span className="text-[9px] font-black text-white">
@@ -3217,48 +3251,56 @@ export default function TeacherAquarium() {
                     </div>
                   )}
 
-                  {/* Student Fish Nametag & Size Tag */}
+                  {/* HOVER-ONLY STUDENT PERFORMANCE PREVIEW CARD */}
                   {showNameTags && (
                     <div
                       className={cn(
-                        "absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1 rounded-full text-[10px] font-bold tracking-tight shadow-xl backdrop-blur-md border transition-all duration-200 pointer-events-none flex items-center gap-1.5",
-                        fish.isTerrified
-                          ? "bg-red-950/90 text-white border-red-500 shadow-red-900/50"
-                          : isMuchBigger
-                          ? "bg-amber-950/90 text-amber-200 border-amber-400 shadow-amber-900/50 ring-1 ring-amber-400/50" 
-                          : isMedium
-                          ? "bg-emerald-950/85 text-emerald-200 border-emerald-500/60 shadow-emerald-900/40"
-                          : isSmall
-                          ? "bg-sky-950/85 text-sky-200 border-sky-500/60 shadow-sky-900/40"
-                          : "bg-rose-950/85 text-rose-200 border-rose-500/60 shadow-rose-900/40",
-                        "group-hover:scale-110 group-hover:bg-black/90"
+                        "absolute left-1/2 -translate-x-1/2 z-30 pointer-events-none transition-all duration-200",
+                        fish.y < 24 ? "top-full mt-3" : "bottom-full mb-3",
+                        "opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto"
                       )}
-                      style={{
-                        transform: `scaleX(${fish.direction}) translate(-50%, 0)`,
-                        left: '50%'
-                      }}
                     >
-                      <span>{speciesMeta.emoji}</span>
-                      {isOnline && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" title="Online now" />
-                      )}
-                      <span className="truncate max-w-[105px] text-white font-bold">{fish.name}</span>
-                      <span className={cn(
-                        "font-black px-1.5 py-0.2 rounded-md text-[9px]",
-                        tierInfo.badgeBg
-                      )}>
-                        {fish.percentage}% ({tierInfo.scaleDescription})
-                      </span>
+                      <div 
+                        className="w-64 p-3 rounded-2xl bg-slate-950/95 border-2 border-cyan-400/50 shadow-2xl shadow-cyan-950/80 backdrop-blur-xl text-left cursor-pointer"
+                        style={{ transform: `scaleX(${fish.direction})` }}
+                        onClick={(e) => handleStudentFishClick(fish, e)}
+                      >
+                        <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-white/10">
+                          <span className="text-lg">{speciesMeta.emoji}</span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                              <span>{fish.name}</span>
+                              {isOnline && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 animate-pulse" title="Online now" />
+                              )}
+                            </p>
+                            <p className="text-[10px] text-slate-400 truncate">{speciesMeta.name}</p>
+                          </div>
+                          <span className={cn(
+                            "font-black px-2 py-0.5 rounded-lg text-[10px] shrink-0",
+                            tierInfo.badgeBg
+                          )}>
+                            {fish.percentage}%
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-slate-400">
+                          <span className="font-semibold text-cyan-300">{tierInfo.scaleDescription}</span>
+                          <span className="text-cyan-400 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                            <span>Hook to View</span>
+                            <span className="text-xs">🎣</span>
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
                   {/* SVG CREATURE BODY */}
-                  <div className="relative w-32 h-20 flex items-center justify-center filter drop-shadow-xl">
+                  <div className="relative w-32 h-20 flex items-center justify-center filter drop-shadow-xl group-hover:brightness-110 transition-all">
                     {renderCreatureSVG(fish)}
 
-                    {/* Student Avatar Embedded directly onto Creature */}
+                    {/* Student Avatar Embedded directly onto Creature (Emerges on hover) */}
                     <div 
-                      className="absolute left-[44px] top-[26px] w-6 h-6 rounded-full overflow-hidden border-2 border-white/95 bg-slate-900 shadow-md flex items-center justify-center shrink-0 z-10 transition-all"
+                      className="absolute left-[44px] top-[26px] w-6 h-6 rounded-full overflow-hidden border-2 border-white/95 bg-slate-900 shadow-md flex items-center justify-center shrink-0 z-10 transition-all opacity-0 group-hover:opacity-100 group-hover:scale-110 duration-150"
                       style={{ transform: `scaleX(${fish.direction})` }}
                     >
                       {fish.photoURL ? (
@@ -3578,19 +3620,28 @@ export default function TeacherAquarium() {
               <span>Squeegee</span>
             </button>
 
-            {/* Inspect Fish Toggle */}
+            {/* Inspect Fish on Hover Toggle */}
             <button
-              onClick={() => setShowNameTags(prev => !prev)}
+              onClick={() => {
+                setShowNameTags(prev => {
+                  const next = !prev;
+                  if (soundEnabled) playBubbleSound(next ? 480 : 250);
+                  return next;
+                });
+              }}
               className={cn(
                 "active:scale-95 px-3 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-1.5",
                 showNameTags 
-                  ? "bg-slate-800/90 text-white border border-white/20 shadow-xs" 
+                  ? "bg-cyan-500/25 text-cyan-200 border border-cyan-400/50 shadow-sm ring-1 ring-cyan-400/30" 
                   : "hover:bg-white/10 text-slate-400"
               )}
-              title="Toggle student nametags and score tags"
+              title={showNameTags ? "Hover Inspection active: Hover over any fish to preview question details & stats" : "Inspect Fish disabled: Click to enable hover preview cards"}
             >
-              <Eye className="w-3.5 h-3.5" />
+              <Eye className={cn("w-3.5 h-3.5", showNameTags ? "text-cyan-300" : "")} />
               <span>Inspect Fish</span>
+              {showNameTags && (
+                <span className="text-[9px] font-semibold text-cyan-300 ml-0.5">(Hover)</span>
+              )}
             </button>
 
             {/* Settings & Tuning Slider */}
@@ -4102,7 +4153,7 @@ export default function TeacherAquarium() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-xl font-bold font-display text-slate-900 dark:text-white truncate">
                       {selectedFish.name}
                     </h3>
