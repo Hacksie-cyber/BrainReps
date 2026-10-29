@@ -249,6 +249,31 @@ export function calculateScoreScale(percentage: number): number {
   return 0.65;                       // 50 percent below little fish
 }
 
+// PERFORMANCE OPTIMIZATION: Static bubble specs defined once to avoid garbage collection and thrashing
+const STATIC_LEFT_BUBBLES = Array.from({ length: 14 }).map((_, i) => ({
+  id: `l-${i}`,
+  left: `${8 + (Math.sin(i * 1.3) * 3)}%`,
+  size: `${5 + (i % 5) * 3}px`,
+  duration: `${3.6 + (i % 4) * 0.85}s`,
+  delay: `${(i * 0.28)}s`
+}));
+
+const STATIC_RIGHT_BUBBLES = Array.from({ length: 14 }).map((_, i) => ({
+  id: `r-${i}`,
+  left: `${88 + (Math.cos(i * 1.3) * 3)}%`,
+  size: `${5 + (i % 5) * 3}px`,
+  duration: `${3.5 + (i % 4) * 0.8}s`,
+  delay: `${(i * 0.26)}s`
+}));
+
+const STATIC_AMBIENT_BUBBLES = Array.from({ length: 7 }).map((_, i) => ({
+  id: `c-${i}`,
+  left: `${24 + i * 8}%`,
+  size: `${4 + (i % 3) * 2.5}px`,
+  duration: `${5.8 + (i % 3) * 1.4}s`,
+  delay: `${(i * 0.7)}s`
+}));
+
 export function getFishTierInfo(percentage: number): {
   tier: 'giant' | 'medium' | 'small' | 'little';
   label: string;
@@ -561,7 +586,7 @@ export default function TeacherAquarium() {
   const [showSunbeams, setShowSunbeams] = useState(true);
   const [isSqueegeeActive, setIsSqueegeeActive] = useState(false);
   const [glassRipples, setGlassRipples] = useState<GlassRipple[]>([]);
-  const [showNameTags, setShowNameTags] = useState(true);
+  const [showNameTags, setShowNameTags] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedFish, setSelectedFish] = useState<FishEntity | null>(null);
@@ -618,7 +643,7 @@ export default function TeacherAquarium() {
     quote: "I'm grading on a curve! 🦈",
     quoteTimer: 180,
     eatenCount: 0,
-    enabled: true,
+    enabled: false,
     wigglePhase: 0,
     huntCooldown: 120,
     huntDuration: 0
@@ -999,6 +1024,12 @@ export default function TeacherAquarium() {
     let animId: number;
 
     const updatePhysics = () => {
+      // PERFORMANCE OPTIMIZATION: Pause heavy loop updates when the browser tab is hidden or minimized
+      if (typeof document !== 'undefined' && document.hidden) {
+        animId = requestAnimationFrame(updatePhysics);
+        return;
+      }
+
       const { multiplier, burst } = speedRef.current;
       const effectiveSpeedMultiplier = multiplier * (burst ? 2.2 : 1.0);
       const accelFactor = 0.06 * effectiveSpeedMultiplier;
@@ -1256,40 +1287,43 @@ export default function TeacherAquarium() {
             shieldTimer -= 1;
           }
 
-          // PROXIMITY TO TEACHER SHARK
-          const sX = shark.x;
-          const sY = shark.y;
-          const distToShark = Math.sqrt((sX - x) * (sX - x) + (sY - y) * (sY - y));
+          // PROXIMITY TO TEACHER SHARK (Skipped when shark is disabled for optimal performance)
+          isTerrified = false;
+          if (shark.enabled) {
+            const sX = shark.x;
+            const sY = shark.y;
+            const distToShark = Math.sqrt((sX - x) * (sX - x) + (sY - y) * (sY - y));
 
-          const isTargeted = shark.state === 'hunting' && shark.targetFishId === fish.id;
-          if (isTargeted) {
-            isTerrified = true;
-            // Freezes in academic awe
-            targetVx = 0;
-            targetVy = 0;
-            vx *= 0.6;
-            vy *= 0.6;
-            wigglePhase += 0.45 * effectiveSpeedMultiplier;
-            // Gentle pull towards predator
-            if (distToShark < 25) {
-              const suctionFactor = 0.035 * effectiveSpeedMultiplier;
-              x += (sX - x) * suctionFactor;
-              y += (sY - y) * suctionFactor;
+            const isTargeted = shark.state === 'hunting' && shark.targetFishId === fish.id;
+            if (isTargeted) {
+              isTerrified = true;
+              // Freezes in academic awe
+              targetVx = 0;
+              targetVy = 0;
+              vx *= 0.6;
+              vy *= 0.6;
+              wigglePhase += 0.45 * effectiveSpeedMultiplier;
+              // Gentle pull towards predator
+              if (distToShark < 25) {
+                const suctionFactor = 0.035 * effectiveSpeedMultiplier;
+                x += (sX - x) * suctionFactor;
+                y += (sY - y) * suctionFactor;
+              }
+            } else if (distToShark < 18) {
+              // Bystanders scatter
+              isTerrified = true;
+              const fleeDx = x - sX;
+              const fleeDy = y - sY;
+              const fleeDist = Math.max(0.1, Math.sqrt(fleeDx * fleeDx + fleeDy * fleeDy));
+              const fleeSpeed = baseSpeed * 2.0;
+              targetVx = (fleeDx / fleeDist) * fleeSpeed;
+              targetVy = (fleeDy / fleeDist) * fleeSpeed;
+              direction = fleeDx > 0 ? 1 : -1;
+              wigglePhase += 0.32 * effectiveSpeedMultiplier;
             }
-          } else if (distToShark < 18) {
-            // Bystanders scatter
-            isTerrified = true;
-            const fleeDx = x - sX;
-            const fleeDy = y - sY;
-            const fleeDist = Math.max(0.1, Math.sqrt(fleeDx * fleeDx + fleeDy * fleeDy));
-            const fleeSpeed = baseSpeed * 2.0;
-            targetVx = (fleeDx / fleeDist) * fleeSpeed;
-            targetVy = (fleeDy / fleeDist) * fleeSpeed;
-            direction = fleeDx > 0 ? 1 : -1;
-            wigglePhase += 0.32 * effectiveSpeedMultiplier;
-          } else {
-            isTerrified = false;
+          }
 
+          if (!isTerrified) {
             // Check if there are food flakes to eat
             let targetFood: FoodFlake | null = null;
             if (foodFlakes.length > 0) {
@@ -1414,37 +1448,40 @@ export default function TeacherAquarium() {
             shieldTimer -= 1;
           }
 
-          // PROXIMITY TO TEACHER SHARK
-          const sX = shark.x;
-          const sY = shark.y;
-          const distToShark = Math.sqrt((sX - x) * (sX - x) + (sY - y) * (sY - y));
+          // PROXIMITY TO TEACHER SHARK (Skipped when shark is disabled for optimal performance)
+          isTerrified = false;
+          if (shark.enabled) {
+            const sX = shark.x;
+            const sY = shark.y;
+            const distToShark = Math.sqrt((sX - x) * (sX - x) + (sY - y) * (sY - y));
 
-          const isTargeted = shark.state === 'hunting' && shark.targetFishId === qFish.id;
-          if (isTargeted) {
-            isTerrified = true;
-            targetVx = 0;
-            targetVy = 0;
-            vx *= 0.6;
-            vy *= 0.6;
-            wigglePhase += 0.45 * effectiveSpeedMultiplier;
-            if (distToShark < 25) {
-              const suctionFactor = 0.035 * effectiveSpeedMultiplier;
-              x += (sX - x) * suctionFactor;
-              y += (sY - y) * suctionFactor;
+            const isTargeted = shark.state === 'hunting' && shark.targetFishId === qFish.id;
+            if (isTargeted) {
+              isTerrified = true;
+              targetVx = 0;
+              targetVy = 0;
+              vx *= 0.6;
+              vy *= 0.6;
+              wigglePhase += 0.45 * effectiveSpeedMultiplier;
+              if (distToShark < 25) {
+                const suctionFactor = 0.035 * effectiveSpeedMultiplier;
+                x += (sX - x) * suctionFactor;
+                y += (sY - y) * suctionFactor;
+              }
+            } else if (distToShark < 18) {
+              isTerrified = true;
+              const fleeDx = x - sX;
+              const fleeDy = y - sY;
+              const fleeDist = Math.max(0.1, Math.sqrt(fleeDx * fleeDx + fleeDy * fleeDy));
+              const fleeSpeed = baseSpeed * 2.0;
+              targetVx = (fleeDx / fleeDist) * fleeSpeed;
+              targetVy = (fleeDy / fleeDist) * fleeSpeed;
+              direction = fleeDx > 0 ? 1 : -1;
+              wigglePhase += 0.32 * effectiveSpeedMultiplier;
             }
-          } else if (distToShark < 18) {
-            isTerrified = true;
-            const fleeDx = x - sX;
-            const fleeDy = y - sY;
-            const fleeDist = Math.max(0.1, Math.sqrt(fleeDx * fleeDx + fleeDy * fleeDy));
-            const fleeSpeed = baseSpeed * 2.0;
-            targetVx = (fleeDx / fleeDist) * fleeSpeed;
-            targetVy = (fleeDy / fleeDist) * fleeSpeed;
-            direction = fleeDx > 0 ? 1 : -1;
-            wigglePhase += 0.32 * effectiveSpeedMultiplier;
-          } else {
-            isTerrified = false;
+          }
 
+          if (!isTerrified) {
             // Food flakes interaction
             let targetFood: FoodFlake | null = null;
             if (foodFlakes.length > 0) {
@@ -1896,8 +1933,10 @@ export default function TeacherAquarium() {
     }
   }, [tankMode, questionFishList, fishList, soundEnabled, vanishedQuestionFishIds]);
 
-  // Recurring 1-minute interval for Teacher Shark Feast
+  // Recurring 1-minute interval for Teacher Shark Feast (Only runs when shark is enabled)
   useEffect(() => {
+    if (!shark.enabled) return;
+
     const timer = setInterval(() => {
       setMinuteFeastCountdown(prev => {
         if (prev <= 1) {
@@ -1909,7 +1948,7 @@ export default function TeacherAquarium() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [triggerMinuteSharkFeast]);
+  }, [triggerMinuteSharkFeast, shark.enabled]);
 
   // Squeegee Clean Glass Action
   const handleSqueegee = () => {
@@ -2498,7 +2537,7 @@ export default function TeacherAquarium() {
           <div 
             onClick={triggerMinuteSharkFeast}
             className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border-2 border-red-200 dark:border-red-900/60 shadow-xs flex items-center justify-between cursor-pointer hover:border-red-400 hover:scale-[1.02] active:scale-95 transition-all group"
-            title="Click to trigger Big Teacher Shark guaranteed question inspection!"
+            title={shark.enabled ? "Click to trigger Big Teacher Shark guaranteed question inspection!" : "Big Shark is currently Off. Click to enable and inspect!"}
           >
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-950/80 border border-red-300 dark:border-red-800 flex items-center justify-center text-lg shrink-0 group-hover:rotate-12 transition-transform">
@@ -2507,15 +2546,18 @@ export default function TeacherAquarium() {
               <div>
                 <p className="text-[9px] font-black uppercase tracking-wider text-red-500 dark:text-red-400 flex items-center gap-1">
                   <span>Big Shark</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                  {shark.enabled && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />}
                 </p>
                 <p className="text-lg font-black text-slate-900 dark:text-white leading-none mt-0.5">
-                  {minuteFeastCountdown}s
+                  {shark.enabled ? `${minuteFeastCountdown}s` : 'Off'}
                 </p>
               </div>
             </div>
-            <span className="text-[9px] font-black uppercase tracking-tight bg-red-600 text-white px-2 py-1 rounded-md shadow-xs group-hover:bg-red-500">
-              Inspect
+            <span className={cn(
+              "text-[9px] font-black uppercase tracking-tight px-2 py-1 rounded-md shadow-xs transition-colors",
+              shark.enabled ? "bg-red-600 text-white group-hover:bg-red-500" : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:bg-red-600 group-hover:text-white"
+            )}>
+              {shark.enabled ? 'Inspect' : 'Enable'}
             </span>
           </div>
         </div>
@@ -2623,7 +2665,7 @@ export default function TeacherAquarium() {
           <div 
             onClick={triggerMinuteSharkFeast}
             className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border-2 border-red-200 dark:border-red-900/60 shadow-xs flex items-center justify-between cursor-pointer hover:border-red-400 hover:scale-[1.02] active:scale-95 transition-all group"
-            title="Click to trigger Big Teacher Shark guaranteed chomp!"
+            title={shark.enabled ? "Click to trigger Big Teacher Shark guaranteed chomp!" : "Big Shark is currently Off. Click to enable and chomp!"}
           >
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-950/80 border border-red-300 dark:border-red-800 flex items-center justify-center text-lg shrink-0 group-hover:rotate-12 transition-transform">
@@ -2632,15 +2674,18 @@ export default function TeacherAquarium() {
               <div>
                 <p className="text-[9px] font-black uppercase tracking-wider text-red-500 dark:text-red-400 flex items-center gap-1">
                   <span>Big Shark</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                  {shark.enabled && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />}
                 </p>
                 <p className="text-lg font-black text-slate-900 dark:text-white leading-none mt-0.5">
-                  {minuteFeastCountdown}s
+                  {shark.enabled ? `${minuteFeastCountdown}s` : 'Off'}
                 </p>
               </div>
             </div>
-            <span className="text-[9px] font-black uppercase tracking-tight bg-red-600 text-white px-2 py-1 rounded-md shadow-xs group-hover:bg-red-500">
-              Chomp
+            <span className={cn(
+              "text-[9px] font-black uppercase tracking-tight px-2 py-1 rounded-md shadow-xs transition-colors",
+              shark.enabled ? "bg-red-600 text-white group-hover:bg-red-500" : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:bg-red-600 group-hover:text-white"
+            )}>
+              {shark.enabled ? 'Chomp' : 'Enable'}
             </span>
           </div>
         </div>
@@ -2681,57 +2726,60 @@ export default function TeacherAquarium() {
           />
         )}
 
-        {/* Vertical Bubble Aeration Columns */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Vertical Bubble Aeration Columns (Optimized Static Arrays) */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ contain: 'strict' }}>
           {/* Left Bubble Column */}
-          {Array.from({ length: 26 }).map((_, i) => (
+          {STATIC_LEFT_BUBBLES.map(b => (
             <div
-              key={`left-col-${i}`}
+              key={b.id}
               className="absolute rounded-full border border-white/70 shadow-xs"
               style={{
-                left: `${8 + (Math.sin(i * 1.3) * 3)}%`,
+                left: b.left,
                 bottom: '-20px',
-                width: `${5 + (i % 6) * 3.5}px`,
-                height: `${5 + (i % 6) * 3.5}px`,
+                width: b.size,
+                height: b.size,
                 backgroundColor: 'rgba(255, 255, 255, 0.35)',
                 boxShadow: '0 0 6px rgba(255, 255, 255, 0.6), inset 0 0 3px #ffffff',
-                animation: `bubbleFloat ${3.8 + (i % 4) * 0.9}s infinite linear`,
-                animationDelay: `${(i * 0.22)}s`
+                animation: `bubbleFloat ${b.duration} infinite linear`,
+                animationDelay: b.delay,
+                willChange: 'transform'
               }}
             />
           ))}
 
           {/* Right Bubble Column */}
-          {Array.from({ length: 26 }).map((_, i) => (
+          {STATIC_RIGHT_BUBBLES.map(b => (
             <div
-              key={`right-col-${i}`}
+              key={b.id}
               className="absolute rounded-full border border-white/70 shadow-xs"
               style={{
-                left: `${88 + (Math.cos(i * 1.3) * 3)}%`,
+                left: b.left,
                 bottom: '-20px',
-                width: `${5 + (i % 6) * 3.5}px`,
-                height: `${5 + (i % 6) * 3.5}px`,
+                width: b.size,
+                height: b.size,
                 backgroundColor: 'rgba(255, 255, 255, 0.35)',
                 boxShadow: '0 0 6px rgba(255, 255, 255, 0.6), inset 0 0 3px #ffffff',
-                animation: `bubbleFloat ${3.6 + (i % 4) * 0.85}s infinite linear`,
-                animationDelay: `${(i * 0.25)}s`
+                animation: `bubbleFloat ${b.duration} infinite linear`,
+                animationDelay: b.delay,
+                willChange: 'transform'
               }}
             />
           ))}
 
           {/* Ambient center bubbles */}
-          {Array.from({ length: 12 }).map((_, i) => (
+          {STATIC_AMBIENT_BUBBLES.map(b => (
             <div
-              key={`center-ambient-${i}`}
+              key={b.id}
               className="absolute rounded-full border border-white/40"
               style={{
-                left: `${25 + i * 4.5}%`,
+                left: b.left,
                 bottom: '-20px',
-                width: `${4 + (i % 4) * 2}px`,
-                height: `${4 + (i % 4) * 2}px`,
+                width: b.size,
+                height: b.size,
                 backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                animation: `bubbleFloat ${6 + (i % 3) * 1.5}s infinite linear`,
-                animationDelay: `${(i * 0.6)}s`
+                animation: `bubbleFloat ${b.duration} infinite linear`,
+                animationDelay: b.delay,
+                willChange: 'transform'
               }}
             />
           ))}
