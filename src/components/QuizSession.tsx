@@ -10,6 +10,7 @@ import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAl
 import { cn, formatDeadline } from '../lib/utils';
 import { studentCache } from '../lib/studentCache';
 import { addLocalNotification } from '../lib/localNotifications';
+import { gradeSubmission } from '../lib/scoring';
 
 export default function QuizSession() {
   const { id } = useParams();
@@ -340,45 +341,14 @@ export default function QuizSession() {
 
     savingRef.current = true;
 
-    let currentScore = 0;
-    let totalPoints = 0;
     let finalScore = 0;
+    let totalPoints = 0;
 
     try {
-      const gradedResponses = quiz.questions.map(q => {
-        const studentAnswer = (currentResponses[q.id] || '').trim().toLowerCase();
-        const correctAnswer = q.correctAnswer.trim().toLowerCase();
-        let pointsEarned = 0;
-        let isCorrect = false;
-
-        if (q.type === 'short-answer') {
-          const keywords = correctAnswer.split(',').map(k => k.trim()).filter(k => k !== '');
-          if (keywords.length > 0) {
-            const matches = keywords.filter(k => studentAnswer.includes(k));
-            pointsEarned = Math.round((matches.length / keywords.length) * q.points * 10) / 10;
-            isCorrect = matches.length === keywords.length;
-          } else {
-            isCorrect = studentAnswer === correctAnswer;
-            pointsEarned = isCorrect ? q.points : 0;
-          }
-        } else {
-          isCorrect = studentAnswer === correctAnswer;
-          pointsEarned = isCorrect ? q.points : 0;
-        }
-
-        currentScore += pointsEarned;
-        totalPoints += q.points;
-
-        return {
-          questionId: q.id,
-          answer: currentResponses[q.id] || '',
-          isCorrect,
-          pointsEarned,
-          maxPoints: q.points
-        };
-      });
-
-      finalScore = Math.round(currentScore * 10) / 10;
+      const grading = gradeSubmission(quiz.questions, currentResponses);
+      const gradedResponses = grading.gradedResponses;
+      finalScore = grading.finalScore;
+      totalPoints = grading.totalPoints;
       const submissionAt = new Date().toISOString();
       const hasBreached = Boolean(breachCountRef.current > 0 || wasForcedRef.current || wasForced || breachCount > 0);
       const resolvedBreachReason = String(breachReasonRef.current || (hasBreached ? 'Window focus / Tab switch detected during assessment' : ''));
@@ -874,18 +844,8 @@ export default function QuizSession() {
 
   // Calculate current score live
   const calculateCurrentLiveScore = () => {
-    if (!quiz) return 0;
-    let earned = 0;
-    let total = 0;
-    quiz.questions.forEach(q => {
-      const studentAnswer = (responses[q.id] || '').trim().toLowerCase();
-      const correctAnswer = q.correctAnswer.trim().toLowerCase();
-      if (studentAnswer === correctAnswer) {
-        earned += q.points;
-      }
-      total += q.points;
-    });
-    return Math.round((earned / total) * 100);
+    if (!quiz || !quiz.questions || quiz.questions.length === 0) return 0;
+    return gradeSubmission(quiz.questions, responses).percentage;
   };
 
   return (

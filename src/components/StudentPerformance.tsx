@@ -8,6 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { Trophy, Target, TrendingUp, Calendar, BookOpen, Shield, Zap, Award, Eye, EyeOff, CheckCircle2, XCircle, X, Lock, KeyRound, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { cn, formatDeadline } from '../lib/utils';
 import { studentCache } from '../lib/studentCache';
+import { evaluateQuestionResponse, resolveOptionIndex, resolveBooleanAnswer } from '../lib/scoring';
 
 export default function StudentPerformance() {
   const { profile } = useAuth();
@@ -473,8 +474,12 @@ export default function StudentPerformance() {
                 {(quizzes[selectedSubForReview.quizId]?.questions || []).map((q, qIndex) => {
                   const resp = selectedSubForReview.responses?.find(r => r.questionId === q.id);
                   const studentAns = resp?.answer || '';
-                  const earned = resp?.pointsEarned ?? (studentAns.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase() ? q.points : 0);
-                  const isCorrect = earned > 0;
+                  const evalResult = evaluateQuestionResponse(q, studentAns);
+                  // Award maximum of recorded points or freshly evaluated points if verified by answer key
+                  const earned = typeof resp?.pointsEarned === 'number' && resp.pointsEarned > 0
+                    ? Math.max(resp.pointsEarned, evalResult.pointsEarned)
+                    : evalResult.pointsEarned;
+                  const isCorrect = earned > 0 || evalResult.isCorrect;
 
                   return (
                     <div key={q.id} className="pt-6 first:pt-0 space-y-3">
@@ -507,85 +512,95 @@ export default function StudentPerformance() {
                       {/* Multiple Choice Review */}
                       {q.type === 'multiple-choice' && q.options && (
                         <div className="grid gap-2 pt-2">
-                          {q.options.map((opt, optIdx) => {
-                            const isAnswerKey = String(optIdx) === q.correctAnswer.trim() || opt.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase();
-                            const isStudentChoice = String(optIdx) === studentAns.trim() || opt.trim().toLowerCase() === studentAns.trim().toLowerCase();
+                          {(() => {
+                            const correctOptionIdx = resolveOptionIndex(q.correctAnswer, q.options);
+                            const studentOptionIdx = resolveOptionIndex(studentAns, q.options);
 
-                            return (
-                              <div
-                                key={optIdx}
-                                className={cn(
-                                  "p-3 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all",
-                                  isAnswerKey && isStudentChoice && "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200",
-                                  isAnswerKey && !isStudentChoice && "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300",
-                                  !isAnswerKey && isStudentChoice && "bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200",
-                                  !isAnswerKey && !isStudentChoice && "bg-slate-50/50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400"
-                                )}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <span className={cn(
-                                    "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black uppercase",
-                                    isAnswerKey ? "bg-emerald-600 text-white" : (isStudentChoice ? "bg-red-500 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300")
-                                  )}>
-                                    {String.fromCharCode(65 + optIdx)}
-                                  </span>
-                                  <span>{opt}</span>
-                                </div>
+                            return q.options.map((opt, optIdx) => {
+                              const isAnswerKey = correctOptionIdx === optIdx;
+                              const isStudentChoice = studentOptionIdx === optIdx;
 
-                                <div className="flex items-center gap-2">
-                                  {isStudentChoice && (
+                              return (
+                                <div
+                                  key={optIdx}
+                                  className={cn(
+                                    "p-3 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all",
+                                    isAnswerKey && isStudentChoice && "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200",
+                                    isAnswerKey && !isStudentChoice && "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300",
+                                    !isAnswerKey && isStudentChoice && "bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200",
+                                    !isAnswerKey && !isStudentChoice && "bg-slate-50/50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-3">
                                     <span className={cn(
-                                      "text-[9px] font-black uppercase px-2 py-0.5 rounded",
-                                      isCorrect ? "bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200" : "bg-red-200 dark:bg-red-900 text-red-800 dark:text-red-200"
+                                      "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black uppercase",
+                                      isAnswerKey ? "bg-emerald-600 text-white" : (isStudentChoice ? "bg-red-500 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300")
                                     )}>
-                                      Your Answer
+                                      {String.fromCharCode(65 + optIdx)}
                                     </span>
-                                  )}
-                                  {isAnswerKey && (
-                                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-600 text-white flex items-center gap-1 shadow-sm">
-                                      <CheckCircle2 className="w-2.5 h-2.5" /> Correct Key
-                                    </span>
-                                  )}
+                                    <span>{opt}</span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    {isStudentChoice && (
+                                      <span className={cn(
+                                        "text-[9px] font-black uppercase px-2 py-0.5 rounded",
+                                        isCorrect ? "bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200" : "bg-red-200 dark:bg-red-900 text-red-800 dark:text-red-200"
+                                      )}>
+                                        Your Answer
+                                      </span>
+                                    )}
+                                    {isAnswerKey && (
+                                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-600 text-white flex items-center gap-1 shadow-sm">
+                                        <CheckCircle2 className="w-2.5 h-2.5" /> Correct Key
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            });
+                          })()}
                         </div>
                       )}
 
                       {/* True / False Review */}
                       {q.type === 'true-false' && (
                         <div className="grid grid-cols-2 gap-3 pt-2">
-                          {['true', 'false'].map((val) => {
-                            const isAnswerKey = q.correctAnswer.toLowerCase() === val;
-                            const isStudentChoice = studentAns.toLowerCase() === val;
+                          {(() => {
+                            const correctBool = resolveBooleanAnswer(q.correctAnswer);
+                            const studentBool = resolveBooleanAnswer(studentAns);
 
-                            return (
-                              <div
-                                key={val}
-                                className={cn(
-                                  "p-3 rounded-xl border text-xs font-bold flex items-center justify-between capitalize",
-                                  isAnswerKey && "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200",
-                                  !isAnswerKey && isStudentChoice && "bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200",
-                                  !isAnswerKey && !isStudentChoice && "bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800 text-slate-500"
-                                )}
-                              >
-                                <span>{val}</span>
-                                <div className="flex items-center gap-1">
-                                  {isStudentChoice && (
-                                    <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700">
-                                      You
-                                    </span>
+                            return ['true', 'false'].map((val) => {
+                              const isAnswerKey = (val === 'true' && correctBool === true) || (val === 'false' && correctBool === false);
+                              const isStudentChoice = (val === 'true' && studentBool === true) || (val === 'false' && studentBool === false);
+
+                              return (
+                                <div
+                                  key={val}
+                                  className={cn(
+                                    "p-3 rounded-xl border text-xs font-bold flex items-center justify-between capitalize",
+                                    isAnswerKey && "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200",
+                                    !isAnswerKey && isStudentChoice && "bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200",
+                                    !isAnswerKey && !isStudentChoice && "bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800 text-slate-500"
                                   )}
-                                  {isAnswerKey && (
-                                    <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-600 text-white flex items-center gap-1">
-                                      <CheckCircle2 className="w-2.5 h-2.5" /> Key
-                                    </span>
-                                  )}
+                                >
+                                  <span>{val}</span>
+                                  <div className="flex items-center gap-1">
+                                    {isStudentChoice && (
+                                      <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700">
+                                        You
+                                      </span>
+                                    )}
+                                    {isAnswerKey && (
+                                      <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-600 text-white flex items-center gap-1">
+                                        <CheckCircle2 className="w-2.5 h-2.5" /> Key
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            });
+                          })()}
                         </div>
                       )}
 

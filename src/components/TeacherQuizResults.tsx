@@ -5,11 +5,12 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 import { Quiz, QuizSubmission, Question, UserProfile } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download, FileText, Plus, Minus, Search, Presentation, ShieldAlert, AlertTriangle, ShieldCheck, Eye, EyeOff, Fish } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, Target, Calendar, Info, X, Trash2, Medal, Download, FileText, Plus, Minus, Search, Presentation, ShieldAlert, AlertTriangle, ShieldCheck, Eye, EyeOff, Fish, CheckCircle2, RefreshCw, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { evaluateQuestionResponse, resolveOptionIndex, gradeSubmission, rescoreSubmission } from '../lib/scoring';
 
 export default function TeacherQuizResults() {
   const { id } = useParams();
@@ -28,6 +29,8 @@ export default function TeacherQuizResults() {
   const [grantingStudentId, setGrantingStudentId] = useState<string | null>(null);
   const [draftResponses, setDraftResponses] = useState<QuizSubmission['responses']>([]);
   const [isSavingScore, setIsSavingScore] = useState(false);
+  const [isRescoringAll, setIsRescoringAll] = useState(false);
+  const [rescoreNotification, setRescoreNotification] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedSubmission) {
@@ -36,6 +39,66 @@ export default function TeacherQuizResults() {
       setDraftResponses([]);
     }
   }, [selectedSubmission]);
+
+  const handleAutoGradeSelectedSubmission = () => {
+    if (!quiz || !selectedSubmission) return;
+    const responsesMap: Record<string, string> = {};
+    draftResponses.forEach(r => {
+      responsesMap[r.questionId] = r.answer;
+    });
+    const graded = gradeSubmission(quiz.questions, responsesMap);
+    setDraftResponses(graded.gradedResponses);
+  };
+
+  const handleAuditAndRescoreAll = async () => {
+    if (!quiz || !submissions.length) return;
+    try {
+      setIsRescoringAll(true);
+      let updatedCount = 0;
+      let totalPointsGained = 0;
+
+      for (const sub of submissions) {
+        const audit = rescoreSubmission(quiz.questions, sub);
+        if (audit.scoreChanged) {
+          const subRef = doc(db, 'submissions', sub.id);
+          await updateDoc(subRef, {
+            responses: audit.submission.responses,
+            score: audit.submission.score,
+            totalPoints: audit.submission.totalPoints,
+            graded: true
+          });
+          updatedCount++;
+          if (audit.newScore > audit.previousScore) {
+            totalPointsGained += (audit.newScore - audit.previousScore);
+          }
+
+          // Send notification to student informing them their score has been accurately verified & corrected!
+          try {
+            const { addLocalNotification } = await import('../lib/localNotifications');
+            addLocalNotification(sub.studentId, {
+              title: '🎯 Score Verified & Updated!',
+              message: `Your assessment submission for "${quiz.title}" was audited and verified with official answer keys. Your score was updated to ${audit.newScore}/${audit.submission.totalPoints}!`,
+              type: 'system',
+              relatedId: quiz.id
+            });
+          } catch (notifErr) {
+            console.error("Failed to notify student of rescore:", notifErr);
+          }
+        }
+      }
+
+      setRescoreNotification(
+        updatedCount > 0
+          ? `Audit complete! Successfully corrected ${updatedCount} student submission(s). Corrected scores have been saved to the database.`
+          : `Audit complete! All ${submissions.length} submissions are already 100% in accordance with the official answer keys.`
+      );
+      setTimeout(() => setRescoreNotification(null), 7000);
+    } catch (err) {
+      console.error("Rescore all error:", err);
+    } finally {
+      setIsRescoringAll(false);
+    }
+  };
 
   const handlePointsChange = (questionId: string, val: number) => {
     setDraftResponses(prev => prev.map(res => {
@@ -454,7 +517,20 @@ export default function TeacherQuizResults() {
                  className="pl-9 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full sm:w-64"
                />
              </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={handleAuditAndRescoreAll}
+                disabled={isRescoringAll || submissions.length === 0}
+                className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all flex items-center gap-2 shadow-sm active:scale-95 disabled:opacity-50"
+                title="Audit all submissions against official answer keys and correct any scores"
+              >
+                {isRescoringAll ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                )}
+                <span>{isRescoringAll ? 'Auditing Scores...' : 'Audit & Recalculate Scores'}</span>
+              </button>
               <button 
                 onClick={() => navigate(`/teacher/aquarium?quizId=${id}`)}
                 className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-teal-600 text-white rounded-lg text-xs font-bold hover:brightness-110 transition-all flex items-center gap-2 shadow-sm active:scale-95"
@@ -487,6 +563,22 @@ export default function TeacherQuizResults() {
             </div>
            </div>
         </div>
+
+        {/* Rescore Audit Status Banner */}
+        {rescoreNotification && (
+          <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>{rescoreNotification}</span>
+            </div>
+            <button
+              onClick={() => setRescoreNotification(null)}
+              className="text-emerald-600 hover:text-emerald-800 dark:hover:text-emerald-100"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
@@ -711,24 +803,51 @@ export default function TeacherQuizResults() {
                           </div>
                         </div>
 
-                        <div className="bg-slate-50 dark:bg-slate-850/40 rounded-xl p-5 border border-slate-100 dark:border-slate-800 space-y-3">
-                          <div className="space-y-1">
-                            <p className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500">Student Response</p>
-                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300 italic">
-                              {q.type === 'multiple-choice' && q.options && !isNaN(parseInt(res.answer))
-                                ? `"${q.options[parseInt(res.answer)] || res.answer}"`
-                                : `"${res.answer || "No response provided"}"`}
-                            </p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500">Correct Answer / Reference</p>
-                            <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
-                              {q.type === 'multiple-choice' && q.options && !isNaN(parseInt(q.correctAnswer))
-                                ? q.options[parseInt(q.correctAnswer)]
-                                : q.correctAnswer}
-                            </p>
-                          </div>
-                        </div>
+                        {(() => {
+                          const evalResult = evaluateQuestionResponse(q, res.answer);
+                          const isKeyMatch = evalResult.isCorrect;
+
+                          let studentDisplay = `"${res.answer || "No response provided"}"`;
+                          if (q.type === 'multiple-choice' && q.options) {
+                            const sIdx = resolveOptionIndex(res.answer, q.options);
+                            if (sIdx !== null && q.options[sIdx]) {
+                              studentDisplay = `"${q.options[sIdx]}" (Option ${String.fromCharCode(65 + sIdx)})`;
+                            }
+                          }
+
+                          let correctDisplay = q.correctAnswer;
+                          if (q.type === 'multiple-choice' && q.options) {
+                            const cIdx = resolveOptionIndex(q.correctAnswer, q.options);
+                            if (cIdx !== null && q.options[cIdx]) {
+                              correctDisplay = `${q.options[cIdx]} (Option ${String.fromCharCode(65 + cIdx)})`;
+                            }
+                          }
+
+                          return (
+                            <div className="bg-slate-50 dark:bg-slate-850/40 rounded-xl p-5 border border-slate-100 dark:border-slate-800 space-y-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                  <p className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500">Student Response</p>
+                                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300 italic">
+                                    {studentDisplay}
+                                  </p>
+                                </div>
+                                {isKeyMatch && (
+                                  <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 shrink-0">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                    Matches Key
+                                  </span>
+                                )}
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500">Correct Answer / Verified Key</p>
+                                <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                                  {correctDisplay}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {/* Point Adjustment Intervention Controller */}
                         <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-50/50 dark:bg-slate-800/20 rounded-xl border border-slate-100 dark:border-slate-800/80">
@@ -818,6 +937,15 @@ export default function TeacherQuizResults() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAutoGradeSelectedSubmission}
+                      className="px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 rounded-lg text-xs font-bold transition-all active:scale-95 flex items-center gap-1.5"
+                      title="Automatically re-evaluate all responses against the official answer keys"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Auto-Score from Key</span>
+                    </button>
                     <button
                       onClick={() => setSelectedSubmission(null)}
                       className="px-4 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 transition-all active:scale-95"

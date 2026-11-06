@@ -9,6 +9,7 @@ import { Save, Plus, Trash2, ArrowLeft, GripVertical, CheckCircle2, Settings, Cl
 import { cn } from '../lib/utils';
 import DeleteModal from './DeleteModal';
 import QuizImportModal from './QuizImportModal';
+import { resolveOptionIndex, resolveBooleanAnswer } from '../lib/scoring';
 
 export default function QuizCreator() {
   const { profile } = useAuth();
@@ -731,38 +732,41 @@ export default function QuizCreator() {
                     <div className="space-y-3">
                       <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Options (Select the correct radio option)</p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                        {q.options.map((opt, optIdx) => (
-                          <div 
-                            key={optIdx} 
-                            className={cn(
-                              "flex items-center gap-3 p-3 rounded-xl border transition-all duration-200",
-                              q.correctAnswer === optIdx.toString()
-                                ? "bg-indigo-50/40 dark:bg-indigo-950/10 border-indigo-200 dark:border-indigo-900/50 shadow-sm"
-                                : "bg-slate-50/40 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800/80 focus-within:border-slate-350 dark:focus-within:border-slate-600"
-                            )}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => updateQuestion(q.id, { correctAnswer: optIdx.toString() })}
+                        {q.options.map((opt, optIdx) => {
+                          const isOptionSelected = resolveOptionIndex(q.correctAnswer, q.options) === optIdx;
+                          return (
+                            <div 
+                              key={optIdx} 
                               className={cn(
-                                "h-5 w-5 flex-shrink-0 rounded-full border-2 transition-all flex items-center justify-center",
-                                q.correctAnswer === optIdx.toString() 
-                                  ? 'bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow shadow-indigo-600/30' 
-                                  : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900'
+                                "flex items-center gap-3 p-3 rounded-xl border transition-all duration-200",
+                                isOptionSelected
+                                  ? "bg-indigo-50/40 dark:bg-indigo-950/10 border-indigo-200 dark:border-indigo-900/50 shadow-sm"
+                                  : "bg-slate-50/40 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800/80 focus-within:border-slate-350 dark:focus-within:border-slate-600"
                               )}
-                              title="Set as Correct Answer"
                             >
-                              {q.correctAnswer === optIdx.toString() && <CheckCircle2 className="h-3.5 w-3.5" />}
-                            </button>
-                            <input
-                              type="text"
-                              value={opt}
-                              onChange={(e) => updateOption(q.id, optIdx, e.target.value)}
-                              placeholder={`Option ${optIdx + 1}`}
-                              className="w-full bg-transparent border-none focus:ring-0 p-0 text-xs font-semibold text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-600"
-                            />
-                          </div>
-                        ))}
+                              <button
+                                type="button"
+                                onClick={() => updateQuestion(q.id, { correctAnswer: optIdx.toString() })}
+                                className={cn(
+                                  "h-5 w-5 flex-shrink-0 rounded-full border-2 transition-all flex items-center justify-center",
+                                  isOptionSelected 
+                                    ? 'bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow shadow-indigo-600/30' 
+                                    : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900'
+                                )}
+                                title="Set as Correct Answer"
+                              >
+                                {isOptionSelected && <CheckCircle2 className="h-3.5 w-3.5" />}
+                              </button>
+                              <input
+                                type="text"
+                                value={opt}
+                                onChange={(e) => updateOption(q.id, optIdx, e.target.value)}
+                                placeholder={`Option ${optIdx + 1}`}
+                                className="w-full bg-transparent border-none focus:ring-0 p-0 text-xs font-semibold text-slate-700 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -772,21 +776,24 @@ export default function QuizCreator() {
                     <div className="space-y-3">
                       <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Correct Answer Choice</p>
                       <div className="flex gap-3">
-                        {['true', 'false'].map((val) => (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => updateQuestion(q.id, { correctAnswer: val })}
-                            className={cn(
-                              "flex-1 rounded-xl border-2 py-3 text-xs font-bold uppercase tracking-wider transition-all",
-                              q.correctAnswer === val 
-                                ? 'bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow-md' 
-                                : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
-                            )}
-                          >
-                            {val}
-                          </button>
-                        ))}
+                        {['true', 'false'].map((val) => {
+                          const isValSelected = resolveBooleanAnswer(q.correctAnswer) === (val === 'true');
+                          return (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => updateQuestion(q.id, { correctAnswer: val })}
+                              className={cn(
+                                "flex-1 rounded-xl border-2 py-3 text-xs font-bold uppercase tracking-wider transition-all",
+                                isValSelected 
+                                  ? 'bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow-md' 
+                                  : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+                              )}
+                            >
+                              {val}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

@@ -44,6 +44,7 @@ import {
   FastForward
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { resolveOptionIndex, resolveBooleanAnswer } from '../lib/scoring';
 
 const TIMER_PRESETS = [
   { label: '25s', seconds: 25, key: '1', title: '25 Seconds' },
@@ -296,16 +297,8 @@ export default function TeacherSlidePresentation() {
   // Helper function to resolve question answer label and detail
   const getAnswerDetail = (q: Question) => {
     if (q.type === 'multiple-choice' && q.options && q.options.length > 0) {
-      const matchIdx = q.options.findIndex((opt, idx) => {
-        const letter = String.fromCharCode(65 + idx);
-        return (
-          opt.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase() ||
-          letter.toLowerCase() === q.correctAnswer.trim().toLowerCase() ||
-          String(idx) === q.correctAnswer.trim()
-        );
-      });
-
-      if (matchIdx !== -1) {
+      const matchIdx = resolveOptionIndex(q.correctAnswer, q.options);
+      if (matchIdx !== null && matchIdx >= 0 && matchIdx < q.options.length) {
         const letter = String.fromCharCode(65 + matchIdx);
         return {
           letter,
@@ -316,7 +309,8 @@ export default function TeacherSlidePresentation() {
     }
 
     if (q.type === 'true-false') {
-      const isTrue = q.correctAnswer.trim().toLowerCase() === 'true';
+      const boolVal = resolveBooleanAnswer(q.correctAnswer);
+      const isTrue = boolVal !== false;
       return {
         letter: isTrue ? 'T' : 'F',
         text: isTrue ? 'True' : 'False',
@@ -1203,7 +1197,9 @@ export default function TeacherSlidePresentation() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   {currentQuestion.options.map((option, optIdx) => {
                     const letter = String.fromCharCode(65 + optIdx);
+                    const correctIdx = resolveOptionIndex(currentQuestion.correctAnswer, currentQuestion.options);
                     const isCorrect = showAnswerKey && (
+                      correctIdx === optIdx ||
                       option.trim().toLowerCase() === currentQuestion.correctAnswer.trim().toLowerCase() ||
                       letter.toLowerCase() === currentQuestion.correctAnswer.trim().toLowerCase()
                     );

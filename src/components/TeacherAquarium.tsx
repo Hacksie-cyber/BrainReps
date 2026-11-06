@@ -49,6 +49,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { evaluateQuestionResponse, resolveOptionIndex } from '../lib/scoring';
 
 // Web Audio synthesizer for gentle underwater bubble sounds
 function playBubbleSound(frequencyOffset = 0) {
@@ -454,31 +455,9 @@ function getQuestionAnswerLetter(qFish: QuestionFishEntity | null): string {
   if (!raw) return '';
 
   if (qFish.options && qFish.options.length > 0) {
-    // If raw is already a single letter (e.g. 'A', 'B')
-    if (/^[A-Z]$/i.test(raw)) {
-      const idx = raw.toUpperCase().charCodeAt(0) - 65;
-      if (idx >= 0 && idx < qFish.options.length) {
-        return raw.toUpperCase();
-      }
-    }
-    // If raw is 0-based numeric index (e.g. '0', '1')
-    const parsed = parseInt(raw, 10);
-    if (!isNaN(parsed) && parsed >= 0 && parsed < qFish.options.length) {
-      return String.fromCharCode(65 + parsed);
-    }
-    // Match against option string content
-    const rawLower = raw.toLowerCase();
-    const matchIdx = qFish.options.findIndex(opt => opt.trim().toLowerCase() === rawLower);
-    if (matchIdx !== -1) {
-      return String.fromCharCode(65 + matchIdx);
-    }
-    // Partial or fuzzy match against option string
-    const subIdx = qFish.options.findIndex(opt => {
-      const o = opt.trim().toLowerCase();
-      return o.includes(rawLower) || rawLower.includes(o);
-    });
-    if (subIdx !== -1) {
-      return String.fromCharCode(65 + subIdx);
+    const resolvedIdx = resolveOptionIndex(raw, qFish.options);
+    if (resolvedIdx !== null && resolvedIdx >= 0 && resolvedIdx < qFish.options.length) {
+      return String.fromCharCode(65 + resolvedIdx);
     }
   }
 
@@ -949,7 +928,11 @@ export default function TeacherAquarium() {
         const resp = sub.responses.find(r => r.questionId === qId || r.questionId === q.id);
         if (resp && resp.answer !== undefined && resp.answer !== '') {
           totalAnswered++;
-          if (resp.isCorrect || resp.pointsEarned > 0) {
+          const evalResult = evaluateQuestionResponse(
+            { id: qId, type: qType, question: qText, options, correctAnswer, points },
+            resp.answer
+          );
+          if (resp.isCorrect || resp.pointsEarned > 0 || evalResult.isCorrect) {
             correctCount++;
           }
           choiceDistribution[resp.answer] = (choiceDistribution[resp.answer] || 0) + 1;
