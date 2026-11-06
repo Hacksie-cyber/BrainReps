@@ -376,6 +376,54 @@ export function evaluateQuestionResponse(
 }
 
 /**
+ * Retrieves the canonical correct option text for a multiple choice question,
+ * resolving whether correctAnswer was specified as an index ("0", "1"),
+ * letter ("A", "B"), or text ("Mitochondria").
+ */
+export function getCanonicalCorrectOptionText(question: Question): string {
+  const options = question.options || [];
+  if (options.length === 0) return String(question.correctAnswer ?? '').trim();
+
+  const idx = resolveOptionIndex(question.correctAnswer, options);
+  if (idx !== null && options[idx] !== undefined) {
+    return options[idx];
+  }
+  return String(question.correctAnswer ?? '').trim();
+}
+
+/**
+ * Shuffles choices for a multiple-choice question and re-maps correctAnswer
+ * so that the question's answer key remains 100% accurate regardless of random permutation.
+ */
+export function shuffleQuestionOptions(question: Question): Question {
+  const clone: Question = { ...question };
+  if (clone.type !== 'multiple-choice' || !clone.options || clone.options.length <= 1) {
+    return clone;
+  }
+
+  // 1. Resolve canonical correct option text prior to shuffle
+  const canonicalCorrectText = getCanonicalCorrectOptionText(clone);
+
+  // 2. Fisher-Yates scramble
+  const shuffled = [...clone.options];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  clone.options = shuffled;
+
+  // 3. Re-map correctAnswer to the new index of canonicalCorrectText in the shuffled options
+  const newIdx = resolveOptionIndex(canonicalCorrectText, shuffled);
+  if (newIdx !== null) {
+    clone.correctAnswer = newIdx.toString();
+  } else {
+    clone.correctAnswer = canonicalCorrectText;
+  }
+
+  return clone;
+}
+
+/**
  * Grades all questions for a submission and returns clean, rounded metrics
  */
 export function gradeSubmission(
@@ -397,7 +445,16 @@ export function gradeSubmission(
   let totalPoints = 0;
 
   const gradedResponses = questions.map(q => {
-    const rawAnswer = responses[q.id] || '';
+    let rawAnswer = responses[q.id] || '';
+
+    // Canonicalize multiple-choice answer to option text if an index was recorded
+    if (q.type === 'multiple-choice' && q.options && q.options.length > 0 && rawAnswer) {
+      const optIdx = resolveOptionIndex(rawAnswer, q.options);
+      if (optIdx !== null && q.options[optIdx]) {
+        rawAnswer = q.options[optIdx];
+      }
+    }
+
     const result = evaluateQuestionResponse(q, rawAnswer);
 
     finalScore += result.pointsEarned;

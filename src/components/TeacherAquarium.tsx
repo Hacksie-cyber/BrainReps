@@ -1778,11 +1778,20 @@ export default function TeacherAquarium() {
     const challengingFishList: QuestionFishEntity[] = shuffledList.map((qFish, newIdx) => {
       // Scramble choices if question has multiple options (e.g. multiple-choice) for maximum challenge
       let updatedOptions = [...qFish.options];
+      let updatedCorrectAnswer = qFish.correctAnswer;
       if (updatedOptions.length > 1 && qFish.type === 'multiple-choice') {
+        const origCorrectIdx = resolveOptionIndex(qFish.correctAnswer, qFish.options);
+        const correctText = (origCorrectIdx !== null && qFish.options[origCorrectIdx] !== undefined)
+          ? qFish.options[origCorrectIdx]
+          : qFish.correctAnswer;
+
         for (let o = updatedOptions.length - 1; o > 0; o--) {
           const randO = Math.floor(Math.random() * (o + 1));
           [updatedOptions[o], updatedOptions[randO]] = [updatedOptions[randO], updatedOptions[o]];
         }
+
+        // Keep correctAnswer strictly pointing to the canonical correct choice text so answer keys never desync
+        updatedCorrectAnswer = correctText;
       }
 
       // Randomize swimming coordinate and dynamic challenge current velocity
@@ -1793,6 +1802,7 @@ export default function TeacherAquarium() {
         ...qFish,
         index: newIdx + 1,
         options: updatedOptions,
+        correctAnswer: updatedCorrectAnswer,
         x: 10 + Math.random() * 80,
         y: 18 + Math.random() * 54,
         targetVx: Math.cos(randomAngle) * surgeSpeed,

@@ -10,7 +10,7 @@ import { ArrowRight, ArrowLeft, Send, CheckCircle2, AlertCircle, Clock, ShieldAl
 import { cn, formatDeadline } from '../lib/utils';
 import { studentCache } from '../lib/studentCache';
 import { addLocalNotification } from '../lib/localNotifications';
-import { gradeSubmission } from '../lib/scoring';
+import { gradeSubmission, resolveOptionIndex, shuffleQuestionOptions } from '../lib/scoring';
 
 export default function QuizSession() {
   const { id } = useParams();
@@ -79,19 +79,8 @@ export default function QuizSession() {
 
           // Randomize questions and choices to ensure maximum assessment integrity and higher challenge
           if (profile.role === 'student' && quizData.questions) {
-            const shuffledQuestions = quizData.questions.map(q => {
-              const clone = { ...q };
-              // Shuffle choices for multiple-choice questions to increase challenge
-              if (clone.options && clone.options.length > 1 && clone.type === 'multiple-choice') {
-                const optShuffled = [...clone.options];
-                for (let o = optShuffled.length - 1; o > 0; o--) {
-                  const randO = Math.floor(Math.random() * (o + 1));
-                  [optShuffled[o], optShuffled[randO]] = [optShuffled[randO], optShuffled[o]];
-                }
-                clone.options = optShuffled;
-              }
-              return clone;
-            });
+            // Shuffle choices while strictly preserving and re-mapping the correct answer key
+            const shuffledQuestions = quizData.questions.map(q => shuffleQuestionOptions(q));
 
             // Fisher-Yates scramble for question sequence
             for (let i = shuffledQuestions.length - 1; i > 0; i--) {
@@ -423,7 +412,17 @@ export default function QuizSession() {
   };
 
   const handleResponse = (questionId: string, answer: string) => {
-    const updatedResponses = { ...responses, [questionId]: answer };
+    // If multiple choice, canonicalize answer to option text so it remains accurate regardless of shuffling
+    let resolvedAnswer = answer;
+    const targetQ = quiz?.questions?.find(item => item.id === questionId);
+    if (targetQ && targetQ.type === 'multiple-choice' && targetQ.options && targetQ.options.length > 0) {
+      const idx = resolveOptionIndex(answer, targetQ.options);
+      if (idx !== null && targetQ.options[idx]) {
+        resolvedAnswer = targetQ.options[idx];
+      }
+    }
+
+    const updatedResponses = { ...responses, [questionId]: resolvedAnswer };
     setResponses(updatedResponses);
     // Periodically sync progress automatically
     autoSaveSession(updatedResponses, false);
@@ -939,26 +938,29 @@ export default function QuizSession() {
                   <div className="space-y-3">
                     {currentQuestion.type === 'multiple-choice' && currentQuestion.options && (
                       <div className="grid gap-3">
-                        {currentQuestion.options.map((option, i) => (
-                          <button
-                            key={i}
-                            onClick={() => handleResponse(currentQuestion.id, i.toString())}
-                            className={cn(
-                              "group flex items-center justify-between rounded-xl border-2 p-5 transition-all text-left",
-                              responses[currentQuestion.id] === i.toString()
-                                ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 ring-4 ring-indigo-600/5"
-                                : "border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30 text-slate-600 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
-                            )}
-                          >
-                            <span className="font-bold text-sm tracking-tight">{option}</span>
-                            <div className={cn(
-                              "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all",
-                               responses[currentQuestion.id] === i.toString() ? "bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow-lg shadow-indigo-600/20" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
-                            )}>
-                              {responses[currentQuestion.id] === i.toString() && <CheckCircle2 className="h-3 w-3" />}
-                            </div>
-                          </button>
-                        ))}
+                        {currentQuestion.options.map((option, i) => {
+                          const isSelected = responses[currentQuestion.id] === option || responses[currentQuestion.id] === i.toString();
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => handleResponse(currentQuestion.id, option)}
+                              className={cn(
+                                "group flex items-center justify-between rounded-xl border-2 p-5 transition-all text-left",
+                                isSelected
+                                  ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 ring-4 ring-indigo-600/5"
+                                  : "border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30 text-slate-600 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+                              )}
+                            >
+                              <span className="font-bold text-sm tracking-tight">{option}</span>
+                              <div className={cn(
+                                "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all",
+                                 isSelected ? "bg-indigo-600 dark:border-indigo-500 text-white shadow-lg shadow-indigo-600/20" : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                              )}>
+                                {isSelected && <CheckCircle2 className="h-3 w-3" />}
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
 
